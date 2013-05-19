@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import re
+
 from compat import (unicode, bytes, OrderedDict, StringIO,
                     urlparse, urlunparse, urlencode, quote)
-
 
 """
 TODO:
@@ -12,6 +13,13 @@ TODO:
 """
 
 DEFAULT_ENCODING = 'utf-8'
+
+# URL parsing regex (per RFC 3986)
+_URL_RE = re.compile(r'^((?P<scheme>[^:/?#]+):)?'
+                     r'(//(?P<authority>[^/?#]*))?'
+                     r'(?P<path>[^?#]*)'
+                     r'(\?(?P<query>[^#]*))?'
+                     r'(#(?P<fragment>.*))?')
 
 
 # The unreserved URI characters (per RFC 3986)
