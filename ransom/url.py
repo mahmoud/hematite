@@ -1,10 +1,39 @@
 # -*- coding: utf-8 -*-
 
 from compat import (unicode, bytes, OrderedDict, StringIO,
-                    urlparse, urlunparse, urlencode, requote)
+                    urlparse, urlunparse, urlencode, quote)
 
 
-# From RFC3987
+# The unreserved URI characters (RFC 3986)
+UNRESERVED_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    "0123456789-._~")
+
+
+def unquote_unreserved(url):
+    """\
+    Un-escape any percent-escape sequences in a URI that are unreserved
+    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
+    """
+    parts = url.split('%')
+    for i in range(1, len(parts)):
+        h = parts[i][0:2]
+        if len(h) == 2 and h.isalnum():
+            c = chr(int(h, 16))
+            if c in UNRESERVED_CHARS:
+                parts[i] = c + parts[i][2:]
+            else:
+                parts[i] = '%' + parts[i]
+        else:
+            parts[i] = '%' + parts[i]
+    return ''.join(parts)
+
+
+def requote(url):
+    return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
+
+
+# per RFC3987
 _ESC_RANGES = [(0xA0, 0xD7FF),
                (0xE000, 0xF8FF),
                (0xF900, 0xFDCF),
@@ -24,7 +53,6 @@ def parse_url(url_str, encoding='utf-8'):
             raise TypeError('parse_url expected str, unicode, or bytes')
     parsed = urlparse(url_str)
     parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
-    print parsed
     return parsed
 
 
