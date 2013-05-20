@@ -112,7 +112,10 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING):
         gs = um.groupdict()
     except AttributeError:
         raise ValueError('could not parse url: %r' % url_str)
-    gs['authority'] = gs['authority'].encode('utf-8').decode('idna')
+    if gs['authority']:
+        gs['authority'] = gs['authority'].encode('utf-8').decode('idna')
+    else:
+        gs['authority'] = ''
     user, pw, family, host, port = parse_authority(gs['authority'])
     gs['username'] = user
     gs['password'] = pw
@@ -177,10 +180,14 @@ class URL(object):
             if self.password:
                 ret.extend([':', self.password])
             ret.append('@')
-        ret.append(self.host)
+        host = self.host.encode('idna')
+        if self.family == socket.AF_INET6:
+            ret.extend(['[', host, ']'])
+        else:
+            ret.append(host)
         port = unicode(self.port)
         if port:
-            ret.extend([':', self.port])
+            ret.extend([':', port])
         return u''.join(ret)
 
     @property
