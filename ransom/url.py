@@ -53,17 +53,18 @@ def parse_authority(au_str):
     (2, '192.168.1.1', 5000)
 
     TODO: check validity of non-IP host before returning?
+    TODO: exception types for parse exceptions
     """
     family, host, port = None, '', None
     if not au_str:
         return family, host, port
-    if ':' in au_str:
+    if ':' in au_str:  # for port-explicit and IPv6 authorities
         host, _, port_str = au_str.rpartition(':')
         if port_str and ']' not in port_str:
             try:
                 port = int(port_str)
             except TypeError:
-                raise  # TODO
+                raise
         else:
             host, port = au_str, None
         if host and '[' == host[0] and ']' == host[-1]:

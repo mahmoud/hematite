@@ -47,10 +47,8 @@ def test_parse_authorities(test_authority):
     if not test_authority:
         return True
     else:
-        print test_authority
         family, host, port = parse_authority(test_authority)
-        print family, host, port
-        assert bool(host)
+        assert bool(host)  # TODO
 
 
 def test_basic():
