@@ -155,19 +155,19 @@ def url2parseresult(url_str):
 
 
 class URL(object):
-    _attrs = ('scheme', 'username', 'password', 'hostname',
-              'port', 'path', 'params', 'query', 'fragment')
+    _attrs = ('scheme', 'username', 'password', 'family',
+              'host', 'port', 'path', 'query', 'fragment')
 
     def __init__(self, url_str=None, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
         self.encoding = encoding
-        if not url_str:
-            return
-        url_dict = parse_url(url_str, encoding=encoding)
+        if url_str:
+            url_dict = parse_url(url_str, encoding=encoding)
 
         _d = unicode()
+        self.params = _d
         for attr in self._attrs:
-            setattr(self, attr, getattr(up, attr) or _d)
+            setattr(self, attr, url_dict.get(attr, _d) or _d)
 
     @property
     def netloc(self):
@@ -177,7 +177,7 @@ class URL(object):
             if self.password:
                 ret.extend([':', self.password])
             ret.append('@')
-        ret.append(self.hostname)
+        ret.append(self.host)
         port = unicode(self.port)
         if port:
             ret.extend([':', self.port])
