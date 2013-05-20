@@ -45,6 +45,13 @@ def parse_authority(au_str):
     returns:
       family (socket constant or None), host (string), port (int or None)
 
+    >>> parse_authority('googlewebsite.com:443')
+    (None, 'googlewebsite.com', 443)
+    >>> parse_authority('[::1]:22')
+    (10, '::1', 22)
+    >>> parse_authority('192.168.1.1:5000')
+    (2, '192.168.1.1', 5000)
+
     TODO: check validity of non-IP host before returning?
     """
     family, host, port = None, '', None
