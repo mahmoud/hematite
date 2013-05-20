@@ -54,7 +54,7 @@ def test_parse_authorities(test_authority):
 
 def test_basic():
     u1 = URL('http://googlewebsite.com/e-shops.aspx')
-    assert u1.hostname == 'googlewebsite.com'
+    assert u1.host == 'googlewebsite.com'
 
 
 def test_urlparse_equiv():
@@ -65,4 +65,4 @@ def test_urlparse_equiv():
 
 def test_idna():
     u1 = URL('http://xn--bcher-kva.ch')
-    assert u1.hostname == u'bücher.ch'
+    assert u1.host == u'bücher.ch'
