@@ -56,6 +56,12 @@ def test_basic():
     assert u1.hostname == 'googlewebsite.com'
 
 
+def test_urlparse_equiv():
+    from urlparse import urlparse, urlunparse
+    url = 'http://googlewebsite.com/e-shops.aspx'
+    assert urlunparse(urlparse(url)) == urlunparse(URL(url))
+
+
 def test_idna():
     u1 = URL('http://xn--bcher-kva.ch')
     assert u1.hostname == u'bücher.ch'
