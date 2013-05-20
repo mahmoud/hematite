@@ -14,6 +14,7 @@ TEST_URLS = [
     'http://example.com:8080/search?q=123&business=Nothing%20Special',
     'https://xn--bcher-kva.ch',
     'http://tools.ietf.org/html/rfc3986#section-3.4',
+    'http://wiki:pedia@hatnote.com',
     'ftp://ftp.rfc-editor.org/in-notes/tar/RFCs0001-0500.tar.gz',
     'http://[1080:0:0:0:8:800:200C:417A]/index.html',
     'ssh://192.0.2.16:22/',
@@ -47,7 +48,7 @@ def test_parse_authorities(test_authority):
     if not test_authority:
         return True
     else:
-        family, host, port = parse_authority(test_authority)
+        _, _, family, host, port = parse_authority(test_authority)
         assert bool(host)  # TODO
 
 
