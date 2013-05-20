@@ -5,10 +5,12 @@ is_py2 = sys.version_info[0] == 2
 is_py3 = sys.version_info[0] == 3
 
 from collections import OrderedDict  # TODO
+from dictutils import OrderedMultiDict
 
 if is_py2:
     from urllib import quote, unquote, quote_plus, unquote_plus, urlencode
     from urlparse import urlparse, urlunparse, urljoin, urlsplit, urldefrag
+    from urlparse import parse_qsl
     from urllib2 import parse_http_list
     import cookielib
     from Cookie import Morsel
@@ -18,7 +20,7 @@ if is_py2:
 elif is_py3:
     from urllib.parse import (urlparse, urlunparse, urljoin, urlsplit,
                               urlencode, quote, unquote, quote_plus,
-                              unquote_plus, urldefrag)
+                              unquote_plus, urldefrag, parse_qsl)
     from urllib.request import parse_http_list
     from http import cookiejar as cookielib
     from http.cookies import Morsel

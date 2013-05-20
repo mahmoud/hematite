@@ -2,8 +2,8 @@
 
 import re
 import socket
-from compat import (unicode, bytes, OrderedDict, StringIO,
-                    urlparse, urlunparse, urlencode, quote)
+from compat import (unicode, bytes, urlparse, urlunparse,
+                    quote, parse_qsl, OrderedMultiDict)
 
 """
 TODO:
@@ -171,6 +171,8 @@ class URL(object):
         self.params = _d  # TODO: support params?
         for attr in self._attrs:
             setattr(self, attr, url_dict.get(attr, _d) or _d)
+        pairs = parse_qsl(self.query, keep_blank_values=True)
+        self.args = OrderedMultiDict(pairs)
 
     @property
     def authority(self):
@@ -192,12 +194,21 @@ class URL(object):
 
     @property
     def query_string(self):
-        return  # if there are args, join them order
+        # note: uses '%20' instead of '+' for spaces, based partially
+        # on observed behavior in chromium.
+        encoding = self.encoding
+        safe = "!$'()*+,/:;?@[]~"  # unsafe = '#&='
+        ret_list = []
+        for k, v in self.args.items():
+            key = quote(k.encode(encoding), safe=safe)
+            val = quote(v.encode(encoding), safe=safe)
+            ret_list.append('='.join((key, val)))
+        return '&'.join(ret_list)
 
     def __iter__(self):
         s = self
         return iter((s.scheme, s.authority, s.path,
-                     s.params, s.query, s.fragment))
+                     s.params, s.query_string, s.fragment))
 
     def encode(self, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
