@@ -10,6 +10,7 @@ TODO:
  - url param support
  - support ';' in addition to '&' for url params
    - http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
+ - support python compiled without IPv6
 """
 
 DEFAULT_ENCODING = 'utf-8'
@@ -40,16 +41,22 @@ _ESC_RANGES.extend([(i, i + 0xFFFD) for i in range(0x10000, 0xE0000, 0x10000)])
 _ESC_RANGES.sort(key=lambda x: x[0])
 
 
-def parse_authority(au_str):
+def parse_authority(au_str):  # TODO: namedtuple?
+    user, pw, hostinfo = parse_userinfo(au_str)
+    family, host, port = parse_hostinfo(hostinfo)
+    return user, pw, family, host, port
+
+
+def parse_hostinfo(au_str):
     """\
     returns:
       family (socket constant or None), host (string), port (int or None)
 
-    >>> parse_authority('googlewebsite.com:443')
+    >>> parse_hostinfo('googlewebsite.com:443')
     (None, 'googlewebsite.com', 443)
-    >>> parse_authority('[::1]:22')
+    >>> parse_hostinfo('[::1]:22')
     (10, '::1', 22)
-    >>> parse_authority('192.168.1.1:5000')
+    >>> parse_hostinfo('192.168.1.1:5000')
     (2, '192.168.1.1', 5000)
 
     TODO: check validity of non-IP host before returning?
@@ -85,6 +92,36 @@ def parse_authority(au_str):
     return family, host, port
 
 
+def parse_userinfo(au_str):
+    userinfo, _, hostinfo = au_str.partition('@')
+    if hostinfo:
+        username, _, password = userinfo.partition(':')
+    else:
+        username, password, hostinfo = None, None, au_str
+    return username, password, hostinfo
+
+
+def parse_url(url_str, encoding=DEFAULT_ENCODING):
+    if not isinstance(url_str, unicode):
+        try:
+            url_str = url_str.decode(encoding)
+        except AttributeError:
+            raise TypeError('parse_url expected str, unicode, or bytes')
+    um = _URL_RE.match(url_str)
+    try:
+        gs = um.groupdict()
+    except AttributeError:
+        raise ValueError('could not parse url: %r' % url_str)
+    gs['authority'] = gs['authority'].encode('utf-8').decode('idna')
+    user, pw, family, host, port = parse_authority(gs['authority'])
+    gs['username'] = user
+    gs['password'] = pw
+    gs['family'] = family
+    gs['host'] = host
+    gs['port'] = port
+    return gs
+
+
 def unquote_unreserved(url):
     """\
     Un-escape any percent-escape sequences in a URI that are unreserved
@@ -108,20 +145,11 @@ def requote(url):
     return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
 
 
-def parse_url(url_str, encoding=DEFAULT_ENCODING):
-    from urlparse import ParseResult  # TODO: tmp
-    if not isinstance(url_str, unicode):
-        try:
-            url_str = url_str.decode(encoding)
-        except AttributeError:
-            raise TypeError('parse_url expected str, unicode, or bytes')
-    um = _URL_RE.match(url_str)
-    try:
-        gs = um.groupdict()
-    except AttributeError:
-        raise ValueError('could not parse url')
-    parsed = ParseResult(gs['scheme'], gs['authority'], gs['path'],
-                         '', gs['query'], gs['fragment'])
+def url2parseresult(url_str):
+    from urlparse import ParseResult  # TODO: temporary, for testing
+    pd = parse_url(url_str)
+    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
+                         '', pd['query'], pd['fragment'])
     parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
     return parsed
 
@@ -130,10 +158,13 @@ class URL(object):
     _attrs = ('scheme', 'username', 'password', 'hostname',
               'port', 'path', 'params', 'query', 'fragment')
 
-    def __init__(self, url_str, encoding=None):
+    def __init__(self, url_str=None, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
-        up = parse_url(url_str, encoding=encoding)
         self.encoding = encoding
+        if not url_str:
+            return
+        url_dict = parse_url(url_str, encoding=encoding)
+
         _d = unicode()
         for attr in self._attrs:
             setattr(self, attr, getattr(up, attr) or _d)
