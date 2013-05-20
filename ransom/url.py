@@ -168,12 +168,12 @@ class URL(object):
             url_dict = parse_url(url_str, encoding=encoding)
 
         _d = unicode()
-        self.params = _d
+        self.params = _d  # TODO: support params?
         for attr in self._attrs:
             setattr(self, attr, url_dict.get(attr, _d) or _d)
 
     @property
-    def netloc(self):
+    def authority(self):
         ret = []
         if self.username:
             ret.append(self.username)
@@ -195,8 +195,9 @@ class URL(object):
         return  # if there are args, join them order
 
     def __iter__(self):
-        s, i = self, iter
-        return i((s.scheme, s.netloc, s.path, s.params, s.query, s.fragment))
+        s = self
+        return iter((s.scheme, s.authority, s.path,
+                     s.params, s.query, s.fragment))
 
     def encode(self, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
