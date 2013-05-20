@@ -2,15 +2,16 @@
 
 import re
 import socket
+
 from compat import (unicode, bytes, urlparse, urlunparse,
                     quote, parse_qsl, OrderedMultiDict)
 
 """
 TODO:
- - url param support
  - support ';' in addition to '&' for url params
    - http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
+ - IRI encoding
 """
 
 DEFAULT_ENCODING = 'utf-8'
@@ -148,15 +149,6 @@ def requote(url):
     return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
 
 
-def url2parseresult(url_str):
-    from urlparse import ParseResult  # TODO: temporary, for testing
-    pd = parse_url(url_str)
-    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
-                         '', pd['query'], pd['fragment'])
-    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
-    return parsed
-
-
 class URL(object):
     _attrs = ('scheme', 'username', 'password', 'family',
               'host', 'port', 'path', 'query', 'fragment')
@@ -190,7 +182,7 @@ class URL(object):
         port = unicode(self.port)
         if port:
             ret.extend([':', port])
-        return u''.join(ret)
+        return unicode().join(ret)
 
     @property
     def query_string(self):
@@ -212,5 +204,13 @@ class URL(object):
 
     def encode(self, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
-        # TODO: inherit or duck type
-        return urlunparse(self).encode('utf-8')  # TODO
+        return urlunparse(self).encode(encoding)  # TODO
+
+
+def url2parseresult(url_str):
+    from urlparse import ParseResult  # TODO: temporary, for testing
+    pd = parse_url(url_str)
+    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
+                         '', pd['query'], pd['fragment'])
+    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
+    return parsed
