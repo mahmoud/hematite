@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-
+import socket
 from compat import (unicode, bytes, OrderedDict, StringIO,
                     urlparse, urlunparse, urlencode, quote)
 
@@ -38,6 +38,43 @@ _ESC_RANGES = [(0xA0, 0xD7FF),
                (0x100000, 0x10FFFD)]
 _ESC_RANGES.extend([(i, i + 0xFFFD) for i in range(0x10000, 0xE0000, 0x10000)])
 _ESC_RANGES.sort(key=lambda x: x[0])
+
+
+def parse_authority(au_str):
+    """\
+    returns:
+      family (socket constant or None), host (string), port (int or None)
+
+    TODO: check validity of non-IP host before returning?
+    """
+    family, host, port = None, '', None
+    if not au_str:
+        return family, host, port
+    if ':' in au_str:
+        host, _, port_str = au_str.rpartition(':')
+        if port_str and ']' not in port_str:
+            try:
+                port = int(port_str)
+            except TypeError:
+                raise  # TODO
+        else:
+            host, port = au_str, None
+        if host and '[' == host[0] and ']' == host[-1]:
+            host = host[1:-1]
+            try:
+                socket.inet_pton(socket.AF_INET6, host)
+            except socket.error:
+                raise
+            else:
+                family = socket.AF_INET6
+                return family, host, port
+    try:
+        socket.inet_pton(socket.AF_INET, host)
+    except socket.error:
+        host = host if (host or port) else au_str
+    else:
+        family = socket.AF_INET
+    return family, host, port
 
 
 def unquote_unreserved(url):
