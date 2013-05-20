@@ -109,12 +109,19 @@ def requote(url):
 
 
 def parse_url(url_str, encoding=DEFAULT_ENCODING):
+    from urlparse import ParseResult  # TODO: tmp
     if not isinstance(url_str, unicode):
         try:
             url_str = url_str.decode(encoding)
         except AttributeError:
             raise TypeError('parse_url expected str, unicode, or bytes')
-    parsed = urlparse(url_str)
+    um = _URL_RE.match(url_str)
+    try:
+        gs = um.groupdict()
+    except AttributeError:
+        raise ValueError('could not parse url')
+    parsed = ParseResult(gs['scheme'], gs['authority'], gs['path'],
+                         '', gs['query'], gs['fragment'])
     parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
     return parsed
 
