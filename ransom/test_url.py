@@ -26,6 +26,13 @@ TEST_URLS = [
     'urn:oasis:member:A00024:x']
 
 
+UNICODE_URLS = [
+    # 'http://مثال.آزمایشی'
+    ('\xd9\x85\xd8\xab\xd8\xa7\xd9\x84'
+     '.\xd8\xa2\xd8\xb2\xd9\x85\xd8\xa7'
+     '\xdb\x8c\xd8\xb4\xdb\x8c')]
+
+
 @pytest.fixture(scope="module", params=TEST_URLS)
 def test_url(request):
     param = request.param
