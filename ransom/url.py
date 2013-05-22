@@ -12,6 +12,7 @@ TODO:
    - http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
  - IRI encoding
+ - support empty port (e.g., http://gweb.com:/)
 """
 
 DEFAULT_ENCODING = 'utf-8'
@@ -177,6 +178,7 @@ class URL(object):
     def __init__(self, url_str=None, encoding=None):
         encoding = encoding or DEFAULT_ENCODING
         self.encoding = encoding
+        url_dict = {}
         if url_str:
             url_dict = parse_url(url_str, encoding=encoding)
 
@@ -194,15 +196,24 @@ class URL(object):
             if self.password:
                 ret.extend([':', self.password])
             ret.append('@')
+        ret.append(self.http_request_host)
+        return unicode().join(ret)
+
+    @property
+    def http_request_uri(self):  # TODO: name
+        return ''.join([self.path, self.query_string])
+
+    @property
+    def http_request_host(self):  # TODO: name
+        ret = []
         host = self.host.encode('idna')
         if self.family == socket.AF_INET6:
             ret.extend(['[', host, ']'])
         else:
             ret.append(host)
-        port = unicode(self.port)
-        if port:
-            ret.extend([':', port])
-        return unicode().join(ret)
+        if self.port is not None:
+            ret.extend([':', unicode(self.port)])
+        return ''.join(ret)
 
     @property
     def query_string(self):
