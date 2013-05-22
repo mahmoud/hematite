@@ -14,8 +14,7 @@ else:
 
 import zlib
 
-from http_parser.util import (b, bytes_to_str, IOrderedDict, StringIO,
-        unquote, MAXSIZE)
+from util import b, bytes_to_str, IOrderedDict, unquote, MAXSIZE
 
 
 METHOD_RE = re.compile("[A-Z0-9$-_.]{3,20}")
