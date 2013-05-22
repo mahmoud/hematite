@@ -3,7 +3,7 @@
 from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
-from url import URL
+from url import URL, parse_hostinfo
 
 """
 - method: methodcaller->upper, default GET
@@ -24,6 +24,8 @@ URL+: username, password, hostname, port
 
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = (1, 1)
+DEFAULT_SCHEME = 'http'
+DEFAULT_PORT = 80
 
 
 class Request(object):
@@ -31,17 +33,36 @@ class Request(object):
                  version=None, client=None, **kw):
         self.method = method or DEFAULT_METHOD
         self.url = url
-        self.headers = OrderedMultiDict(headers or {})
+        headers = OrderedMultiDict(headers or {})
+        self.headers = OrderedMultiDict([(k.lower(), v) for k, v in
+                                         headers.iteritems()])
+
+        host_header = self.headers.pop('host', '')
+        f, h, p = parse_hostinfo(host_header)
+        if not self.url.host:
+            # Request-line URL overrides Host header
+            self.url.family, self.url.host, self.url.port = f, h, p
+        if not self.url.scheme:
+            self.url.scheme = DEFAULT_SCHEME
+
         self.version = version or DEFAULT_VERSION
         self.client = client
 
-    def encode(self, validate=True):  # TODO: serialize?
-        pass
+    def encode(self, validate=True):
+        ret = [self.request_line]
+        ret.extend(['Host: ' + self.url.http_request_host, '', ''])
+        return '\r\n'.join(ret).encode('latin-1')
 
     @classmethod
     def from_string(cls, source):
         raise NotImplementedError('http parser does not support '
                                   'parsing requests (for now)')
+
+    @property
+    def request_line(self):
+        return ' '.join([self.method,
+                         self.url.http_request_uri,
+                         'HTTP/%d.%d' % self.version])
 
     @property
     def method(self):
@@ -62,7 +83,7 @@ class Request(object):
 
     @url.setter
     def url(self, url):
-        if url is None or isinstance(url, URL):
+        if isinstance(url, URL):
             self._url = url  # TODO
         else:
-            self._url = URL(url)
+            self._url = URL(url or '')
