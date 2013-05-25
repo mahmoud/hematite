@@ -211,7 +211,7 @@ class URL(object):
             ret.extend(['[', host, ']'])
         else:
             ret.append(host)
-        if self.port is not None:
+        if self.port:
             ret.extend([':', unicode(self.port)])
         return ''.join(ret)
 
