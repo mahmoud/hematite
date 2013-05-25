@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from http_parser import HttpParser
+
 from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
@@ -55,8 +57,10 @@ class Request(object):
 
     @classmethod
     def from_string(cls, source):
-        raise NotImplementedError('http parser does not support '
-                                  'parsing requests (for now)')
+        hp = HttpParser()
+        hp.execute(source, len(source))
+        hp.execute('', 0)
+        return cls(hp._method, hp._url, hp._headers, hp._version)
 
     @property
     def request_line(self):
