@@ -32,6 +32,8 @@ Request headers:
 - TE (extension transfer encodings)  ; Section 14.39
 - User-Agent               ; Section 14.43
 
+- Cookie                   ; RFC6265
+
 Response headers:
 
 - Accept-Ranges           ; Section 14.5
@@ -43,6 +45,8 @@ Response headers:
 - Server                  ; Section 14.38
 - Vary                    ; Section 14.44
 - WWW-Authenticate        ; Section 14.47
+
+- Set-Cookie              ; RFC6265
 
 Entity headers:
 
