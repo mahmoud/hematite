@@ -21,6 +21,7 @@ from url import URL, parse_hostinfo
 URL: scheme, netloc (host), path, params, query (, fragment?)
 URL+: username, password, hostname, port
 
+NB Blank headers are not sent
 # TODO: incremental parsing/creation of Request
 """
 
@@ -35,11 +36,13 @@ class Request(object):
                  version=None, client=None, **kw):
         self.method = method or DEFAULT_METHOD
         self.url = url
-        headers = OrderedMultiDict(headers or {})
-        self.headers = OrderedMultiDict([(k.lower(), v) for k, v in
-                                         headers.iteritems()])
-
-        host_header = self.headers.pop('host', '')
+        if headers:
+            headers = dict([(k.lower(), v) for k, v in headers.iteritems()])
+        else:
+            headers = {}
+        headers = OrderedMultiDict(headers)
+        self.extra_headers = headers
+        host_header = headers.pop('host', '')
         f, h, p = parse_hostinfo(host_header)
         if not self.url.host:
             # Request-line URL overrides Host header
@@ -51,8 +54,14 @@ class Request(object):
         self.client = client
 
     def encode(self, validate=True):
+        # TODO: field values are latin-1 or mime-encoded, but
+        # are field names latin-1 or ASCII only?
         ret = [self.request_line]
-        ret.extend(['Host: ' + self.url.http_request_host, '', ''])
+        ret.append('Host: ' + self.url.http_request_host)
+        for h, v in self.extra_headers.iteritems():
+            if v:
+                ret.append(h + ': ' + v)
+        ret.extend(['', ''])
         return '\r\n'.join(ret).encode('latin-1')
 
     @classmethod
