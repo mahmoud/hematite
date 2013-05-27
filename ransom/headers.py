@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from operator import attrgetter
+
 ALL, REQUEST, RESPONSE, CAP_MAP = None, None, None, None
-
-
-def http_header_case(text):
-    try:
-        return CAP_MAP[text.lower()]
-    except KeyError:
-        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
-        return '-'.join([p.capitalize() for p in text.split('-')])
 
 
 def _init_headers():
@@ -19,6 +13,46 @@ def _init_headers():
     RESPONSE = GENERAL + RESPONSE_ONLY + ENTITY
     CAP_MAP = dict([(h.lower(), h) for h in ALL])
     return
+
+
+def http_header_case(text):
+    try:
+        return CAP_MAP[text.lower()]
+    except KeyError:
+        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
+        return '-'.join([p.capitalize() for p in text.split('-')])
+
+
+class MessageField(object):
+    # TODO
+
+    def __init__(self, name, getter=None, setter=None,
+                 read_only=False, doc=None):
+        self.name = name
+        self.http_name = http_header_case(name)
+        self.getter = getter or attrgetter('_' + name)
+        self.setter = setter
+        self.read_only = bool(read_only)
+        self.doc = doc
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return self.getter(obj)
+
+    def __set__(self, obj, value):
+        if self.read_only:
+            raise AttributeError("read-only field '%s'" % self.name)
+        if self.setter:
+            return self.setter(obj, value)
+        setattr(obj, '_' + self.name, value)
+
+    def __delete__(self, obj):
+        raise AttributeError("can't delete field property '%s'" % self.name)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s("%s", read_only=%r)' % (cn, self.name, self.read_only)
 
 
 GENERAL = ['Cache-Control',
