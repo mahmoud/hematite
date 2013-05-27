@@ -6,7 +6,7 @@ from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
 from url import URL, parse_hostinfo
-from headers import HTTPHeaderField
+from headers import HTTPHeaderField, REQUEST
 
 
 """
@@ -34,11 +34,15 @@ DEFAULT_PORT = 80
 
 # headers, url, cookies
 
+_GENERIC_REQ_HEADERS = list(REQUEST)
+_GENERIC_REQ_HEADERS.remove('Host')
+
 
 class Request(object):
-    accept_language = HTTPHeaderField('accept_language')
-    accept_encoding = HTTPHeaderField('accept_encoding')
-    connection = HTTPHeaderField('connection')
+    for rh in _GENERIC_REQ_HEADERS:
+        _f = HTTPHeaderField(rh)
+        locals()[_f.attr_name] = _f
+    del _f
 
     def __init__(self, method=None, url=None, headers=None,
                  version=None, client=None, **kw):
