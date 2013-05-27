@@ -122,6 +122,14 @@ ENTITY = ['Allow',
           'Expires',
           'Last-Modified']
 
+HOP_BY_HOP = ['Connection',
+              'Keep-Alive',
+              'Proxy-Authenticate',
+              'TE',
+              'Trailers',
+              'Transfer-Encoding',
+              'Upgrade']
+
 
 _init_headers()
 del _init_headers
