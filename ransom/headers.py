@@ -23,36 +23,57 @@ def http_header_case(text):
         return '-'.join([p.capitalize() for p in text.split('-')])
 
 
-class MessageField(object):
-    # TODO
+def header2attr_name(text):
+    return '_'.join(text.split('-')).lower()
 
-    def __init__(self, name, getter=None, setter=None,
+
+def attr2header_name(text):
+    return http_header_case(text.replace('_', '-'))
+
+
+class HTTPHeaderField(object):
+    def __init__(self, name, load=None, dump=None, encode=None,
                  read_only=False, doc=None):
-        self.name = name
-        self.http_name = http_header_case(name)
-        self.getter = getter or attrgetter('_' + name)
-        self.setter = setter
+        self.attr_name = header2attr_name(name)
+        self.http_name = attr2header_name(name)
+        self.stored_name = '_' + self.attr_name
+        self.load = load
+        self.dump = dump
+        self.encode = encode
+        self.getter = attrgetter('_' + name)  # TODO
         self.read_only = bool(read_only)
         self.doc = doc
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        return self.getter(obj)
+        try:
+            return self.getter(obj)
+        except AttributeError:
+            name = self.attr_name
+            if name not in obj.known_headers:
+                return None
+            val = obj.known_headers[name]
+            if self.load:
+                val = self.load(val)
+            setattr(obj, self.stored_name, val)
+            return val
 
     def __set__(self, obj, value):
         if self.read_only:
-            raise AttributeError("read-only field '%s'" % self.name)
-        if self.setter:
-            return self.setter(obj, value)
-        setattr(obj, '_' + self.name, value)
+            raise AttributeError("read-only field '%s'" % self.attr_name)
+        setattr(obj, self.stored_name, value)
 
     def __delete__(self, obj):
-        raise AttributeError("can't delete field property '%s'" % self.name)
+        raise AttributeError("can't delete field '%s'" % self.attr_name)
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s("%s", read_only=%r)' % (cn, self.name, self.read_only)
+        return '%s("%s", read_only=%r)' % (cn, self.attr_name, self.read_only)
+
+    def encode(self, value, encoding='latin-1'):
+        # TODO: hmm
+        return self.http_name + ': ' + value.encode(encoding)
 
 
 GENERAL = ['Cache-Control',
