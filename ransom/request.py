@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from http_parser import HttpParser
+from http_parser import HttpParser, IOrderedDict
 
 from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
 from url import URL, parse_hostinfo
-from headers import HTTPHeaderField, header2attr_name
+from headers import HTTPHeaderField
 
 
 """
@@ -33,7 +33,6 @@ DEFAULT_SCHEME = 'http'
 DEFAULT_PORT = 80
 
 # headers, url, cookies
-# ['accept-language', 'accept-encoding', 'accept', 'user-agent', 'accept-charset', 'connection', 'cookie'
 
 
 class Request(object):
@@ -46,14 +45,8 @@ class Request(object):
         self.client = client
         self.method = method or DEFAULT_METHOD
         self.url = url
-        if headers:
-            headers = dict([(k.lower(), v) for k, v in headers.iteritems()])
-        else:
-            headers = {}
-        headers = OrderedMultiDict(headers)
-        self.known_headers = OrderedMultiDict()
-        self.extra_headers = headers
-        host_header = headers.pop('host', '')
+        self.headers = headers = headers or IOrderedDict()
+        host_header = headers.pop('Host', '')
         f, h, p = parse_hostinfo(host_header)
         if not self.url.host:
             # Request-line URL overrides Host header
@@ -62,23 +55,20 @@ class Request(object):
             self.url.scheme = DEFAULT_SCHEME
         self.version = version or DEFAULT_VERSION
 
-        fields = self.get_fields()
-        for name in headers:
-            attr_name = header2attr_name(name)
-            if attr_name in fields:
-                self.known_headers[attr_name] = headers.pop(name)
-
     def encode(self, validate=True):
         # TODO: field values are latin-1 or mime-encoded, but
         # are field names latin-1 or ASCII only?
         ret = [self.request_line]
+        to_proc = set([h.lower() for h in self.headers])
         ret.append('Host: ' + self.url.http_request_host)
+        to_proc.discard('host')
         for n, f in self.get_fields().items():
             v = getattr(self, f.attr_name)
+            to_proc.discard(f.http_name.lower())
             if v:
                 ret.append(f.http_name + ': ' + v)
-        for h, v in self.extra_headers.iteritems():
-            if v:
+        for h, v in self.headers.iteritems():
+            if v and h.lower() in to_proc:
                 ret.append(h + ': ' + v)
         ret.extend(['', ''])
         return '\r\n'.join(ret).encode('latin-1')

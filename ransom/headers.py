@@ -50,10 +50,10 @@ class HTTPHeaderField(object):
         try:
             return self.getter(obj)
         except AttributeError:
-            name = self.attr_name
-            if name not in obj.known_headers:
+            name = self.http_name
+            if name not in obj.headers:
                 return None
-            val = obj.known_headers[name]
+            val = obj.headers[name]
             if self.load:
                 val = self.load(val)
             setattr(obj, self.stored_name, val)
