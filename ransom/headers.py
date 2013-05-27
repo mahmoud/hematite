@@ -31,38 +31,31 @@ def attr2header_name(text):
     return http_header_case(text.replace('_', '-'))
 
 
+# TODO: native type? encode()?
+
 class HTTPHeaderField(object):
     def __init__(self, name, load=None, dump=None, encode=None,
                  read_only=False, doc=None):
         self.attr_name = header2attr_name(name)
         self.http_name = attr2header_name(name)
-        self.stored_name = '_' + self.attr_name
         self.load = load
         self.dump = dump
-        self.encode = encode
-        self.getter = attrgetter('_' + name)  # TODO
         self.read_only = bool(read_only)
         self.doc = doc
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        try:
-            return self.getter(obj)
-        except AttributeError:
-            name = self.http_name
-            if name not in obj.headers:
-                return None
-            val = obj.headers[name]
-            if self.load:
-                val = self.load(val)
-            setattr(obj, self.stored_name, val)
-            return val
+        val = obj.headers.get(self.http_name, None)
+        if self.load and not isinstance(val, self.native_type):
+            # TODO
+            val = self.load(val)
+        return val
 
     def __set__(self, obj, value):
         if self.read_only:
             raise AttributeError("read-only field '%s'" % self.attr_name)
-        setattr(obj, self.stored_name, value)
+        obj.headers[self.http_name] = value
 
     def __delete__(self, obj):
         raise AttributeError("can't delete field '%s'" % self.attr_name)
