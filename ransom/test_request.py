@@ -42,5 +42,6 @@ def test_basic_req():
 
 def test_wikipedia_req():
     req = Request.from_string(WP_REQ)
+    assert req.connection == 'keep-alive'
     re_req = req.encode()
     assert _cmpable_req(re_req) == _cmpable_req(WP_REQ)
