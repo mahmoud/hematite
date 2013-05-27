@@ -6,6 +6,8 @@ from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
 from url import URL, parse_hostinfo
+from headers import MessageField
+
 
 """
 - method: methodcaller->upper, default GET
@@ -32,8 +34,11 @@ DEFAULT_PORT = 80
 
 
 class Request(object):
+    connection = MessageField('connection')
+
     def __init__(self, method=None, url=None, headers=None,
                  version=None, client=None, **kw):
+        self.client = client
         self.method = method or DEFAULT_METHOD
         self.url = url
         if headers:
@@ -49,9 +54,13 @@ class Request(object):
             self.url.family, self.url.host, self.url.port = f, h, p
         if not self.url.scheme:
             self.url.scheme = DEFAULT_SCHEME
-
         self.version = version or DEFAULT_VERSION
-        self.client = client
+
+        for name, fld in self.get_fields().items():
+            try:
+                self.__setattr__(name, headers[fld.http_name.lower()])
+            except KeyError:
+                pass
 
     def encode(self, validate=True):
         # TODO: field values are latin-1 or mime-encoded, but
@@ -70,6 +79,11 @@ class Request(object):
         hp.execute(source, len(source))
         hp.execute('', 0)
         return cls(hp._method, hp._url, hp._headers, hp._version)
+
+    @classmethod
+    def get_fields(cls):
+        return dict([(n, f) for n, f in cls.__dict__.items()
+                     if isinstance(f, MessageField)])
 
     @property
     def request_line(self):
