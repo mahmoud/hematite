@@ -6,7 +6,7 @@ from compat import (unicode, bytes, OrderedMultiDict,
                     urlparse, urlunparse, urlencode)
 
 from url import URL, parse_hostinfo
-from headers import MessageField
+from headers import HTTPHeaderField, header2attr_name
 
 
 """
@@ -32,9 +32,14 @@ DEFAULT_VERSION = (1, 1)
 DEFAULT_SCHEME = 'http'
 DEFAULT_PORT = 80
 
+# headers, url, cookies
+# ['accept-language', 'accept-encoding', 'accept', 'user-agent', 'accept-charset', 'connection', 'cookie'
+
 
 class Request(object):
-    connection = MessageField('connection')
+    accept_language = HTTPHeaderField('accept_language')
+    accept_encoding = HTTPHeaderField('accept_encoding')
+    connection = HTTPHeaderField('connection')
 
     def __init__(self, method=None, url=None, headers=None,
                  version=None, client=None, **kw):
@@ -46,6 +51,7 @@ class Request(object):
         else:
             headers = {}
         headers = OrderedMultiDict(headers)
+        self.known_headers = OrderedMultiDict()
         self.extra_headers = headers
         host_header = headers.pop('host', '')
         f, h, p = parse_hostinfo(host_header)
@@ -56,17 +62,21 @@ class Request(object):
             self.url.scheme = DEFAULT_SCHEME
         self.version = version or DEFAULT_VERSION
 
-        for name, fld in self.get_fields().items():
-            try:
-                self.__setattr__(name, headers[fld.http_name.lower()])
-            except KeyError:
-                pass
+        fields = self.get_fields()
+        for name in headers:
+            attr_name = header2attr_name(name)
+            if attr_name in fields:
+                self.known_headers[attr_name] = headers.pop(name)
 
     def encode(self, validate=True):
         # TODO: field values are latin-1 or mime-encoded, but
         # are field names latin-1 or ASCII only?
         ret = [self.request_line]
         ret.append('Host: ' + self.url.http_request_host)
+        for n, f in self.get_fields().items():
+            v = getattr(self, f.attr_name)
+            if v:
+                ret.append(f.http_name + ': ' + v)
         for h, v in self.extra_headers.iteritems():
             if v:
                 ret.append(h + ': ' + v)
@@ -83,7 +93,7 @@ class Request(object):
     @classmethod
     def get_fields(cls):
         return dict([(n, f) for n, f in cls.__dict__.items()
-                     if isinstance(f, MessageField)])
+                     if isinstance(f, HTTPHeaderField)])
 
     @property
     def request_line(self):
