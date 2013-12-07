@@ -133,3 +133,23 @@ HOP_BY_HOP = ['Connection',
 
 _init_headers()
 del _init_headers
+
+import string
+
+_TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
+
+
+def quote_header_value(value, allow_token=True):
+    value = str(value)
+    if allow_token:
+        if set(value).issubset(_TOKEN_CHARS):
+            return value
+    return '"%s"' % value.replace('\\', '\\\\').replace('"', '\\"')
+
+
+def unquote_header_value(value, is_filename=False):
+    if value and value[0] == value[-1] == '"':
+        value = value[1:-1]
+        if not is_filename or value[:2] != '\\\\':
+            return value.replace('\\\\', '\\').replace('\\"', '"')
+    return value
