@@ -165,8 +165,8 @@ class QueryArgDict(OrderedMultiDict):
         safe = "!$'()*+,/:;?@[]~"  # unsafe = '#&='
         ret_list = []
         for k, v in self.iteritems():
-            key = quote(k.encode(encoding), safe=safe)
-            val = quote(v.encode(encoding), safe=safe)
+            key = quote(unicode(k).encode(encoding), safe=safe)
+            val = quote(unicode(v).encode(encoding), safe=safe)
             ret_list.append('='.join((key, val)))
         return '&'.join(ret_list)
 
