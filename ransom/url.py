@@ -225,8 +225,11 @@ class URL(object):
                      s.params, s.query_string, s.fragment))
 
     def encode(self, encoding=None):
-        encoding = encoding or DEFAULT_ENCODING
+        encoding = encoding or self.encoding
         return urlunparse(self).encode(encoding)  # TODO
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.encode())
 
 
 def url2parseresult(url_str):
