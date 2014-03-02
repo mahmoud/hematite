@@ -7,6 +7,16 @@ is_py3 = sys.version_info[0] == 3
 from collections import OrderedDict  # TODO
 from dictutils import OrderedMultiDict
 
+
+def make_BytestringHelperMeta(target):
+    class BytestringHelperMeta(type):
+        def __new__(cls, name, bases, attrs):
+            if '_asbytes' in attrs:
+                attrs[target] = attrs.pop('_asbytes')
+            return super(BytestringHelperMeta, cls).__new__(cls, name,
+                                                            bases, attrs)
+    return BytestringHelperMeta
+
 if is_py2:
     from urllib import quote, unquote, quote_plus, unquote_plus, urlencode
     from urlparse import urlparse, urlunparse, urljoin, urlsplit, urldefrag
@@ -15,6 +25,8 @@ if is_py2:
     import cookielib
     from Cookie import Morsel
     from StringIO import StringIO
+
+    BytestringHelperMeta = make_BytestringHelperMeta(target='__str__')
 
     unicode, str, bytes, basestring = unicode, str, str, basestring
 elif is_py3:
@@ -26,10 +38,14 @@ elif is_py3:
     from http.cookies import Morsel
     from io import StringIO
 
+    BytestringHelperMeta = make_BytestringHelperMeta(target='__bytes__')
+
     unicode, str, bytes, basestring = str, bytes, bytes, str
 else:
     raise NotImplementedError('welcome to the future, I guess. (report this)')
 
+
+BytestringHelper = BytestringHelperMeta('BytestringHelper', (object,), {})
 
 
 # from boltons

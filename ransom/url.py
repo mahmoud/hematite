@@ -4,7 +4,7 @@ import re
 import socket
 
 from compat import (unicode, bytes, urlparse, urlunparse,
-                    quote, parse_qsl, OrderedMultiDict)
+                    quote, parse_qsl, OrderedMultiDict, BytestringHelper)
 
 """
 TODO:
@@ -17,6 +17,13 @@ TODO:
 
 DEFAULT_ENCODING = 'utf-8'
 
+# The unreserved URI characters (per RFC 3986)
+_UNRESERVED_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    "0123456789-._~")
+_RESERVED_CHARS = frozenset(":/?#[]@!$&'()*+,;=")
+_ALLOWED_CHARS = _UNRESERVED_CHARS | _RESERVED_CHARS
+
 # URL parsing regex (per RFC 3986)
 _URL_RE = re.compile(r'^((?P<scheme>[^:/?#]+):)?'
                      r'(//(?P<authority>[^/?#]*))?'
@@ -24,11 +31,19 @@ _URL_RE = re.compile(r'^((?P<scheme>[^:/?#]+):)?'
                      r'(\?(?P<query>[^#]*))?'
                      r'(#(?P<fragment>.*))?')
 
+_SCHEME_CHARS = re.escape(''.join(_ALLOWED_CHARS - set(':/?#')))
+_AUTH_CHARS = re.escape(''.join(_ALLOWED_CHARS - set(':/?#')))
+_PATH_CHARS = re.escape(''.join(_ALLOWED_CHARS - set('?#')))
+_QUERY_CHARS = re.escape(''.join(_ALLOWED_CHARS - set('#')))
+_FRAG_CHARS = re.escape(''.join(_ALLOWED_CHARS))
 
-# The unreserved URI characters (per RFC 3986)
-_UNRESERVED_CHARS = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    "0123456789-._~")
+_ABS_RE = (r'(?P<path>[' + _PATH_CHARS + ']*)'
+           r'(\?(?P<query>[' + _QUERY_CHARS + ']*))?'
+           r'(#(?P<fragment>[' + _FRAG_CHARS + '])*)?')
+
+_URL_RE_STRICT = re.compile(r'^(?:(?P<scheme>[' + _SCHEME_CHARS + ']+):)?'
+                            r'(//(?P<authority>[' + _AUTH_CHARS + ']*))?'
+                            + _ABS_RE)
 
 
 # IRI escaped character ranges (per RFC3987)
@@ -103,13 +118,13 @@ def parse_userinfo(au_str):
     return username, password, hostinfo
 
 
-def parse_url(url_str, encoding=DEFAULT_ENCODING):
+def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     if not isinstance(url_str, unicode):
         try:
             url_str = url_str.decode(encoding)
         except AttributeError:
             raise TypeError('parse_url expected str, unicode, or bytes')
-    um = _URL_RE.match(url_str)
+    um = (_URL_RE_STRICT if strict else _URL_RE).match(url_str)
     try:
         gs = um.groupdict()
     except AttributeError:
@@ -171,16 +186,16 @@ class QueryArgDict(OrderedMultiDict):
         return '&'.join(ret_list)
 
 
-class URL(object):
+class URL(BytestringHelper):
     _attrs = ('scheme', 'username', 'password', 'family',
               'host', 'port', 'path', 'query', 'fragment')
 
-    def __init__(self, url_str=None, encoding=None):
+    def __init__(self, url_str=None, encoding=None, strict=False):
         encoding = encoding or DEFAULT_ENCODING
         self.encoding = encoding
         url_dict = {}
         if url_str:
-            url_dict = parse_url(url_str, encoding=encoding)
+            url_dict = parse_url(url_str, encoding=encoding, strict=strict)
 
         _d = unicode()
         self.params = _d  # TODO: support params?
@@ -227,6 +242,9 @@ class URL(object):
     def encode(self, encoding=None):
         encoding = encoding or self.encoding
         return urlunparse(self).encode(encoding)  # TODO
+
+    def _asbytes(self):
+        return self.encode()
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.encode())
