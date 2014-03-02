@@ -123,7 +123,8 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         bstr, m = cls.advance(bstr.lstrip())
         reason = m.group() if m and m.group() else status_code.reason
 
-        if bstr.strip():
+        bstr = bstr.strip()
+        if bstr:
             raise BadStatusLine('trailing characters: '
                                 '{0}'.format(bstr[:MAXLINE]))
 
@@ -158,11 +159,13 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
         uri = URL(m.group(), strict=True)
 
         bstr, version = HTTPVersion.parsebytes(bstr.lstrip())
-        if bstr.strip():
+
+        bstr.strip()
+        if bstr:
             raise InvalidRequest('Trailing characters: '
                                  '{0}'.format(bstr[:MAXLINE]))
 
-        return cls(method, uri, version)
+        return bstr, cls(method, uri, version)
 
     def _asbytes(self):
         return b'{0!s} {1!s} {2!s}\r\n'.format(*self)
