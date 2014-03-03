@@ -7,22 +7,19 @@ from ransom.url import URL, _ABS_RE
 import re
 
 
-MAXLINE = 9999
-
-
 class HTTPParseException(Exception):
     pass
 
 
-class BadStatusLine(HTTPParseException):
+class InvalidStatusLine(HTTPParseException):
     pass
 
 
-class BadVersion(BadStatusLine):
+class InvalidVersion(InvalidStatusLine):
     pass
 
 
-class BadStatusCode(BadStatusLine):
+class InvalidStatusCode(InvalidStatusLine):
     pass
 
 
@@ -41,15 +38,15 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
     def parsebytes(cls, bstr):
         bstr, m = cls.advance(bstr)
         if not m:
-            raise BadVersion('Unparseable version: '
-                             '{0!r}'.format(bstr[:MAXLINE]))
+            raise InvalidVersion('Unparseable version: '
+                                 '{0!r}'.format(core._cut(bstr)))
 
         major, minor = m.groups()
         try:
             major, minor = int(major), int(minor)
         except ValueError:
-            raise BadVersion('Major or minor version is not a digit: '
-                             '{0!r}'.format(major, minor))
+            raise InvalidVersion('Major or minor version is not a digit: '
+                                 '{0!r}'.format(major, minor))
 
         return bstr, cls(major, minor)
 
@@ -105,8 +102,8 @@ class StatusCode(namedtuple('StatusCode', 'code reason'), BytestringHelper):
     def parsebytes(cls, bstr):
         bstr, m = cls.advance(bstr)
         if not m:
-            raise BadStatusCode('Unparseable status code: '
-                                '{0}'.format(bstr[:MAXLINE]))
+            raise InvalidStatusCode('Unparseable status code: '
+                                    '{0}'.format(core._cut(bstr)))
         code = int(m.group())
 
         return bstr, cls(code, cls.CODE_REASONS.get(code, '<unknown status>'))
@@ -124,13 +121,17 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
     def parsebytes(cls, bstr):
         bstr, version = HTTPVersion.parsebytes(bstr)
         bstr, status_code = StatusCode.parsebytes(bstr.lstrip())
-        bstr, m = cls.advance(bstr.lstrip())
-        reason = m.group() if m and m.group() else status_code.reason
+        bstr, m = core.IS_LINE_END(bstr)
+        if m:
+            reason = status_code.reason
+        else:
+            bstr, m = cls.advance(bstr.lstrip())
+            reason = m.group()
+            bstr, m = core.IS_LINE_END(bstr)
 
-        bstr = bstr.strip()
-        if bstr:
-            raise BadStatusLine('trailing characters: '
-                                '{0}'.format(bstr[:MAXLINE]))
+        if not m:
+            raise InvalidStatusLine('trailing characters: '
+                                    '{0}'.format(core._cut(bstr)))
 
         return bstr, cls(version, status_code.code, reason)
 
@@ -153,21 +154,21 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
         bstr, m = cls.METHOD(bstr)
         if not m:
             raise InvalidRequest('Unable to extract method: '
-                                 '{0}'.format(bstr[:MAXLINE]))
+                                 '{0}'.format(core._cut(bstr)))
         bstr, method = bstr.lstrip(), m.group()
 
         bstr, m = cls.URL(bstr)
         if not m:
             raise InvalidRequest('Unable to parse uri: '
-                                 '{0}'.format(bstr[:MAXLINE]))
+                                 '{0}'.format(core._cut(bstr)))
         uri = URL(m.group(), strict=True)
 
         bstr, version = HTTPVersion.parsebytes(bstr.lstrip())
 
-        bstr.strip()
-        if bstr:
+        bstr, m = core.IS_LINE_END(bstr)
+        if not m:
             raise InvalidRequest('Trailing characters: '
-                                 '{0}'.format(bstr[:MAXLINE]))
+                                 '{0}'.format(core._cut(bstr)))
 
         return bstr, cls(method, uri, version)
 
@@ -183,15 +184,17 @@ class Headers(BytestringHelper, OMD):
 
     @classmethod
     def parsebytes(cls, bstr):
-        lines = bstr.splitlines()
+        bstr, m = core.HAS_HEADERS_END(bstr)
+        if not m:
+            raise InvalidHeaders('Cannot find header termination '
+                                 '{0}'.format(core._cut(bstr)))
+
+        lines = m.group().splitlines()[:-1]
         if cls.ISCONTINUATION.match(lines[0]):
             raise InvalidHeaders('Cannot begin with a continuation: '
-                                 '{0}'.format(bstr[:MAXLINE]))
+                                 '{0}'.format(bstr[:core.MAXLINE]))
+
         parsed = []
-
-        if not lines[-1]:
-            lines.pop()
-
         for idx in xrange(len(lines)):
             line = lines[idx]
             if cls.ISCONTINUATION.match(line):
@@ -206,7 +209,7 @@ class Headers(BytestringHelper, OMD):
             k, v = k.title(), v.strip()
             parsed.append((k, v))
 
-        return '', cls(parsed)
+        return bstr, cls(parsed)
 
     def _asbytes(self):
         return b'\r\n'.join('{0}: {1}'.format(k.title(), v)

@@ -5,59 +5,65 @@ from ransom.http_parser.ex import core
 from ransom.http_parser.ex import headers as h
 from ransom.compat import BytestringHelper
 
-MAXLINE = 4096
-
 
 class ResponseException(Exception):
     pass
+
+
+class OverlongRead(ResponseException):
+    pass
+
+
+class RequestURITooLarge(OverlongRead):
+    status_code = h.StatusCode.REASON_CODES['Request-URI Too Large']
 
 
 class IncompleteRead(ResponseException):
     pass
 
 
-def _advance_until(sock, advancer, amt=1024):
+def _advance_until(sock, advancer, amt=1024, limit=core.MAXLINE):
+    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+        amt, limit)
+    read_amt = 0
     b = []
     while True:
         read = sock.recv(amt)
         if not read:
             raise IncompleteRead
+        read_amt += len(read)
+        if read_amt > limit:
+            raise OverlongRead
         b.append(read)
-        m = advancer(read, matchonly=True)
-        if m:
-            return ''.join(b), m
+        if advancer(read, matchonly=True):
+            return ''.join(b)
 
 
 class Response(namedtuple('Response', 'status_line headers body'),
                BytestringHelper):
-    # this *should* be core.CLRF but not everything uses that as its delineator
-    DELINEATOR = '(?:(?:\r\n)|\n)'
-    LINE_END = core.advancer('.*?' + DELINEATOR, re.DOTALL)
-    HEADERS_END = core.advancer('.*?' + (DELINEATOR * 2), re.DOTALL)
 
     def _asbytes(self):
         return b'{0!s}{1!s}\r\n'.format(self.status_line, self.headers)
 
     @classmethod
     def parsefromsocket(cls, s):
-        slandhls, m = _advance_until(s, cls.LINE_END)
-        sl, headersls = slandhls[:m.end()], slandhls[m.end():]
+        try:
+            slandhls = _advance_until(s, core.HAS_LINE_END)
+        except OverlongRead:
+            raise RequestURITooLarge
 
-        _, status_line = h.StatusLine.parsebytes(sl)
-
-        _, m = cls.HEADERS_END(headersls)
+        headersls, status_line = h.StatusLine.parsebytes(slandhls)
+        _, m = core.HAS_HEADERS_END(headersls)
 
         if not m:
             try:
-                m, read = _advance_until(s, cls.HEADERS_END)
-                headersls += read
+                headersls += _advance_until(s, core.HAS_HEADERS_END)
             except IncompleteRead:
                 msg = ('Could not find header terminator: '
-                       '{0}'.format(headersls[:MAXLINE]))
+                       '{0}'.format(core._cut(headersls)))
                 raise h.InvalidHeaders(msg)
 
-        body = headersls[m.end():]
-        _, headers = h.Headers.parsebytes(headersls[:m.end()])
+        body, headers = h.Headers.parsebytes(headersls)
 
         return cls(status_line, headers, body)
 

@@ -26,10 +26,9 @@ def test_HTTPVersion_parsebytes_badversions(input):
 
 @pytest.mark.parametrize(
     'input,output',
-    [('HTTP/1.1 301 Moved Permanently', ((1, 1), 301,
-                                         'Moved Permanently')),
-     ('HTTP/1.1 200', ((1, 1), 200, 'OK')),
-     ('HTTP/1.0 100 CONTINUE\r', ((1, 0), 100, 'CONTINUE')),
+    [('HTTP/1.1 301 Moved Permanently\r\n', ((1, 1), 301,
+                                             'Moved Permanently')),
+     ('HTTP/1.1 200\r\n', ((1, 1), 200, 'OK')),
      ('HTTP/1.0 404 Not Found\n', ((1, 0), 404, 'Not Found')),
      ('HTTP/1.1 500 Some thing\r\n', ((1, 1), 500, 'Some thing'))])
 def test_StatusLine_parsebytes(input, output):

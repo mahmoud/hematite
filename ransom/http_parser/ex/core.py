@@ -1,5 +1,12 @@
 import re
 
+# TODO: make configurable
+MAXLINE = 2 ** 19
+
+
+def _cut(s, to=MAXLINE):
+    return s[:to]
+
 
 class _callable_staticmethod(staticmethod):
 
@@ -32,6 +39,14 @@ TOKEN_EXCLUDE = ''.join(set(CTL) | set(SEPARATORS))
 
 # <any OCTET except CTLs, but including LWS>
 TEXT_EXCLUDE = ''.join(set(CTL) - set(LWS))
+
+# this *should* be CLRF but not everything uses that as its delineator
+# TODO: do we have to be able to recognize just carriage returns?
+DELINEATOR = '(?:(?:\r\n)|\n)'
+HAS_LINE_END = advancer('.*?' + DELINEATOR, re.DOTALL)
+HAS_HEADERS_END = advancer('.*?' + (DELINEATOR * 2), re.DOTALL)
+IS_LINE_END = advancer(DELINEATOR, re.DOTALL)
+IS_HEADERS_END = advancer((DELINEATOR * 2), re.DOTALL)
 
 
 def istext(t):
