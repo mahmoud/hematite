@@ -13,7 +13,7 @@
   - lots of precise exceptions for raising at appropriate points
     (e.g. BadVersion, BadStatusCode, etc.)
 ** TODOs
-*** TODO Parsing
+*** TODO Parsing [1/3]
     - [ ] Use something like =re.Scanner= or wapiti's =Lexer=
     - [X] Investigate =bytearrays= (memory efficiency is less
       important than speed, so strings win)
