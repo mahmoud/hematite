@@ -31,7 +31,8 @@
 *** DONE Naming
     CLOSED: [2014-03-03 Mon 08:47]
     Bad vs Invalid for exceptions -- choose one!
-*** TODO Absorption # <<absorption>>
+# <<absorption>>
+*** TODO Absorption
     - [ ] To reduce function call overhead it should be possible to
       collect sub-productions' regular expression and splice them
       upward into their parents'.  For example: =StatusLine= currently
