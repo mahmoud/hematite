@@ -15,7 +15,14 @@
 ** TODOs
 *** TODO Parsing
     - [ ] Use something like =re.Scanner= or wapiti's =Lexer=
-    - [ ] Investigate =bytearrays=
+    - [X] Investigate =bytearrays= (memory efficiency is less
+      important than speed, so strings win)
+      : mrw@hammal:~$ python -m timeit -s "import string; \
+      : > y = bytearray(string.lowercase)" "y[10:]"
+      : 10000000 loops, best of 3: 0.116 usec per loop
+      : mrw@hammal:~$ python -m timeit -s "import string; \
+      : > y = (string.lowercase)" "y[10:]"
+      : 10000000 loops, best of 3: 0.0562 usec per loop
     - [ ] =StatusLine= and =RequestLine= currently assume their =bstr=
       terminates in CLRF.  That makes =Request='s and =Response='s parsing job too
       hard, so move that assertion into those classes.
