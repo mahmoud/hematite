@@ -62,12 +62,16 @@ class Response(namedtuple('Response', 'status_line headers body'),
         return cls(status_line, headers, body)
 
 
-if __name__ == '__main__':
-    c = socket.create_connection(('google.com', 80))
+def test():
+    c = socket.create_connection(('localhost', 8080))
     req = bytes(h.RequestLine('GET',
-                              h.URL('/index.html'),
+                              h.URL('/'),
                               h.HTTPVersion(1, 1)))
     c.sendall(req + '\r\n\r\n')
     resp = Response.parsefromsocket(c)
-    print resp
     c.close()
+    return resp
+
+
+if __name__ == '__main__':
+    test()
