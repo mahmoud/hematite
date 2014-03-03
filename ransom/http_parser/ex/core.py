@@ -7,12 +7,14 @@ class _callable_staticmethod(staticmethod):
         return self.__func__(*args, **kwargs)
 
 
-def advancer(regex):
-    r = re.compile(regex)
+def advancer(regex, flags=0):
+    r = re.compile(regex, flags)
 
     @_callable_staticmethod
-    def advance(string):
+    def advance(string, matchonly=False):
         m = r.match(string)
+        if matchonly:
+            return m
         if m:
             return string[m.end():], m
         return string, None

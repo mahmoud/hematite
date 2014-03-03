@@ -30,6 +30,10 @@ class InvalidRequest(HTTPParseException):
     pass
 
 
+class InvalidHeaders(HTTPParseException):
+    pass
+
+
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
     advance = core.advancer('HTTP/(\d+)\.(\d+)')
 
@@ -169,3 +173,41 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
 
     def _asbytes(self):
         return b'{0!s} {1!s} {2!s}\r\n'.format(*self)
+
+
+class Headers(BytestringHelper, OMD):
+    ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core.LWS) -
+                                                         set(core.CLRF)))
+                                + ']')
+    ISKEY = re.compile('[^' + re.escape(core.TOKEN_EXCLUDE) + ']+')
+
+    @classmethod
+    def parsebytes(cls, bstr):
+        lines = bstr.splitlines()
+        if cls.ISCONTINUATION.match(lines[0]):
+            raise InvalidHeaders('Cannot begin with a continuation: '
+                                 '{0}'.format(bstr[:MAXLINE]))
+        parsed = []
+
+        if not lines[-1]:
+            lines.pop()
+
+        for idx in xrange(len(lines)):
+            line = lines[idx]
+            if cls.ISCONTINUATION.match(line):
+                pidx = idx - 1
+                lines[pidx] = lines[pidx] + line
+                continue
+
+            k, _, v = line.partition(':')
+            if not cls.ISKEY.match(k):
+                raise InvalidHeaders('Invalid field name: {0}'.format(k))
+
+            k, v = k.title(), v.strip()
+            parsed.append((k, v))
+
+        return '', cls(parsed)
+
+    def _asbytes(self):
+        return b'\r\n'.join('{0}: {1}'.format(k.title(), v)
+                            for k, v in self.items())
