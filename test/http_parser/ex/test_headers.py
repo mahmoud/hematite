@@ -20,7 +20,7 @@ def test_HTTPVersion_asbytes(input, output):
                           ('http/1.1'),
                           ('HTTP/a.b')])
 def test_HTTPVersion_parsebytes_badversions(input):
-    with pytest.raises(h.BadVersion):
+    with pytest.raises(h.InvalidVersion):
         h.HTTPVersion.parsebytes(input)
 
 
@@ -47,15 +47,9 @@ def test_StatusLine_asbytes(input, output):
 
 @pytest.mark.parametrize(
     'input,exc_type',
-    [('hTTP/1.1 404 Not Found\r\n', h.BadVersion),
-     ('HTTP/1.1 xxx\r\n', h.BadStatusCode),
-     ('HTTP/1.0 200 OK\x00\r\n', h.BadStatusLine)])
+    [('hTTP/1.1 404 Not Found\r\n', h.InvalidVersion),
+     ('HTTP/1.1 xxx\r\n', h.InvalidStatusCode),
+     ('HTTP/1.0 200 OK\x00\r\n', h.InvalidStatusLine)])
 def test_StatusLine_exc(input, exc_type):
     with pytest.raises(exc_type):
         h.StatusLine.parsebytes(input)
-
-
-def test_google(file_fixture):
-
-    with file_fixture('google.txt') as f:
-        f.read()

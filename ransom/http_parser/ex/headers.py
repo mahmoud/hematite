@@ -23,7 +23,7 @@ class InvalidStatusCode(InvalidStatusLine):
     pass
 
 
-class InvalidRequest(HTTPParseException):
+class InvalidRequestLine(HTTPParseException):
     pass
 
 
@@ -153,22 +153,22 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
     def parsebytes(cls, bstr):
         bstr, m = cls.METHOD(bstr)
         if not m:
-            raise InvalidRequest('Unable to extract method: '
-                                 '{0}'.format(core._cut(bstr)))
+            raise InvalidRequestLine('Unable to extract method: '
+                                     '{0}'.format(core._cut(bstr)))
         bstr, method = bstr.lstrip(), m.group()
 
         bstr, m = cls.URL(bstr)
         if not m:
-            raise InvalidRequest('Unable to parse uri: '
-                                 '{0}'.format(core._cut(bstr)))
+            raise InvalidRequestLine('Unable to parse uri: '
+                                     '{0}'.format(core._cut(bstr)))
         uri = URL(m.group(), strict=True)
 
         bstr, version = HTTPVersion.parsebytes(bstr.lstrip())
 
         bstr, m = core.IS_LINE_END(bstr)
         if not m:
-            raise InvalidRequest('Trailing characters: '
-                                 '{0}'.format(core._cut(bstr)))
+            raise InvalidRequestLine('Trailing characters: '
+                                     '{0}'.format(core._cut(bstr)))
 
         return bstr, cls(method, uri, version)
 

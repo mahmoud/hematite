@@ -48,24 +48,30 @@ class Response(namedtuple('Response', 'status_line headers body'),
     @classmethod
     def parsefromsocket(cls, s):
         try:
-            slandhls = _advance_until(s, core.HAS_LINE_END)
+            slandhlines = _advance_until(s, core.HAS_LINE_END)
         except OverlongRead:
             raise RequestURITooLarge
 
-        headersls, status_line = h.StatusLine.parsebytes(slandhls)
-        _, m = core.HAS_HEADERS_END(headersls)
+        header_lines, status_line = h.StatusLine.parsebytes(slandhlines)
+        _, m = core.HAS_HEADERS_END(header_lines)
 
         if not m:
             try:
-                headersls += _advance_until(s, core.HAS_HEADERS_END)
+                header_lines += _advance_until(s, core.HAS_HEADERS_END)
             except IncompleteRead:
                 msg = ('Could not find header terminator: '
-                       '{0}'.format(core._cut(headersls)))
+                       '{0}'.format(core._cut(header_lines)))
                 raise h.InvalidHeaders(msg)
 
-        body, headers = h.Headers.parsebytes(headersls)
+        body, headers = h.Headers.parsebytes(header_lines)
 
         return cls(status_line, headers, body)
+
+    @classmethod
+    def parsefrombytes(cls, bstr):
+        header_lines, status_line = h.StatusLine.parsebytes(bstr)
+        body_start, headers = h.Headers.parsebytes(header_lines)
+        return cls(status_line, headers, body_start)
 
 
 def test():
