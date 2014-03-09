@@ -178,18 +178,27 @@ def parse_accept_header(val):
     """
     ret = []
     for match in _accept_re.finditer(val):
+        media_type = (match.group('media_type') or '').strip()
+        if not media_type:
+            continue
         try:
             quality = max(min(float(match.group('quality') or 1.0), 1.0), 0.0)
         except:
             quality = 0.0
-        media_type = match.group('media_type') or ''
-        ret.append((media_type.strip(), quality))
+        ret.append((media_type, quality))
     return ret
 
 
 def _test_accept():
     _accept_tests = ['audio/*; q=0.2 , audio/basic',
-                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8']
+                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                     'iso-8859-5, unicode-1-1;q=0.8',
+                     '*',
+                     'compress, gzip',
+                     '',
+                     ' ',
+                     'compress;q=0.5, gzip;q=1.0',
+                     'gzip;q=1.0, identity; q=0.5, *;q=0']
     for t in _accept_tests:
         print
         print parse_accept_header(t)
