@@ -46,7 +46,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
             major, minor = int(major), int(minor)
         except ValueError:
             raise InvalidVersion('Major or minor version is not a digit: '
-                                 '{0!r}'.format(major, minor))
+                                 '{0!r} {1!r}'.format(major, minor))
 
         return bstr, cls(major, minor)
 

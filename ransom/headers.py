@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from operator import attrgetter
+import string
 
 ALL, REQUEST, RESPONSE, CAP_MAP = None, None, None, None
 
@@ -134,7 +134,6 @@ HOP_BY_HOP = ['Connection',
 _init_headers()
 del _init_headers
 
-import string
 
 _TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
 
