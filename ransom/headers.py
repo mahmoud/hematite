@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import re
 import string
 
 ALL, REQUEST, RESPONSE, CAP_MAP = None, None, None, None
@@ -156,35 +157,45 @@ def unquote_header_value(value, is_filename=False):
 
 # Accept-style headers
 
-import re
-
-
-
 _accept_re = re.compile(r'('
                         r'(?P<media_type>[^,;]+)'
                         r'(;\s*q='
                         r'(?P<quality>[^,;]+))?),?')
 
 
-def parse_accept_header(text):
+def parse_accept_header(val):
+    """
+    Parses an Accept-style header (with q-vals) into a list of tuples
+    of `(media_type, quality)`. Input order is maintained (does not sort
+    by quality value).
+
+    Does not check media_type format for mimetype-style format. Does
+    not implement "accept-extension", as they seem to have never been
+    used. (search for "text/html;level=1" in RFC2616 to see an example)
+
+    >>> parse_accept_header('audio/*; q=0.2 , audio/basic')
+    [('audio/*', 0.2), ('audio/basic', 1.0)]
+    """
     ret = []
-    for match in _accept_re.finditer(text):
+    for match in _accept_re.finditer(val):
         try:
-            quality = max(min(float(match.group('quality') or 1.0), 1), 0)
+            quality = max(min(float(match.group('quality') or 1.0), 1.0), 0.0)
         except:
             quality = 0.0
-        media_type = match.group('media_type')
-        ret.append((media_type, quality))
+        media_type = match.group('media_type') or ''
+        ret.append((media_type.strip(), quality))
     return ret
 
 
-def _main():
-    _accept_tests = ['audio/*; q=0.2, audio/basic',
-                 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8']
+def _test_accept():
+    _accept_tests = ['audio/*; q=0.2 , audio/basic',
+                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8']
     for t in _accept_tests:
         print
         print parse_accept_header(t)
 
 
+
+
 if __name__ == '__main__':
-    _main()
+    _test_accept()
