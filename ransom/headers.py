@@ -163,6 +163,35 @@ _accept_re = re.compile(r'('
                         r'(?P<quality>[^,;]+))?),?')
 
 
+def parse_list_header(val, unquote=True):
+    "e.g., Accept-Ranges. skips blank values, per the RFC."
+    ret = []
+    for v in _parse_list_header(val):
+        if not v:
+            continue
+        if unquote and v[0] == '"' == v[-1]:
+            v = unquote_header_value(v)
+        ret.append(v)
+    return ret
+
+
+def parse_items_header(val, unquote=True):
+    """
+    TODO: I think unquote is always true here? values can always be
+    quoted.
+    """
+    ret = []
+    for item in _parse_list_header(val):
+        key, _part, value = item.partition('=')
+        if not _part:
+            ret.append((key, None))
+            continue
+        if unquote and value and value[0] == '"' == value[-1]:
+            value = unquote_header_value(value)
+        ret.append((key, value))
+    return ret
+
+
 def parse_accept_header(val):
     """
     Parses an Accept-style header (with q-vals) into a list of tuples
@@ -189,6 +218,52 @@ def parse_accept_header(val):
     return ret
 
 
+def _parse_list_header(s):
+    """Parse lists as described by RFC 2068 Section 2.
+
+    In particular, parse comma-separated lists where the elements of
+    the list may include quoted-strings.  A quoted-string could
+    contain a comma.  A non-quoted string could have quotes in the
+    middle.  Neither commas nor quotes count if they are escaped.
+    Only double-quotes count, not single-quotes.
+
+    (based on urllib2 from the stdlib)
+    """
+    res = []
+    part = ''
+
+    escape = quote = False
+    for cur in s:
+        if escape:
+            part += cur
+            escape = False
+            continue
+        if quote:
+            if cur == '\\':
+                escape = True
+                continue
+            elif cur == '"':
+                quote = False
+            part += cur
+            continue
+
+        if cur == ',':
+            res.append(part)
+            part = ''
+            continue
+
+        if cur == '"':
+            quote = True
+
+        part += cur
+
+    # append last part
+    if part:
+        res.append(part)
+
+    return [part.strip() for part in res]
+
+
 def _test_accept():
     _accept_tests = ['',
                      ' ',
@@ -207,7 +282,12 @@ def _test_accept():
         print parse_accept_header(t)
 
 
-
-
 if __name__ == '__main__':
-    _test_accept()
+    def _main():
+        _test_accept()
+        print parse_items_header('Basic realm="myRealm"')  # WWW-Authenticate
+        print parse_items_header('private, community="UCI"')  # Cache control
+        print parse_list_header('mi, en')  # Content-Language
+        print parse_list_header('')  # TODO: Allow, Vary, Pragma
+
+    _main()
