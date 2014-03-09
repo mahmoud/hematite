@@ -5,6 +5,8 @@ MAXLINE = 2 ** 19
 
 
 def _cut(s, to=MAXLINE):
+    if len(s) <= to:
+        return s
     return s[:to]
 
 
