@@ -190,15 +190,18 @@ def parse_accept_header(val):
 
 
 def _test_accept():
-    _accept_tests = ['audio/*; q=0.2 , audio/basic',
-                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                     'iso-8859-5, unicode-1-1;q=0.8',
-                     '*',
-                     'compress, gzip',
-                     '',
+    _accept_tests = ['',
                      ' ',
+                     'audio/*; q=0.2 , audio/basic',  # Accept
+                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                     'iso-8859-5, unicode-1-1;q=0.8',  # Accept-Charset
+                     '*',  # Accept-Encoding
+                     'compress, gzip',
                      'compress;q=0.5, gzip;q=1.0',
-                     'gzip;q=1.0, identity; q=0.5, *;q=0']
+                     'gzip;q=1.0, identity; q=0.5, *;q=0',
+                     'da, en-gb;q=0.8, en;q=0.7',  # Accept-Language
+                     'bytes',  # Accept-Ranges  # TODO
+                     'none']
     for t in _accept_tests:
         print
         print parse_accept_header(t)
