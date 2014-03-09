@@ -152,3 +152,39 @@ def unquote_header_value(value, is_filename=False):
         if not is_filename or value[:2] != '\\\\':
             return value.replace('\\\\', '\\').replace('\\"', '"')
     return value
+
+
+# Accept-style headers
+
+import re
+
+
+
+_accept_re = re.compile(r'('
+                        r'(?P<media_type>[^,;]+)'
+                        r'(;\s*q='
+                        r'(?P<quality>[^,;]+))?),?')
+
+
+def parse_accept_header(text):
+    ret = []
+    for match in _accept_re.finditer(text):
+        try:
+            quality = max(min(float(match.group('quality') or 1.0), 1), 0)
+        except:
+            quality = 0.0
+        media_type = match.group('media_type')
+        ret.append((media_type, quality))
+    return ret
+
+
+def _main():
+    _accept_tests = ['audio/*; q=0.2, audio/basic',
+                 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8']
+    for t in _accept_tests:
+        print
+        print parse_accept_header(t)
+
+
+if __name__ == '__main__':
+    _main()
