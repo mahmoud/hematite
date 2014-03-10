@@ -177,13 +177,13 @@ def parse_list_header(val, unquote=True):
     return ret
 
 
-def parse_items_header(val, unquote=True):
+def parse_items_header(val, unquote=True, sep=None):
     """
     TODO: I think unquote is always true here? values can always be
     quoted.
     """
-    ret = []
-    for item in _parse_list_header(val):
+    ret, sep = [], sep or ','
+    for item in _parse_list_header(val, sep=sep):
         key, _part, value = item.partition('=')
         if not _part:
             ret.append((key, None))
@@ -220,14 +220,35 @@ def parse_accept_header(val):
     return ret
 
 
+def parse_content_header(val):
+    """
+    Parses a Content-Type header, a combination of list and key-value
+    headers, separated by semicolons.. RFC2231 is crazy, so this initial
+    implementation only supports features I've seen before.
+
+    (Also used for the Content-Disposition header)
+
+    # TODO: find examples for tests
+    # TODO: implement some _crazy_ features:
+    #  - rollup of asterisk-indexed parts (param continuations) (RFC2231 #3)
+    #  - parameter encodings and languages (RFC2231 #4)
+    """
+    items = parse_items_header(val, sep=';')
+    if not items:
+        return '', []
+    media_type = items[0][0]
+    return media_type, items[1:]
+
+
 def parse_http_date(date_str):
+    # TODO: is the strip really necessary?
     timetuple = _parse_date_tz(date_str.strip())
     tz_seconds = timetuple[-1] or 0
     tz_offset = timedelta(seconds=tz_seconds)
     return datetime(*timetuple[:7]) - tz_offset
 
 
-def _parse_list_header(s):
+def _parse_list_header(s, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 
     In particular, parse comma-separated lists where the elements of
@@ -238,8 +259,7 @@ def _parse_list_header(s):
 
     (based on urllib2 from the stdlib)
     """
-    res = []
-    part = ''
+    res, part, sep = [], '', sep or ','
 
     escape = quote = False
     for cur in s:
@@ -256,7 +276,7 @@ def _parse_list_header(s):
             part += cur
             continue
 
-        if cur == ',':
+        if cur == sep:
             res.append(part)
             part = ''
             continue
@@ -412,17 +432,48 @@ def _test_accept():
         print parse_accept_header(t)
 
 
+def _test_items_header():
+    _items_tests = ['',
+                    ' ',
+                    'Basic realm="myRealm"',  # WWW-Authenticate
+                    'private, community="UCI"']  # Cache control
+    for t in _items_tests:
+        print parse_items_header(t)
+    return
+
+
+def _test_list_header():
+    print parse_list_header('mi, en')  # Content-Language
+    print parse_list_header('')  # TODO: Allow, Vary, Pragma
+    return
+
+
+def _test_http_date():
+    # date examples from 3.3.1 with seconds imcrementing
+    print parse_http_date('Sun, 06 Nov 1994 08:49:37 GMT')
+    print parse_http_date('Sunday, 06-Nov-94 08:49:38 GMT')
+    print parse_http_date('Sun Nov  6 08:49:39 1994')
+
+
+def _test_content_header():
+    _rough_content_type = ('message/external-body; access-type=URL;'
+                           ' URL*0="ftp://";'
+                           ' URL*1="cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar"')
+    _content_tests = ['',
+                      ' ',
+                      'text/plain',
+                      'text/html; charset=ISO-8859-4',
+                      _rough_content_type]
+    for t in _content_tests:
+        print parse_content_header(t)
+
+
 if __name__ == '__main__':
     def _main():
         _test_accept()
-        print parse_items_header('Basic realm="myRealm"')  # WWW-Authenticate
-        print parse_items_header('private, community="UCI"')  # Cache control
-        print parse_list_header('mi, en')  # Content-Language
-        print parse_list_header('')  # TODO: Allow, Vary, Pragma
-
-        # date examples from 3.3.1 with seconds imcrementing
-        print parse_http_date('Sun, 06 Nov 1994 08:49:37 GMT')
-        print parse_http_date('Sunday, 06-Nov-94 08:49:38 GMT')
-        print parse_http_date('Sun Nov  6 08:49:39 1994')
+        _test_items_header()
+        _test_list_header()
+        _test_http_date()
+        _test_content_header()
 
     _main()
