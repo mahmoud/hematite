@@ -1,9 +1,12 @@
 import socket
-import re
 from collections import namedtuple
 from ransom.http_parser.ex import core
 from ransom.http_parser.ex import headers as h
+from ransom.http_parser.ex import body as b
 from ransom.compat import BytestringHelper
+
+
+# TODO: timeouts
 
 
 class ResponseException(Exception):
@@ -23,10 +26,11 @@ class IncompleteRead(ResponseException):
 
 
 def _advance_until(sock, advancer, amt=1024, limit=core.MAXLINE):
+    # TODO: this is quadratic time -- be more precise about '\r\n'|'\n'
     assert amt < limit, "amt {0} should be lower than limit! {1}".format(
         amt, limit)
     read_amt = 0
-    b = []
+    buf = []
     while True:
         read = sock.recv(amt)
         if not read:
@@ -34,9 +38,10 @@ def _advance_until(sock, advancer, amt=1024, limit=core.MAXLINE):
         read_amt += len(read)
         if read_amt > limit:
             raise OverlongRead
-        b.append(read)
-        if advancer(read, matchonly=True):
-            return ''.join(b)
+        buf.append(read)
+        joined = ''.join(buf)
+        if advancer(joined, matchonly=True):
+            return joined
 
 
 class Response(namedtuple('Response', 'status_line headers body'),
@@ -47,6 +52,7 @@ class Response(namedtuple('Response', 'status_line headers body'),
 
     @classmethod
     def parsefromsocket(cls, s):
+        # TODO: timeouts
         try:
             slandhlines = _advance_until(s, core.HAS_LINE_END)
         except OverlongRead:
@@ -63,9 +69,25 @@ class Response(namedtuple('Response', 'status_line headers body'),
                        '{0}'.format(core._cut(header_lines)))
                 raise h.InvalidHeaders(msg)
 
-        body, headers = h.Headers.parsebytes(header_lines)
+        body_start, headers = h.Headers.parsebytes(header_lines)
 
-        return cls(status_line, headers, body)
+        bcls = (b.ChunkEncodedBody
+                if cls._is_chunked(headers)
+                else b.IdentityEncodedBody)
+
+        return cls(status_line, headers, bcls(body_start, s, headers))
+
+    @core._callable_staticmethod
+    def _is_chunked(headers):
+        # 4.4 #2
+        try:
+            return headers['Transfer-Encoding'].lower() != 'identity'
+        except KeyError:
+            return False
+
+    @property
+    def is_chunked(self):
+        return self._is_chunked(self.headers)
 
     @classmethod
     def parsefrombytes(cls, bstr):
@@ -74,16 +96,19 @@ class Response(namedtuple('Response', 'status_line headers body'),
         return cls(status_line, headers, body_start)
 
 
-def test():
-    c = socket.create_connection(('localhost', 8080))
-    req = bytes(h.RequestLine('GET',
-                              h.URL('/'),
-                              h.HTTPVersion(1, 1)))
-    c.sendall(req + '\r\n\r\n')
+def test(addr):
+    c = socket.create_connection(addr)
+    reql = bytes(h.RequestLine('GET',
+                               h.URL('/'),
+                               h.HTTPVersion(1, 1)))
+    headers = bytes(h.Headers([('Host', 'localhost')]))
+    req = reql + headers + '\r\n\r\n'
+    c.sendall(req)
     resp = Response.parsefromsocket(c)
+    body = resp.body.read()
     c.close()
-    return resp
+    return resp, body
 
 
 if __name__ == '__main__':
-    test()
+    test(('localhost', 8080))
