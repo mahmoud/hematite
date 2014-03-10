@@ -45,11 +45,77 @@ TEXT_EXCLUDE = ''.join(set(CTL) - set(LWS))
 # this *should* be CLRF but not everything uses that as its delineator
 # TODO: do we have to be able to recognize just carriage returns?
 DELINEATOR = '(?:(?:\r\n)|\n)'
-HAS_LINE_END = advancer('.*?' + DELINEATOR, re.DOTALL)
-HAS_HEADERS_END = advancer('.*?' + (DELINEATOR * 2), re.DOTALL)
-IS_LINE_END = advancer(DELINEATOR, re.DOTALL)
-IS_HEADERS_END = advancer((DELINEATOR * 2), re.DOTALL)
+_LINE_END = re.compile(DELINEATOR, re.DOTALL)
+_HEADERS_END = re.compile((DELINEATOR * 2), re.DOTALL)
+HAS_LINE_END = advancer('.*?' + _LINE_END.pattern, re.DOTALL)
+HAS_HEADERS_END = advancer('.*?' + _HEADERS_END.pattern, re.DOTALL)
+IS_LINE_END = advancer(_LINE_END.pattern, re.DOTALL)
+IS_HEADERS_END = advancer(_HEADERS_END.pattern, re.DOTALL)
 
 
 def istext(t):
     return t.translate('', '', TEXT_EXCLUDE) == t
+
+
+class OverlongRead(Exception):
+    pass
+
+
+class IncompleteRead(Exception):
+    pass
+
+
+def _advance_until_lf(sock, amt=1024, limit=MAXLINE):
+    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+        amt, limit)
+    read_amt = 0
+    buf = []
+    while True:
+        read = sock.recv(amt)
+        if not read:
+            raise IncompleteRead
+        read_amt += len(read)
+        if read_amt > limit:
+            raise OverlongRead
+        buf.append(read)
+        if '\n' in read:
+            return ''.join(buf)
+
+
+def _advance_until_lflf(sock, amt=1024, limit=MAXLINE):
+    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+        amt, limit)
+    read_amt = 0
+    buf = []
+    prev = ''
+    while True:
+        read = sock.recv(amt)
+        if not read:
+            raise IncompleteRead
+        read_amt += len(read)
+        if read_amt > limit:
+            raise OverlongRead
+        buf.append(read)
+        if (_HEADERS_END.search(read) or _HEADERS_END.match(prev[-2:] +
+                                                            read[:2])):
+            return ''.join(buf)
+        prev = read
+
+
+def _advance_until(sock, advancer, amt=1024, limit=MAXLINE):
+    # TODO: this i3s quadratic time -- be more precise about '\r\n'|'\n'
+    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+        amt, limit)
+    read_amt = 0
+    buf = []
+    while True:
+        read = sock.recv(amt)
+        if not read:
+            raise IncompleteRead
+        read_amt += len(read)
+        if read_amt > limit:
+            raise OverlongRead
+        buf.append(read)
+        joined = ''.join(buf)
+        if advancer(joined, matchonly=True):
+            return joined

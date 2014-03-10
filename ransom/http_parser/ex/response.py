@@ -13,35 +13,16 @@ class ResponseException(Exception):
     pass
 
 
-class OverlongRead(ResponseException):
-    pass
-
-
-class RequestURITooLarge(OverlongRead):
+class RequestURITooLarge(ResponseException, core.OverlongRead):
     status_code = h.StatusCode.REASON_CODES['Request-URI Too Large']
 
 
-class IncompleteRead(ResponseException):
-    pass
+def _advance_until_lf(s):
+    return core._advance_until(s, core.HAS_LINE_END)
 
 
-def _advance_until(sock, advancer, amt=1024, limit=core.MAXLINE):
-    # TODO: this is quadratic time -- be more precise about '\r\n'|'\n'
-    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-        amt, limit)
-    read_amt = 0
-    buf = []
-    while True:
-        read = sock.recv(amt)
-        if not read:
-            raise IncompleteRead
-        read_amt += len(read)
-        if read_amt > limit:
-            raise OverlongRead
-        buf.append(read)
-        joined = ''.join(buf)
-        if advancer(joined, matchonly=True):
-            return joined
+def _advance_until_lflf(s):
+    return core._advance_until(s, core.HAS_HEADERS_END)
 
 
 class Response(namedtuple('Response', 'status_line headers body'),
@@ -54,8 +35,8 @@ class Response(namedtuple('Response', 'status_line headers body'),
     def parsefromsocket(cls, s):
         # TODO: timeouts
         try:
-            slandhlines = _advance_until(s, core.HAS_LINE_END)
-        except OverlongRead:
+            slandhlines = _advance_until_lf(s)
+        except core.OverlongRead:
             raise RequestURITooLarge
 
         header_lines, status_line = h.StatusLine.parsebytes(slandhlines)
@@ -63,8 +44,8 @@ class Response(namedtuple('Response', 'status_line headers body'),
 
         if not m:
             try:
-                header_lines += _advance_until(s, core.HAS_HEADERS_END)
-            except IncompleteRead:
+                header_lines += _advance_until_lflf(s)
+            except core.IncompleteRead:
                 msg = ('Could not find header terminator: '
                        '{0}'.format(core._cut(header_lines)))
                 raise h.InvalidHeaders(msg)
