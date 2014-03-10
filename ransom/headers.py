@@ -2,6 +2,8 @@
 
 import re
 import string
+from datetime import datetime, timedelta
+
 
 ALL, REQUEST, RESPONSE, CAP_MAP = None, None, None, None
 
@@ -218,6 +220,13 @@ def parse_accept_header(val):
     return ret
 
 
+def parse_http_date(date_str):
+    timetuple = _parse_date_tz(date_str.strip())
+    tz_seconds = timetuple[-1] or 0
+    tz_offset = timedelta(seconds=tz_seconds)
+    return datetime(*timetuple[:7]) - tz_offset
+
+
 def _parse_list_header(s):
     """Parse lists as described by RFC 2068 Section 2.
 
@@ -264,6 +273,127 @@ def _parse_list_header(s):
     return [part.strip() for part in res]
 
 
+def _parse_date_tz(data):
+    """Convert a date string to a time tuple.
+
+    Accounts for military timezones (for some reason).
+
+    # TODO: raise exceptions instead of returning None
+    # TODO: non-GMT named timezone support necessary?
+
+    Based on the built-in email package from Python 2.7.
+    """
+    data = data.split()
+    # The FWS after the comma after the day-of-week is optional, so search and
+    # adjust for this.
+    if data[0].endswith(',') or data[0].lower() in _daynames:
+        # There's a dayname here. Skip it
+        del data[0]
+    else:
+        i = data[0].rfind(',')
+        if i >= 0:
+            data[0] = data[0][i+1:]
+    if len(data) == 3:  # RFC 850 date, deprecated
+        stuff = data[0].split('-')
+        if len(stuff) == 3:
+            data = stuff + data[1:]
+    if len(data) == 4:
+        s = data[3]
+        i = s.find('+')
+        if i > 0:
+            data[3:] = [s[:i], s[i+1:]]
+        else:
+            data.append('')  # Dummy tz
+    if len(data) < 5:
+        return None
+    data = data[:5]
+    dd, mm, yy, tm, tz = data
+    mm = mm.lower()
+    if mm not in _monthnames:
+        dd, mm = mm, dd.lower()
+        if mm not in _monthnames:
+            return None
+    mm = _monthnames.index(mm) + 1
+    if mm > 12:
+        mm -= 12
+    if dd[-1] == ',':
+        dd = dd[:-1]
+    i = yy.find(':')
+    if i > 0:
+        yy, tm = tm, yy
+    if yy[-1] == ',':
+        yy = yy[:-1]
+    if not yy[0].isdigit():
+        yy, tz = tz, yy
+    if tm[-1] == ',':
+        tm = tm[:-1]
+    tm = tm.split(':')
+    if len(tm) == 2:
+        [thh, tmm] = tm
+        tss = '0'
+    elif len(tm) == 3:
+        [thh, tmm, tss] = tm
+    else:
+        return None
+    try:
+        yy, dd, thh, tmm, tss = int(yy), int(dd), int(thh), int(tmm), int(tss)
+    except ValueError:
+        return None
+    # Check for a yy specified in two-digit format, then convert it to the
+    # appropriate four-digit format, according to the POSIX standard. RFC 822
+    # calls for a two-digit yy, but RFC 2822 (which obsoletes RFC 822)
+    # mandates a 4-digit yy. For more information, see the documentation for
+    # the time module.
+    if yy < 100:
+        # The year is between 1969 and 1999 (inclusive).
+        if yy > 68:
+            yy += 1900
+        # The year is between 2000 and 2068 (inclusive).
+        else:
+            yy += 2000
+    tzoffset = None
+    tz = tz.upper()
+    if tz in _timezones:
+        tzoffset = _timezones[tz]
+    else:
+        try:
+            tzoffset = int(tz)
+        except ValueError:
+            pass
+    # Convert a timezone offset into seconds ; -0500 -> -18000
+    if tzoffset:
+        if tzoffset < 0:
+            tzsign = -1
+            tzoffset = -tzoffset
+        else:
+            tzsign = 1
+        tzoffset = tzsign * ((tzoffset // 100) * 3600 + (tzoffset % 100) * 60)
+    # Daylight Saving Time flag is set to -1, since DST is unknown.
+    return yy, mm, dd, thh, tmm, tss, 0, 1, -1, tzoffset
+
+
+_monthnames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul',
+               'aug', 'sep', 'oct', 'nov', 'dec',
+               'january', 'february', 'march', 'april', 'may', 'june', 'july',
+               'august', 'september', 'october', 'november', 'december']
+
+_daynames = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+
+# The timezone table does not include the military time zones defined
+# in RFC822, other than Z.  According to RFC1123, the description in
+# RFC822 gets the signs wrong, so we can't rely on any such time
+# zones.  RFC1123 recommends that numeric timezone indicators be used
+# instead of timezone names.
+
+_timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
+              'AST': -400, 'ADT': -300,  # Atlantic (used in Canada)
+              'EST': -500, 'EDT': -400,  # Eastern
+              'CST': -600, 'CDT': -500,  # Central
+              'MST': -700, 'MDT': -600,  # Mountain
+              'PST': -800, 'PDT': -700   # Pacific
+              }
+
+
 def _test_accept():
     _accept_tests = ['',
                      ' ',
@@ -289,5 +419,10 @@ if __name__ == '__main__':
         print parse_items_header('private, community="UCI"')  # Cache control
         print parse_list_header('mi, en')  # Content-Language
         print parse_list_header('')  # TODO: Allow, Vary, Pragma
+
+        # date examples from 3.3.1 with seconds imcrementing
+        print parse_http_date('Sun, 06 Nov 1994 08:49:37 GMT')
+        print parse_http_date('Sunday, 06-Nov-94 08:49:38 GMT')
+        print parse_http_date('Sun Nov  6 08:49:39 1994')
 
     _main()
