@@ -35,7 +35,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
     advance = core.advancer('HTTP/(\d+)\.(\d+)')
 
     @classmethod
-    def parsebytes(cls, bstr):
+    def from_bytes(cls, bstr):
         bstr, m = cls.advance(bstr)
         if not m:
             raise InvalidVersion('Unparseable version: '
@@ -50,7 +50,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
 
         return bstr, cls(major, minor)
 
-    def _asbytes(self):
+    def to_bytes(self):
         return b'HTTP/{0}.{1}'.format(*self)
 
 
@@ -99,7 +99,7 @@ class StatusCode(namedtuple('StatusCode', 'code reason'), BytestringHelper):
     REASON_CODES = CODE_REASONS.inverted()
 
     @classmethod
-    def parsebytes(cls, bstr):
+    def from_bytes(cls, bstr):
         bstr, m = cls.advance(bstr)
         if not m:
             raise InvalidStatusCode('Unparseable status code: '
@@ -108,7 +108,7 @@ class StatusCode(namedtuple('StatusCode', 'code reason'), BytestringHelper):
 
         return bstr, cls(code, cls.CODE_REASONS.get(code, '<unknown status>'))
 
-    def _asbytes(self):
+    def to_bytes(self):
         return b'{0!i}'.format(self[0])
 
 
@@ -118,9 +118,9 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
     advance = core.advancer('([^' + re.escape(core.TEXT_EXCLUDE) + '\r\n]*)')
 
     @classmethod
-    def parsebytes(cls, bstr):
-        bstr, version = HTTPVersion.parsebytes(bstr)
-        bstr, status_code = StatusCode.parsebytes(bstr.lstrip())
+    def from_bytes(cls, bstr):
+        bstr, version = HTTPVersion.from_bytes(bstr)
+        bstr, status_code = StatusCode.from_bytes(bstr.lstrip())
         bstr, m = core.IS_LINE_END(bstr)
         if m:
             reason = status_code.reason
@@ -135,7 +135,7 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
 
         return bstr, cls(version, status_code.code, reason)
 
-    def _asbytes(self):
+    def to_bytes(self):
         version, status_code, reason = self
         if reason is None:
             reason = StatusCode.CODE_REASONS.get(status_code)
@@ -150,7 +150,7 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
     URL = core.advancer(_ABS_RE)
 
     @classmethod
-    def parsebytes(cls, bstr):
+    def from_bytes(cls, bstr):
         bstr, m = cls.METHOD(bstr)
         if not m:
             raise InvalidRequestLine('Unable to extract method: '
@@ -163,7 +163,7 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
                                      '{0}'.format(core._cut(bstr)))
         uri = URL(m.group(), strict=True)
 
-        bstr, version = HTTPVersion.parsebytes(bstr.lstrip())
+        bstr, version = HTTPVersion.from_bytes(bstr.lstrip())
 
         bstr, m = core.IS_LINE_END(bstr)
         if not m:
@@ -172,7 +172,7 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
 
         return bstr, cls(method, uri, version)
 
-    def _asbytes(self):
+    def to_bytes(self):
         return b'{0!s} {1!s} {2!s}\r\n'.format(*self)
 
 
@@ -183,7 +183,7 @@ class Headers(BytestringHelper, OMD):
     ISKEY = re.compile('[^' + re.escape(core.TOKEN_EXCLUDE) + ']+')
 
     @classmethod
-    def parsebytes(cls, bstr):
+    def from_bytes(cls, bstr):
         bstr, m = core.HAS_HEADERS_END(bstr)
         if not m:
             raise InvalidHeaders('Cannot find header termination '
@@ -211,6 +211,6 @@ class Headers(BytestringHelper, OMD):
 
         return bstr, cls(parsed)
 
-    def _asbytes(self):
+    def to_bytes(self):
         return b'\r\n'.join('{0}: {1}'.format(k.title(), v)
                             for k, v in self.items())

@@ -16,18 +16,21 @@ def connection_close(headers):
     return conn.lower() == 'close'
 
 
-class IdentityEncodedBody(object):
-
-    def __init__(self, read_backlog, sock, headers, amt=8192):
+class Body(object):
+    def __init__(self, read_backlog, sock, headers):
         self._read_backlog = read_backlog
         self.sock = sock
         self.content_length = content_length(headers)
         self.connection_close = connection_close(headers)
-
         if not (self.content_length or self.connection_close):
             # TODO: check for mutlipart/byteranges
             pass
 
+
+class IdentityEncodedBody(Body):
+
+    def __init__(self, amt=8192, *args, **kwargs):
+        super(IdentityEncodedBody, self).__init__(*args, **kwargs)
         self._read_amount = amt
 
     def read(self, size=-1):
@@ -55,5 +58,5 @@ class IdentityEncodedBody(object):
 
 class ChunkEncodedBody(object):
 
-    def __init__(self, read_backlog, sock):
+    def __init__(self, read_backlog, sock, headers):
         pass
