@@ -37,7 +37,6 @@ def attr2header_name(text):
 
 
 # TODO: lazy loading headers: good or bad?
-# TODO: field needs to know header name, doesn't it?
 # TODO: class decorator to make a map of headerfields, etc. for Request/Response
 
 
