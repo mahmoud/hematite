@@ -12,7 +12,7 @@ def make_BytestringHelperMeta(target):
     class BytestringHelperMeta(type):
         def __new__(cls, name, bases, attrs):
             if 'to_bytes' in attrs:
-                attrs[target] = attrs.pop('to_bytes')
+                attrs[target] = attrs['to_bytes']
             return super(BytestringHelperMeta, cls).__new__(cls, name,
                                                             bases, attrs)
     return BytestringHelperMeta
