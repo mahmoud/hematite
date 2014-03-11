@@ -2,6 +2,8 @@
 
 import re
 import string
+
+import time
 from datetime import datetime, timedelta
 
 
@@ -246,6 +248,31 @@ def parse_http_date(date_str):
     tz_seconds = timetuple[-1] or 0
     tz_offset = timedelta(seconds=tz_seconds)
     return datetime(*timetuple[:7]) - tz_offset
+
+
+_dayname = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+_monthname = [None,  # Dummy so we can use 1-based month numbers
+              "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def serialize_http_date(date_val=None, sep=' '):
+    """
+    Output an RFC1123-formatted date suitable for the Date header and
+    cookies (with sep='-').
+
+    # TODO: might have to revisit byte string handling
+    """
+    if date_val is None:
+        time_tuple = time.gmtime()
+    elif isinstance(date_val, datetime):
+        time_tuple = date_val.utctimetuple()
+    else:
+        raise ValueError()  # support other timestamps?
+
+    year, month, day, hh, mm, ss, wd, y, z = time_tuple
+    return ("%s, %02d%s%3s%s%4d %02d:%02d:%02d GMT" %
+            (_dayname[wd], day, sep, _monthname[month], sep, year, hh, mm, ss))
 
 
 def _parse_list_header(s, sep=None):
