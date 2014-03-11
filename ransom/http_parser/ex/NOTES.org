@@ -26,7 +26,7 @@
       : > y = (string.lowercase)" "y[10:]"
       : 10000000 loops, best of 3: 0.0562 usec per loop
     - [X] =StatusLine= and =RequestLine= currently assume their =bstr=
-      terminates in CLRF.  That makes =Request='s and =Response='s parsing job too
+      terminates in CRLF.  That makes =Request='s and =Response='s parsing job too
       hard, so move that assertion into those classes.
 *** DONE Naming
     CLOSED: [2014-03-03 Mon 08:47]
