@@ -115,13 +115,13 @@ class ChunkEncodedBody(Body):
         partial_chunk, (cr, lf) = partial_chunk[:-2], partial_chunk[-2:]
         chunk[-1] = partial_chunk
 
-        if cr == '\r' and lf != '\n':
-            raise InvalidChunk('Cannot end with just carriage return: ',
-                               '{0!r}'.format(partial_chunk[:-core.MAXLINE]))
+        if cr == '\r' and lf == '\n':
+            self._read_backlog = ''
         elif cr == '\n':
             # lf is not actually lf, but real data
             self._read_backlog = lf
         else:
-            self._read_backlog = ''
+            raise InvalidChunk('No trailing CRLF|LF: '
+                               '{0!r}'.format(partial_chunk[:-core.MAXLINE]))
 
         return ''.join(chunk)

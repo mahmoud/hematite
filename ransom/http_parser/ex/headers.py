@@ -51,7 +51,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
         return bstr, cls(major, minor)
 
     def to_bytes(self):
-        return b'HTTP/{0}.{1}'.format(*self)
+        return b'HTTP/' + b'.'.join(map(bytes, self))
 
 
 class StatusCode(namedtuple('StatusCode', 'code reason'), BytestringHelper):
@@ -109,7 +109,7 @@ class StatusCode(namedtuple('StatusCode', 'code reason'), BytestringHelper):
         return bstr, cls(code, cls.CODE_REASONS.get(code, '<unknown status>'))
 
     def to_bytes(self):
-        return b'{0!i}'.format(self[0])
+        return bytes(self[0])
 
 
 class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
@@ -139,9 +139,10 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         version, status_code, reason = self
         if reason is None:
             reason = StatusCode.CODE_REASONS.get(status_code)
-        if not reason:
-            return b'{0!s} {1!s}\r\n'.format(version, status_code)
-        return b'{0!s} {1!s} {2!s}\r\n'.format(version, status_code, reason)
+        bs = [version, status_code]
+        if reason:
+            bs.append(reason)
+        return b' '.join(map(bytes, bs)) + b'\r\n'
 
 
 class RequestLine(namedtuple('RequestLine', 'method uri version'),
@@ -173,7 +174,7 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
         return bstr, cls(method, uri, version)
 
     def to_bytes(self):
-        return b'{0!s} {1!s} {2!s}\r\n'.format(*self)
+        return b' '.join(map(bytes, self)) + b'\r\n'
 
 
 class Headers(BytestringHelper, OMD):
@@ -212,5 +213,6 @@ class Headers(BytestringHelper, OMD):
         return bstr, cls(parsed)
 
     def to_bytes(self):
-        return b'\r\n'.join('{0}: {1}'.format(k.title(), v)
-                            for k, v in self.items())
+        return (b'\r\n'.join(b': '.join([bytes(k), bytes(v)])
+                             for k, v in self.items())
+                + b'\r\n')       # trailing CRLF is necessary

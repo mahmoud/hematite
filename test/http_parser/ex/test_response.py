@@ -1,7 +1,7 @@
 from ransom.http_parser.ex import response as r
 
 
-def test_Response_parsebytes_with_google(file_fixture):
+def test_Response_from_bytes_with_google(file_fixture):
 
     with file_fixture('google.txt') as f:
         resp = r.Response.from_bytes(f.read())
@@ -33,3 +33,9 @@ def test_Response_parsebytes_with_google(file_fixture):
         '\r\n')
 
     assert resp.body == expected_body
+
+
+def test_Response_to_bytes(file_fixture):
+    with file_fixture('normalized_google_headers.txt') as f:
+        raw = f.read()
+    assert bytes(r.Response.from_bytes(raw)) == raw

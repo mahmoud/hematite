@@ -13,10 +13,8 @@ def test_resp_raw_resp():
     raw_resp = RawResponse.from_bytes(raw_resp_str)
     resp = Response.from_raw_response(raw_resp)
     the_bytes = resp.to_bytes()
-    print
-    print the_bytes
+
+    print repr(raw_resp_str)
     print repr(the_bytes)
 
-    the_bytes = the_bytes + '\r\n'  # TODO: mrw: FIXIFIFIXIIFIFX
-    raw_resp_two = RawResponse.from_bytes(the_bytes)
-    return the_bytes
+    assert raw_resp_str == the_bytes
