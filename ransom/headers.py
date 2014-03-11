@@ -36,42 +36,55 @@ def attr2header_name(text):
     return http_header_case(text.replace('_', '-'))
 
 
-# TODO: native type? encode()?
+# TODO: native type?
+# TODO: lazy loading headers: good or bad?
+# TODO: field needs to know header name, doesn't it?
+# TODO: class decorator to make a map of headerfields, etc. for Request/Response
+
 
 class HTTPHeaderField(object):
-    def __init__(self, name, load=None, dump=None, encode=None,
-                 read_only=False, doc=None):
-        self.attr_name = header2attr_name(name)
-        self.http_name = attr2header_name(name)
-        self.load = load
-        self.dump = dump
-        self.read_only = bool(read_only)
-        self.doc = doc
+    def __init__(self, name, **kw):
+        assert name
+        assert name == name.lower()
+        self.name = name
+        self.dest_attr = kw.pop('dest_attr', '_' + name)
+        try:
+            self.__set__ = kw.pop('set_value')
+        except KeyError:
+            pass
+        self.native_type = kw.pop('native_type', unicode)
+
+        # TODO: better defaults
+        self.from_bytes = kw.pop('from_bytes', lambda val: val)
+        self.to_bytes = kw.pop('to_bytes', lambda val: val)
+        # TODO: documentation field
+        # TODO: validate
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        val = obj.headers.get(self.http_name, None)
-        if self.load and not isinstance(val, self.native_type):
-            # TODO
-            val = self.load(val)
-        return val
+        return getattr(obj, self.dest_attr)
 
-    def __set__(self, obj, value):
-        if self.read_only:
-            raise AttributeError("read-only field '%s'" % self.attr_name)
-        obj.headers[self.http_name] = value
+    def _default_set_value(self, obj, value):
+        # TODO: special handling for None? text/unicode type? (i.e, not bytes)
+        if isinstance(value, str):
+            value = self.from_bytes(value)
+        elif not isinstance(value, self.native_type):
+            vtn = value.__class__.__name__
+            ntn = self.native_type.__name__
+            # TODO: include trunc'd value in addition to input type name
+            raise TypeError('expected bytes or %s for %s, not %s'
+                            % (ntn, self.dest_attr, vtn))
+        setattr(obj, self.dest_attr, value)
+
+    __set__ = _default_set_value
 
     def __delete__(self, obj):
         raise AttributeError("can't delete field '%s'" % self.attr_name)
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s("%s", read_only=%r)' % (cn, self.attr_name, self.read_only)
-
-    def encode(self, value, encoding='latin-1'):
-        # TODO: hmm
-        return self.http_name + ': ' + value.encode(encoding)
+        return '%s("%s")' % (cn, self.attr_name)
 
 
 GENERAL = ['Cache-Control',
