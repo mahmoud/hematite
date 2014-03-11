@@ -36,7 +36,6 @@ def attr2header_name(text):
     return http_header_case(text.replace('_', '-'))
 
 
-# TODO: native type?
 # TODO: lazy loading headers: good or bad?
 # TODO: field needs to know header name, doesn't it?
 # TODO: class decorator to make a map of headerfields, etc. for Request/Response
@@ -44,9 +43,10 @@ def attr2header_name(text):
 
 class HTTPHeaderField(object):
     def __init__(self, name, **kw):
-        #assert name
-        #assert name == name.lower()
-        self.name = name
+        assert name
+        assert name == name.lower()
+        self.attr_name = name  # used for error messages
+        self.http_name = kw.pop('http_name', http_header_case(name))
         self.dest_attr = kw.pop('dest_attr', '_' + name)
         try:
             self.__set__ = kw.pop('set_value')
@@ -69,12 +69,14 @@ class HTTPHeaderField(object):
         # TODO: special handling for None? text/unicode type? (i.e, not bytes)
         if isinstance(value, str):
             value = self.from_bytes(value)
+        elif value is None:
+            pass
         elif not isinstance(value, self.native_type):
             vtn = value.__class__.__name__
             ntn = self.native_type.__name__
             # TODO: include trunc'd value in addition to input type name
             raise TypeError('expected bytes or %s for %s, not %s'
-                            % (ntn, self.name, vtn))
+                            % (ntn, self.attr_name, vtn))
         setattr(obj, self.dest_attr, value)
 
     __set__ = _default_set_value
