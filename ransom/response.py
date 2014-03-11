@@ -11,12 +11,13 @@ from http_parser.ex.response import Response as RawResponse
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
+
 class Response(object):
     # TODO: from_request convenience method?
     def __init__(self, status_code, body, **kw):
         self.status_code = status_code
         self.reason = kw.pop('reason', '')  # TODO look up
-        self.headers = kw.pop('headers', Headers())  # TODO
+        self.headers = Headers(kw.pop('headers', []))  # TODO
         self.version = kw.pop('version', _DEFAULT_VERSION)
 
         self._body = body
@@ -30,32 +31,31 @@ class Response(object):
                            native_type=datetime)
 
     _header_fields = [date]  # class decorator that does this
+    _header_field_map = dict([(hf.http_name, hf) for hf in _header_fields])
 
     def _load_headers(self):
         # plenty of ways to arrange this
-        hf_map = dict([(hf.http_name, hf) for hf in self._header_fields])
+        hf_map = self._header_field_map
         for hname, hval in self.headers.items():
             # TODO: multi=True and folding
             try:
                 field = hf_map[hname]  # TODO: normalization
             except KeyError:
-                # TODO: extra_header_dict
-                continue
+                continue  # TODO: default loader?
             else:
-                setattr(self, field.attr_name, hval)
+                field.__set__(self, hval)
 
     def _get_header_dict(self, drop_empty=True):
+        # TODO: option for unserialized?
         ret = Headers()
-        # TODO: maintain header order
-        self_type = type(self)
-        for field in self._header_fields:
+        hf_map = self._header_field_map
+        for hname, hval in self.headers.items():
             try:
-                _val = field.__get__(self, self_type)
-            except AttributeError:
-                continue
-            if drop_empty and _val is None:
-                continue
-            ret[field.http_name] = field.to_bytes(_val)
+                field = hf_map[hname]
+            except KeyError:
+                ret[hname] = hval  # TODO: default serialize/encode?
+            else:
+                ret[hname] = field.to_bytes(hval)
         return ret
 
     @classmethod
@@ -70,9 +70,8 @@ class Response(object):
 
     def to_raw_response(self):
         status_line = StatusLine(self.version, self.status_code, self.reason)
-        header_dict = self._get_header_dict()
-        header_str = '\r\n'.join(['%s: %s' % (k, v) for k, v in header_dict.items()])
-        return RawResponse(status_line, header_str, self._body)
+        headers = self._get_header_dict()
+        return RawResponse(status_line, headers, self._body)
 
     @classmethod
     def from_bytes(cls, bytestr):
