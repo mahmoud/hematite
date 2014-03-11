@@ -6,6 +6,7 @@ from ransom.http_parser.ex.response import Response as RawResponse
 def test_resp_raw_resp():
     raw_resp_str = ('HTTP/1.1 200 OK\r\n'
                     'Date: Tue, 11 Mar 2014 06:29:33 GMT\r\n'
+                    'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT\r\n'
                     'Server: hatnote.com\r\n'
                     '\r\n')
 

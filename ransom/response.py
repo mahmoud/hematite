@@ -30,6 +30,11 @@ class Response(object):
                            to_bytes=serialize_http_date,
                            native_type=datetime)
 
+    last_modified = HTTPHeaderField('last_modified',
+                                    from_bytes=parse_http_date,
+                                    to_bytes=serialize_http_date,
+                                    native_type=datetime)
+
     _header_fields = [date]  # class decorator that does this
     _header_field_map = dict([(hf.http_name, hf) for hf in _header_fields])
 
