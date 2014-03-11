@@ -33,7 +33,7 @@ def linear_setup():
     response._advance_until_lflf = response.core._advance_until_lflf
 
 
-def test():
+def _test():
     fake.seek(0)
     return response.Response.parsefromsocket(fake)
 
@@ -51,4 +51,4 @@ if __name__ == '__main__':
         print 'linear test'
         setup_code += '; linear_setup()'
 
-    print timeit.timeit('test()', setup=setup_code, number=1)
+    print timeit.timeit('_test()', setup=setup_code, number=1)

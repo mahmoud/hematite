@@ -243,7 +243,7 @@ class URL(BytestringHelper):
         encoding = encoding or self.encoding
         return urlunparse(self).encode(encoding)  # TODO
 
-    def _asbytes(self):
+    def to_bytes(self):
         return self.encode()
 
     def __repr__(self):

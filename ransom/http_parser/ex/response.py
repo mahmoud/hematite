@@ -17,46 +17,40 @@ class RequestURITooLarge(ResponseException, core.OverlongRead):
     status_code = h.StatusCode.REASON_CODES['Request-URI Too Large']
 
 
-def _advance_until_lf(s):
-    return core._advance_until(s, core.HAS_LINE_END)
-
-
-def _advance_until_lflf(s):
-    return core._advance_until(s, core.HAS_HEADERS_END)
-
-
 class Response(namedtuple('Response', 'status_line headers body'),
                BytestringHelper):
 
-    def _asbytes(self):
+    def to_bytes(self):
         return b'{0!s}{1!s}\r\n'.format(self.status_line, self.headers)
 
     @classmethod
-    def parsefromsocket(cls, s):
+    def from_socket(cls, s):
         # TODO: timeouts
         try:
-            slandhlines = _advance_until_lf(s)
+            slandhlines = core._advance_until_lf(s)
         except core.OverlongRead:
             raise RequestURITooLarge
 
-        header_lines, status_line = h.StatusLine.parsebytes(slandhlines)
+        header_lines, status_line = h.StatusLine.from_bytes(slandhlines)
         _, m = core.HAS_HEADERS_END(header_lines)
 
         if not m:
             try:
-                header_lines += _advance_until_lflf(s)
+                header_lines += core._advance_until_lflf(s)
             except core.IncompleteRead:
                 msg = ('Could not find header terminator: '
                        '{0}'.format(core._cut(header_lines)))
                 raise h.InvalidHeaders(msg)
 
-        body_start, headers = h.Headers.parsebytes(header_lines)
+        body_start, headers = h.Headers.from_bytes(header_lines)
 
         bcls = (b.ChunkEncodedBody
                 if cls._is_chunked(headers)
                 else b.IdentityEncodedBody)
 
-        return cls(status_line, headers, bcls(body_start, s, headers))
+        return cls(status_line, headers, bcls(backlog=body_start,
+                                              sock=s,
+                                              headers=headers))
 
     @core._callable_staticmethod
     def _is_chunked(headers):
@@ -71,9 +65,9 @@ class Response(namedtuple('Response', 'status_line headers body'),
         return self._is_chunked(self.headers)
 
     @classmethod
-    def parsefrombytes(cls, bstr):
-        header_lines, status_line = h.StatusLine.parsebytes(bstr)
-        body_start, headers = h.Headers.parsebytes(header_lines)
+    def from_bytes(cls, bstr):
+        header_lines, status_line = h.StatusLine.from_bytes(bstr)
+        body_start, headers = h.Headers.from_bytes(header_lines)
         return cls(status_line, headers, body_start)
 
 
@@ -85,7 +79,7 @@ def test(addr):
     headers = bytes(h.Headers([('Host', 'localhost')]))
     req = reql + headers + '\r\n\r\n'
     c.sendall(req)
-    resp = Response.parsefromsocket(c)
+    resp = Response.from_socket(c)
     body = resp.body.read()
     c.close()
     return resp, body

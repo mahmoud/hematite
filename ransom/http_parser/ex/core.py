@@ -57,11 +57,15 @@ def istext(t):
     return t.translate('', '', TEXT_EXCLUDE) == t
 
 
-class OverlongRead(Exception):
+class ReadException(Exception):
     pass
 
 
-class IncompleteRead(Exception):
+class OverlongRead(ReadException):
+    pass
+
+
+class IncompleteRead(ReadException):
     pass
 
 
@@ -103,7 +107,7 @@ def _advance_until_lflf(sock, amt=1024, limit=MAXLINE):
 
 
 def _advance_until(sock, advancer, amt=1024, limit=MAXLINE):
-    # TODO: this i3s quadratic time -- be more precise about '\r\n'|'\n'
+    # NB this is quadratic time
     assert amt < limit, "amt {0} should be lower than limit! {1}".format(
         amt, limit)
     read_amt = 0

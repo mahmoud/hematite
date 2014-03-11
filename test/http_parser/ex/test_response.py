@@ -4,7 +4,7 @@ from ransom.http_parser.ex import response as r
 def test_Response_parsebytes_with_google(file_fixture):
 
     with file_fixture('google.txt') as f:
-        resp = r.Response.parsefrombytes(f.read())
+        resp = r.Response.from_bytes(f.read())
 
     assert resp.status_line == ((1, 1), 301, 'Moved Permanently')
 
