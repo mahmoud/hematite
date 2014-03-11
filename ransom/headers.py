@@ -74,7 +74,7 @@ class HTTPHeaderField(object):
             ntn = self.native_type.__name__
             # TODO: include trunc'd value in addition to input type name
             raise TypeError('expected bytes or %s for %s, not %s'
-                            % (ntn, self.dest_attr, vtn))
+                            % (ntn, self.name, vtn))
         setattr(obj, self.dest_attr, value)
 
     __set__ = _default_set_value
