@@ -31,8 +31,8 @@ def advancer(regex, flags=0):
     return advance
 
 # RFC 2616 p.17
-CLRF = '\r\n'
-LWS = CLRF + ' \t'
+CRLF = '\r\n'
+LWS = CRLF + ' \t'
 # <any US-ASCII control character (octets 0 - 31) and DEL (127)>
 CTL = ''.join(chr(i) for i in xrange(0, 32)) + chr(127)
 
@@ -42,7 +42,7 @@ TOKEN_EXCLUDE = ''.join(set(CTL) | set(SEPARATORS))
 # <any OCTET except CTLs, but including LWS>
 TEXT_EXCLUDE = ''.join(set(CTL) - set(LWS))
 
-# this *should* be CLRF but not everything uses that as its delineator
+# this *should* be CRLF but not everything uses that as its delineator
 # TODO: do we have to be able to recognize just carriage returns?
 DELINEATOR = '(?:(?:\r\n)|\n)'
 _LINE_END = re.compile(DELINEATOR, re.DOTALL)

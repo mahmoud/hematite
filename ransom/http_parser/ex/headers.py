@@ -178,7 +178,7 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
 
 class Headers(BytestringHelper, OMD):
     ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core.LWS) -
-                                                         set(core.CLRF)))
+                                                         set(core.CRLF)))
                                 + ']')
     ISKEY = re.compile('[^' + re.escape(core.TOKEN_EXCLUDE) + ']+')
 

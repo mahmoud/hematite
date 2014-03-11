@@ -1,4 +1,6 @@
 import sys
+import re
+from ransom.http_parser.ex import core
 
 
 def content_length(headers):
@@ -16,22 +18,27 @@ def connection_close(headers):
     return conn.lower() == 'close'
 
 
+class BodyReadException(Exception):
+    pass
+
+
+class InvalidChunk(BodyReadException):
+    pass
+
+
 class Body(object):
-    def __init__(self, backlog, sock, headers):
+    def __init__(self, backlog, sock, headers, amt=8192):
         self._read_backlog = backlog
         self.sock = sock
         self.content_length = content_length(headers)
         self.connection_close = connection_close(headers)
+        self._read_amount = amt
         if not (self.content_length or self.connection_close):
             # TODO: check for mutlipart/byteranges
             pass
 
 
 class IdentityEncodedBody(Body):
-
-    def __init__(self, amt=8192, *args, **kwargs):
-        super(IdentityEncodedBody, self).__init__(*args, **kwargs)
-        self._read_amount = amt
 
     def read(self, size=-1):
         ret = []
@@ -56,7 +63,65 @@ class IdentityEncodedBody(Body):
         return ''.join(ret)
 
 
-class ChunkEncodedBody(object):
+class ChunkEncodedBody(Body):
+    IS_HEX = re.compile('([\dA-Ha-h]+)')
+    CHUNK_HEADER_ADVANCE = core.advancer(IS_HEX.pattern + core.DELINEATOR,
+                                         re.DOTALL)
 
-    def __init__(self, read_backlog, sock, headers):
-        pass
+    def read_chunk(self):
+        rb = self._read_backlog
+        chunk = []
+        chunk_length = None
+
+        while chunk_length is None:
+            if not self.IS_HEX.match(rb):
+                rb += core._advance_until_lf(self.sock)
+                continue
+
+            partial_chunk, m = self.CHUNK_HEADER_ADVANCE(rb)
+            if not m:
+                raise InvalidChunk('could not read chunk header: '
+                                   '{0!r}'.format(core._cut(rb)))
+            chunk_length = int(m.group(), 16)
+            chunk.append(partial_chunk)
+
+        to_read = chunk_length - len(partial_chunk)
+
+        if to_read < 0:
+            # we overshot the chunk in advance_until_lf
+            new_rb, m = core.HAS_LINE_END(partial_chunk[chunk_length:])
+            if not m:
+                raise InvalidChunk('No trailing CRLF|LF: ',
+                                   '{0!r}'.format(
+                                       partial_chunk[:-core.MAXLINE]))
+
+            trailing_stuff = m.group().rstrip()
+            if trailing_stuff:
+                raise InvalidChunk('Misread chunk length, got trailing: '
+                                   '{0!r}'.format(core._cut(trailing_stuff)))
+            self._read_backlog = new_rb
+
+            return partial_chunk[:chunk_length]
+
+        to_read += 2            # trailing CRLF?
+
+        while to_read:
+            partial_chunk = self.sock.recv(to_read)
+            to_read -= len(partial_chunk)
+            chunk.append(partial_chunk)
+
+        # we know we asked for 2 too much, so hack off the last 2 bytes
+        # for inspection and replace the last chunk with the trimmed version
+        partial_chunk, (cr, lf) = partial_chunk[:-2], partial_chunk[-2:]
+        chunk[-1] = partial_chunk
+
+        if cr == '\r' and lf != '\n':
+            raise InvalidChunk('Cannot end with just carriage return: ',
+                               '{0!r}'.format(partial_chunk[:-core.MAXLINE]))
+        elif cr == '\n':
+            # lf is not actually lf, but real data
+            self._read_backlog = lf
+        else:
+            self._read_backlog = ''
+
+        return ''.join(chunk)
