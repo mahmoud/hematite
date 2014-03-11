@@ -17,8 +17,8 @@ def connection_close(headers):
 
 
 class Body(object):
-    def __init__(self, read_backlog, sock, headers):
-        self._read_backlog = read_backlog
+    def __init__(self, backlog, sock, headers):
+        self._read_backlog = backlog
         self.sock = sock
         self.content_length = content_length(headers)
         self.connection_close = connection_close(headers)
