@@ -71,19 +71,28 @@ class Response(namedtuple('Response', 'status_line headers body'),
         return cls(status_line, headers, body_start)
 
 
-def test(addr):
+def test(addr, host, url):
     c = socket.create_connection(addr)
     reql = bytes(h.RequestLine('GET',
-                               h.URL('/'),
+                               url,
                                h.HTTPVersion(1, 1)))
-    headers = bytes(h.Headers([('Host', 'localhost')]))
+    headers = bytes(h.Headers([('Host', host),
+                               ('Accept-Encoding', 'chunked'),
+                               ('TE', 'chunked')]))
     req = reql + headers + '\r\n\r\n'
     c.sendall(req)
     resp = Response.from_socket(c)
-    body = resp.body.read()
-    c.close()
+    if resp.is_chunked:
+        body = []
+        while True:
+            chunk = resp.body.read_chunk()
+            if not chunk:
+                break
+            body.append(chunk)
+        body = ''.join(body)
+    else:
+        body = resp.body.read()
     return resp, body
 
-
 if __name__ == '__main__':
-    test(('localhost', 8080))
+    test(('localhost', 8080), host='localhost', url=h.URL('/'))
