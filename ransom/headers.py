@@ -46,7 +46,6 @@ class HTTPHeaderField(object):
         assert name == name.lower()
         self.attr_name = name  # used for error messages
         self.http_name = kw.pop('http_name', http_header_case(name))
-        self.dest_attr = kw.pop('dest_attr', '_' + name)
         try:
             self.__set__ = kw.pop('set_value')
         except KeyError:
@@ -56,13 +55,18 @@ class HTTPHeaderField(object):
         # TODO: better defaults
         self.from_bytes = kw.pop('from_bytes', lambda val: val)
         self.to_bytes = kw.pop('to_bytes', lambda val: val)
+        if kw:
+            raise TypeError('unexpected keyword arguments: %r' % kw)
         # TODO: documentation field
         # TODO: validate
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        return getattr(obj, self.dest_attr)
+        try:
+            return obj.headers[self.http_name]
+        except KeyError:
+            raise AttributeError(self.attr_name)
 
     def _default_set_value(self, obj, value):
         # TODO: special handling for None? text/unicode type? (i.e, not bytes)
@@ -76,7 +80,7 @@ class HTTPHeaderField(object):
             # TODO: include trunc'd value in addition to input type name
             raise TypeError('expected bytes or %s for %s, not %s'
                             % (ntn, self.attr_name, vtn))
-        setattr(obj, self.dest_attr, value)
+        obj.headers[self.http_name] = value
 
     __set__ = _default_set_value
 
