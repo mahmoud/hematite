@@ -44,8 +44,8 @@ def attr2header_name(text):
 
 class HTTPHeaderField(object):
     def __init__(self, name, **kw):
-        assert name
-        assert name == name.lower()
+        #assert name
+        #assert name == name.lower()
         self.name = name
         self.dest_attr = kw.pop('dest_attr', '_' + name)
         try:
@@ -74,7 +74,7 @@ class HTTPHeaderField(object):
             ntn = self.native_type.__name__
             # TODO: include trunc'd value in addition to input type name
             raise TypeError('expected bytes or %s for %s, not %s'
-                            % (ntn, self.dest_attr, vtn))
+                            % (ntn, self.name, vtn))
         setattr(obj, self.dest_attr, value)
 
     __set__ = _default_set_value
