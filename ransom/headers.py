@@ -44,8 +44,8 @@ def attr2header_name(text):
 
 class HTTPHeaderField(object):
     def __init__(self, name, **kw):
-        assert name
-        assert name == name.lower()
+        #assert name
+        #assert name == name.lower()
         self.name = name
         self.dest_attr = kw.pop('dest_attr', '_' + name)
         try:
