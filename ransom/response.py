@@ -35,13 +35,18 @@ class Response(object):
                                     to_bytes=serialize_http_date,
                                     native_type=datetime)
 
+    expires = HTTPHeaderField('expires',
+                              from_bytes=parse_http_date,
+                              to_bytes=serialize_http_date,
+                              native_type=datetime)
+
     content_language = HTTPHeaderField('content_language',
                                        from_bytes=parse_list_header,
                                        to_bytes=serialize_list_header,
                                        native_type=list)
 
     # class decorator that does this
-    _header_fields = [date, last_modified, content_language]
+    _header_fields = [date, last_modified, expires, content_language]
     _header_field_map = dict([(hf.http_name, hf) for hf in _header_fields])
 
     def _load_headers(self):

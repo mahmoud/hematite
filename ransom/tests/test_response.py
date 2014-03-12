@@ -8,6 +8,7 @@ def test_resp_raw_resp():
                     'Date: Tue, 11 Mar 2014 06:29:33 GMT\r\n'
                     'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT\r\n'
                     'Server: hatnote.com\r\n'
+                    'Expires: Tue, 11 Mar 2014 06:29:34 GMT\r\n'
                     'Content-Language: en, mi\r\n'
                     '\r\n')
 
