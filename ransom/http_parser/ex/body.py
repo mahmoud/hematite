@@ -1,6 +1,7 @@
-import sys
-import re
 from ransom.http_parser.ex import core
+import re
+import socket
+import sys
 
 
 def content_length(headers):
@@ -105,10 +106,11 @@ class ChunkEncodedBody(Body):
 
         to_read += 2            # trailing CRLF?
 
-        while to_read:
-            partial_chunk = self.sock.recv(to_read)
-            to_read -= len(partial_chunk)
-            chunk.append(partial_chunk)
+        partial_chunk = self.sock.recv(to_read, socket.MSG_WAITALL)
+        if len(partial_chunk) != to_read:
+            raise core.IncompleteRead('chunk interrupted')
+
+        chunk.append(partial_chunk)
 
         # we know we asked for 2 too much, so hack off the last 2 bytes
         # for inspection and replace the last chunk with the trimmed version
