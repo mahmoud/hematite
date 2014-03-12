@@ -104,22 +104,3 @@ def _advance_until_lflf(sock, amt=1024, limit=MAXLINE):
                                                             read[:2])):
             return ''.join(buf)
         prev = read
-
-
-def _advance_until(sock, advancer, amt=1024, limit=MAXLINE):
-    # NB this is quadratic time
-    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-        amt, limit)
-    read_amt = 0
-    buf = []
-    while True:
-        read = sock.recv(amt)
-        if not read:
-            raise IncompleteRead
-        read_amt += len(read)
-        if read_amt > limit:
-            raise OverlongRead
-        buf.append(read)
-        joined = ''.join(buf)
-        if advancer(joined, matchonly=True):
-            return joined
