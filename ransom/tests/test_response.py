@@ -1,4 +1,6 @@
 
+from datetime import datetime
+
 from ransom.response import Response
 from ransom.http_parser.ex.response import Response as RawResponse
 
@@ -14,6 +16,7 @@ def test_resp_raw_resp():
 
     raw_resp = RawResponse.from_bytes(raw_resp_str)
     resp = Response.from_raw_response(raw_resp)
+    assert isinstance(resp.date, datetime)
     the_bytes = resp.to_bytes()
 
     print repr(raw_resp_str)

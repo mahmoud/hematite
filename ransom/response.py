@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
-
-from headers import HTTPHeaderField
-from headers import parse_http_date, serialize_http_date
-from headers import parse_list_header, serialize_list_header
-
 from http_parser.ex.headers import StatusLine, Headers, HTTPVersion
 from http_parser.ex.response import Response as RawResponse
+
+from fields import RESPONSE_FIELDS
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -24,30 +20,11 @@ class Response(object):
 
         self._load_headers()
         # TODO: lots
+        return
 
-    date = HTTPHeaderField('date',
-                           from_bytes=parse_http_date,
-                           to_bytes=serialize_http_date,
-                           native_type=datetime)
-
-    last_modified = HTTPHeaderField('last_modified',
-                                    from_bytes=parse_http_date,
-                                    to_bytes=serialize_http_date,
-                                    native_type=datetime)
-
-    expires = HTTPHeaderField('expires',
-                              from_bytes=parse_http_date,
-                              to_bytes=serialize_http_date,
-                              native_type=datetime)
-
-    content_language = HTTPHeaderField('content_language',
-                                       from_bytes=parse_list_header,
-                                       to_bytes=serialize_list_header,
-                                       native_type=list)
-
-    # class decorator that does this
-    _header_fields = [date, last_modified, expires, content_language]
-    _header_field_map = dict([(hf.http_name, hf) for hf in _header_fields])
+    # TODO: could use a metaclass for this, could also build it at init
+    _header_field_map = dict([(hf.http_name, hf) for hf in RESPONSE_FIELDS])
+    locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
 
     def _load_headers(self):
         # plenty of ways to arrange this
