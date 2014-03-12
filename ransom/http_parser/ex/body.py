@@ -108,7 +108,8 @@ class ChunkEncodedBody(Body):
 
         partial_chunk = self.sock.recv(to_read, socket.MSG_WAITALL)
         if len(partial_chunk) != to_read:
-            raise core.IncompleteRead('chunk interrupted')
+            raise core.IncompleteRead('Chunk interrupted, connection '
+                                      'probably closed')
 
         chunk.append(partial_chunk)
 
