@@ -21,8 +21,9 @@ def _init_headers():
 
 
 def http_header_case(text):
+    text = text.replace('_', '-').lower()
     try:
-        return CAP_MAP[text.lower()]
+        return CAP_MAP[text]
     except KeyError:
         # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
         return '-'.join([p.capitalize() for p in text.split('-')])
@@ -164,6 +165,7 @@ _TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
 def quote_header_value(value, allow_token=True):
     value = str(value)
     if allow_token:
+        # TODO: is this really an optimization?
         if set(value).issubset(_TOKEN_CHARS):
             return value
     return '"%s"' % value.replace('\\', '\\\\').replace('"', '\\"')
@@ -195,6 +197,10 @@ def parse_list_header(val, unquote=True):
             v = unquote_header_value(v)
         ret.append(v)
     return ret
+
+
+def serialize_list_header(val):
+    return ', '.join([quote_header_value(v) for v in val])
 
 
 def parse_items_header(val, unquote=True, sep=None):
