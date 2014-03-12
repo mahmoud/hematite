@@ -7,17 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 
-ALL, REQUEST, RESPONSE, CAP_MAP = None, None, None, None
-
-
-def _init_headers():
-    # called (and del'd) at the very bottom
-    global ALL, REQUEST, RESPONSE, CAP_MAP
-    ALL = GENERAL + REQUEST_ONLY + RESPONSE_ONLY + ENTITY
-    REQUEST = GENERAL + REQUEST_ONLY + ENTITY
-    RESPONSE = GENERAL + RESPONSE_ONLY + ENTITY
-    CAP_MAP = dict([(h.lower(), h) for h in ALL])
-    return
+from constants import CAP_MAP
 
 
 def http_header_case(text):
@@ -27,14 +17,6 @@ def http_header_case(text):
     except KeyError:
         # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
         return '-'.join([p.capitalize() for p in text.split('-')])
-
-
-def header2attr_name(text):
-    return '_'.join(text.split('-')).lower()
-
-
-def attr2header_name(text):
-    return http_header_case(text.replace('_', '-'))
 
 
 # TODO: lazy loading headers: good or bad?
@@ -91,72 +73,6 @@ class HTTPHeaderField(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s("%s")' % (cn, self.attr_name)
-
-
-GENERAL = ['Cache-Control',
-           'Connection',
-           'Date',
-           'Pragma',
-           'Trailer',
-           'Transfer-Encoding',
-           'Upgrade',
-           'Via',
-           'Warning']
-
-REQUEST_ONLY = ['Accept',
-                'Accept-Charset',
-                'Accept-Encoding',
-                'Accept-Language',
-                'Authorization',
-                'Cookie',  # RFC6265
-                'Expect',
-                'From',
-                'Host',
-                'If-Match',
-                'If-Modified-Since',
-                'If-None-Match',
-                'If-Range',
-                'If-Unmodified-Since',
-                'Max-Forwards',
-                'Proxy-Authorization',
-                'Range',
-                'Referer',
-                'TE',
-                'User-Agent']
-
-RESPONSE_ONLY = ['Accept-Ranges',
-                 'Age',
-                 'ETag',
-                 'Location',
-                 'Proxy-Authenticate',
-                 'Retry-After',
-                 'Server',
-                 'Set-Cookie',  # RFC6265
-                 'Vary',
-                 'WWW-Authenticate']
-
-ENTITY = ['Allow',
-          'Content-Encoding',
-          'Content-Language',
-          'Content-Length',
-          'Content-Location',
-          'Content-MD5',
-          'Content-Range',
-          'Content-Type',
-          'Expires',
-          'Last-Modified']
-
-HOP_BY_HOP = ['Connection',
-              'Keep-Alive',
-              'Proxy-Authenticate',
-              'TE',
-              'Trailers',
-              'Transfer-Encoding',
-              'Upgrade']
-
-
-_init_headers()
-del _init_headers
 
 
 _TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
