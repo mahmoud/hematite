@@ -46,7 +46,8 @@ class Response(object):
             try:
                 field = hf_map[hname]  # TODO: normalization
             except KeyError:
-                continue  # TODO: default loader?
+                # NB: this preserves the original insertion order
+                self.headers[hname] = hval  # TODO: default loader?
             else:
                 field.__set__(self, hval)
 
