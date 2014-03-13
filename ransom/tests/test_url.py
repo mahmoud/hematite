@@ -82,3 +82,8 @@ def test_query_params(test_url):
     if not url_obj.args:
         return True
     assert test_url.endswith(url_obj.query_string)
+
+
+def test_urlparse_obj_input():
+    with pytest.raises(TypeError):
+        URL(object())

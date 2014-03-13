@@ -123,7 +123,8 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
         try:
             url_str = url_str.decode(encoding)
         except AttributeError:
-            raise TypeError('parse_url expected str, unicode, or bytes')
+            raise TypeError('parse_url expected str, unicode, or bytes, not %r'
+                            % url_str)
     um = (_URL_RE_STRICT if strict else _URL_RE).match(url_str)
     try:
         gs = um.groupdict()
