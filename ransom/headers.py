@@ -87,12 +87,28 @@ def quote_header_value(value, allow_token=True):
     return '"%s"' % value.replace('\\', '\\\\').replace('"', '\\"')
 
 
-def unquote_header_value(value, is_filename=False):
+def unquote_header_value(value):
+    # watch out for certain cases with filenames
     if value and value[0] == value[-1] == '"':
         value = value[1:-1]
-        if not is_filename or value[:2] != '\\\\':
-            return value.replace('\\\\', '\\').replace('\\"', '"')
+        #if not is_filename or value[:2] != '\\\\':
+        return value.replace('\\\\', '\\').replace('\\"', '"')
     return value
+
+
+def default_header_from_bytes(bytestr):
+    # TODO: safe to do unquoting once, pre-decode?
+    try:
+        return unquote_header_value(bytestr.decode('latin-1'))
+    except:
+        try:
+            return unquote_header_value(bytestr)
+        except:
+            return bytestr
+
+
+def default_header_to_bytes(val):
+    return unicode(val).encode('latin-1')
 
 
 def list_header_from_bytes(val, unquote=True):
