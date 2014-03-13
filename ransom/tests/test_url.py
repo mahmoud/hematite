@@ -62,6 +62,7 @@ def test_parse_authorities(test_authority):
 
 def test_basic():
     u1 = URL('http://googlewebsite.com/e-shops.aspx')
+    assert isinstance(u1.to_text(), unicode)
     assert u1.host == 'googlewebsite.com'
 
 
