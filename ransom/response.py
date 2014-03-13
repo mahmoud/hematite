@@ -31,8 +31,8 @@ class Response(object):
         self.headers = Headers()
         # plenty of ways to arrange this
         hf_map = self._header_field_map
-        for hname, hval in self._raw_headers.items():
-            # TODO: multi=True and folding
+        for hname, hval in self._raw_headers.items(multi=True):
+            # TODO: folding
             try:
                 norm_hname = CAP_MAP[hname.lower()]
                 field = hf_map[norm_hname]

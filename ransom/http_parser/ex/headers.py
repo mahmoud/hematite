@@ -213,6 +213,7 @@ class Headers(BytestringHelper, OMD):
         return bstr, cls(parsed)
 
     def to_bytes(self):
+        print 'nooo'
         return (b'\r\n'.join(b': '.join([bytes(k), bytes(v)])
-                             for k, v in self.items())
+                             for k, v in self.items(multi=True))
                 + b'\r\n')       # trailing CRLF is necessary
