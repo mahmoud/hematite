@@ -1,55 +1,35 @@
 # -*- coding: utf-8 -*-
 
-from http_parser import HttpParser, IOrderedDict
 
-from compat import (unicode, bytes, OrderedMultiDict,
-                    urlparse, urlunparse, urlencode)
+from url import URL
 
-from url import URL, parse_hostinfo
-from headers import HTTPHeaderField, REQUEST
+from http_parser.ex.headers import RequestLine, Headers, HTTPVersion
+from http_parser.ex.request import Request as RawRequest
 
-
-"""
-- method: methodcaller->upper, default GET
-- http version: float() -> str
-- path
-- host
-- user_agent
-- accept
-  - mime
-  - charset
-  - language
-
-URL: scheme, netloc (host), path, params, query (, fragment?)
-URL+: username, password, hostname, port
-
-NB Blank headers are not sent
-# TODO: incremental parsing/creation of Request
-"""
 
 DEFAULT_METHOD = 'GET'
-DEFAULT_VERSION = (1, 1)
+DEFAULT_VERSION = HTTPVersion(1, 1)
 DEFAULT_SCHEME = 'http'
 DEFAULT_PORT = 80
 
 # headers, url, cookies
 
-_GENERIC_REQ_HEADERS = list(REQUEST)
-_GENERIC_REQ_HEADERS.remove('Host')
+#_GENERIC_REQ_HEADERS = list(REQUEST)
+#_GENERIC_REQ_HEADERS.remove('Host')
 
 
 class Request(object):
-    for rh in _GENERIC_REQ_HEADERS:
-        _f = HTTPHeaderField(rh)
-        locals()[_f.attr_name] = _f
-    del _f
-
-    def __init__(self, method=None, url=None, headers=None,
-                 version=None, client=None, **kw):
-        self.client = client
+    def __init__(self, method=None, url=None, **kw):
         self.method = method or DEFAULT_METHOD
-        self.url = url
-        self.headers = headers = headers or IOrderedDict()
+        self.version = kw.pop('version', DEFAULT_VERSION)
+
+        self._body = kw.pop('body', None)
+        self._raw_url = url or URL('/')
+        self._raw_headers = kw.pop('headers', Headers())
+
+        self._init_url()
+        self._init_headers()
+        """
         host_header = headers.pop('Host', '')
         f, h, p = parse_hostinfo(host_header)
         if not self.url.host:
@@ -57,9 +37,45 @@ class Request(object):
             self.url.family, self.url.host, self.url.port = f, h, p
         if not self.url.scheme:
             self.url.scheme = DEFAULT_SCHEME
-        self.version = version or DEFAULT_VERSION
+        """
 
-    def encode(self, validate=True):
+    def _init_url(self):
+        self.url = self._raw_url
+
+    def _init_headers(self):
+        self.headers = self._raw_headers
+
+    @classmethod
+    def from_raw_request(cls, raw_req):
+        rl = raw_req.request_line
+        kw = {'method': rl.method,
+              'url': rl.uri,
+              'version': rl.version,
+              'headers': raw_req.headers,
+              'body': raw_req.body}
+        return cls(**kw)
+
+    def to_raw_request(self):
+        status_line = RequestLine(self.method,
+                                  self.url.http_request_uri,
+                                  self.version)
+        headers = self.headers  # _get_header_dict()
+        return RawRequest(status_line, headers, self._body)
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        rr = RawRequest.from_bytes(bytestr)
+        return cls.from_raw_response(rr)
+
+    def to_bytes(self):
+        raw_req = self.to_raw_request()
+        return raw_req.to_bytes()
+
+    def validate(self):
+        pass
+
+    """
+    def to_bytes(self):
         # TODO: field values are latin-1 or mime-encoded, but
         # are field names latin-1 or ASCII only?
         ret = [self.request_line]
@@ -76,18 +92,6 @@ class Request(object):
                 ret.append(h + ': ' + v)
         ret.extend(['', ''])
         return '\r\n'.join(ret).encode('latin-1')
-
-    @classmethod
-    def from_string(cls, source):
-        hp = HttpParser()
-        hp.execute(source, len(source))
-        hp.execute('', 0)
-        return cls(hp._method, hp._url, hp._headers, hp._version)
-
-    @classmethod
-    def get_fields(cls):
-        return dict([(n, f) for n, f in cls.__dict__.items()
-                     if isinstance(f, HTTPHeaderField)])
 
     @property
     def request_line(self):
@@ -118,3 +122,23 @@ class Request(object):
             self._url = url  # TODO
         else:
             self._url = URL(url or '')
+    """
+
+
+"""
+- method: methodcaller->upper, default GET
+- http version: float() -> str
+- path
+- host
+- user_agent
+- accept
+  - mime
+  - charset
+  - language
+
+URL: scheme, netloc (host), path, params, query (, fragment?)
+URL+: username, password, hostname, port
+
+NB Blank headers are not sent
+# TODO: incremental parsing/creation of Request
+"""
