@@ -3,6 +3,7 @@
 from http_parser.ex.headers import StatusLine, Headers, HTTPVersion
 from http_parser.ex.response import Response as RawResponse
 
+from headers import CAP_MAP
 from fields import RESPONSE_FIELDS
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -32,7 +33,8 @@ class Response(object):
         for hname, hval in self.headers.items():
             # TODO: multi=True and folding
             try:
-                field = hf_map[hname]  # TODO: normalization
+                norm_hname = CAP_MAP[hname.lower()]
+                field = hf_map[norm_hname]
             except KeyError:
                 # NB: this preserves the original insertion order
                 self.headers[hname] = hval  # TODO: default loader?
@@ -69,7 +71,7 @@ class Response(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        rr = object()  # RawResponse.from_bytes(bytestr)
+        rr = RawResponse.from_bytes(bytestr)
         return cls.from_raw_response(rr)
 
     def to_bytes(self):
