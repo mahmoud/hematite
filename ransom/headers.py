@@ -404,6 +404,46 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
               }
 
 
+
+##
+from http_parser.ex.headers import Headers
+from headers import CAP_MAP, default_header_to_bytes, default_header_from_bytes
+
+
+def _load_headers(self):
+    self.headers = Headers()
+    # plenty of ways to arrange this
+    hf_map = self._header_field_map
+    for hname, hval in self._raw_headers.items(multi=True):
+        # TODO: folding
+        try:
+            norm_hname = CAP_MAP[hname.lower()]
+            field = hf_map[norm_hname]
+        except KeyError:
+            # preserves insertion order and duplicates
+            self.headers.add(hname, default_header_from_bytes(hval))
+        else:
+            field.__set__(self, hval)
+
+def _get_header_dict(self, drop_empty=True):
+    # TODO: option for unserialized?
+    ret = Headers()
+    hf_map = self._header_field_map
+    for hname, hval in self.headers.items(multi=True):
+        if drop_empty and hval is None or hval == '':
+            # TODO: gonna need a field.is_empty or something
+            continue
+        try:
+            field = hf_map[hname]
+        except KeyError:
+            ret.add(hname, default_header_to_bytes(hval))
+        else:
+            ret.add(hname, field.to_bytes(hval))
+    return ret
+
+##
+
+
 def _test_accept():
     _accept_tests = ['',
                      ' ',

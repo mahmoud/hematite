@@ -5,7 +5,8 @@ from url import URL
 
 from http_parser.ex.headers import RequestLine, Headers, HTTPVersion
 from http_parser.ex.request import Request as RawRequest
-
+import headers
+from fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
 
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -27,8 +28,8 @@ class Request(object):
         self._raw_url = url or URL('/')
         self._raw_headers = kw.pop('headers', Headers())
 
-        self._init_url()
         self._init_headers()
+        self._init_url()
         """
         host_header = headers.pop('Host', '')
         f, h, p = parse_hostinfo(host_header)
@@ -39,11 +40,16 @@ class Request(object):
             self.url.scheme = DEFAULT_SCHEME
         """
 
+    # TODO: could use a metaclass for this, could also build it at init
+    _header_field_map = dict([(hf.http_name, hf)
+                              for hf in HTTP_REQUEST_FIELDS])
+    locals().update([(hf.attr_name, hf) for hf in REQUEST_FIELDS])
+
     def _init_url(self):
         self.url = self._raw_url
 
-    def _init_headers(self):
-        self.headers = self._raw_headers
+    _init_headers = headers._load_headers
+    _get_header_dict = headers._get_header_dict
 
     @classmethod
     def from_raw_request(cls, raw_req):
@@ -57,9 +63,9 @@ class Request(object):
 
     def to_raw_request(self):
         status_line = RequestLine(self.method,
-                                  self.url.http_request_uri,
+                                  self._url.http_request_uri,
                                   self.version)
-        headers = self.headers  # _get_header_dict()
+        headers = self._get_header_dict()
         return RawRequest(status_line, headers, self._body)
 
     @classmethod

@@ -9,23 +9,25 @@ from headers import (HTTPHeaderField,
                      list_header_from_bytes,
                      items_header_to_bytes,
                      items_header_from_bytes)
-
+from url import URL, parse_hostinfo
 
 from datetime import datetime
 
 ALL_FIELDS = None
 RESPONSE_FIELDS = None
 REQUEST_FIELDS = None
+HTTP_REQUEST_FIELDS = None
 
 
 def _init_field_lists():
-    global ALL_FIELDS, RESPONSE_FIELDS, REQUEST_FIELDS
+    global ALL_FIELDS, RESPONSE_FIELDS, REQUEST_FIELDS, HTTP_REQUEST_FIELDS
     global_vals = globals().values()
     ALL_FIELDS = [f for f in global_vals if isinstance(f, HTTPHeaderField)]
     RESPONSE_FIELDS = [f for f in ALL_FIELDS
                        if f.http_name in RESPONSE_HEADERS]
-    REQUEST_FIELDS = [f for f in ALL_FIELDS
-                      if f.http_name in REQUEST_HEADERS]
+    HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
+                           if f.http_name in REQUEST_HEADERS]
+    REQUEST_FIELDS = HTTP_REQUEST_FIELDS + [url_field]
 
 
 date = HTTPHeaderField('date',
@@ -116,34 +118,46 @@ note: wz request obj has 71 public attributes (not starting with '_')
 
 
 class URLField(object):
-    def __init__(self, name, **kw):
-        assert name
-        assert name == name.lower()
-        self.attr_name = name  # used for error messages
-        self.url_name = kw.pop('url_name', self.attr_name)
-        try:
-            self.__set__ = kw.pop('set_value')
-        except KeyError:
-            pass
-        if kw:
-            raise TypeError('unexpected keyword arguments: %r' % kw)
+    attr_name = 'url'
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        # TODO: error message?
-        return getattr(obj.url, self.url_name)
+        return obj._url.to_text()  # unicode for now
 
     def __set__(self, obj, value):
-        pass
+        if isinstance(value, URL):
+            url_obj = value
+        else:
+            url_obj = URL(value, strict=True)
+        if not url_obj.path:
+            url_obj.path = '/'
+        obj._url = url_obj
+        obj.host = url_obj.http_request_host
 
     def __delete__(self, obj):
         raise AttributeError("can't delete field '%s'" % self.attr_name)
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s("%s")' % (cn, self.attr_name)
+        return '%s()' % self.__class__.__name__
 
+
+url_field = URLField()
+
+
+def _set_host_value(self, obj, value):
+    self._default_set_value(obj, value)
+    cur_val = obj.headers.get('Host')
+    url = obj._url
+    if not cur_val:
+        family, host, port = None, '', ''
+    else:
+        family, host, port = parse_hostinfo(cur_val)
+        url.host, url.port, url.family = family, host, port
+
+
+host = HTTPHeaderField('host',
+                       set_value=_set_host_value)
 
 
 _init_field_lists()
