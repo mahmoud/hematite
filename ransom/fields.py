@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from constants import REQUEST, RESPONSE
+from constants import REQUEST_HEADERS, RESPONSE_HEADERS
 
 from headers import HTTPHeaderField
 from headers import parse_http_date, serialize_http_date
@@ -17,8 +17,10 @@ def _init_field_lists():
     global ALL_FIELDS, RESPONSE_FIELDS, REQUEST_FIELDS
     global_vals = globals().values()
     ALL_FIELDS = [f for f in global_vals if isinstance(f, HTTPHeaderField)]
-    RESPONSE_FIELDS = [f for f in ALL_FIELDS if f.http_name in RESPONSE]
-    REQUEST_FIELDS = [f for f in ALL_FIELDS if f.http_name in REQUEST]
+    RESPONSE_FIELDS = [f for f in ALL_FIELDS
+                       if f.http_name in RESPONSE_HEADERS]
+    REQUEST_FIELDS = [f for f in ALL_FIELDS
+                      if f.http_name in REQUEST_HEADERS]
 
 
 date = HTTPHeaderField('date',
