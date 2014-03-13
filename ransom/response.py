@@ -14,7 +14,7 @@ class Response(object):
     def __init__(self, status_code, body, **kw):
         self.status_code = status_code
         self.reason = kw.pop('reason', '')  # TODO look up
-        self.headers = Headers(kw.pop('headers', []))  # TODO
+        self._raw_headers = kw.pop('headers', Headers())  # TODO
         self.version = kw.pop('version', _DEFAULT_VERSION)
 
         self._body = body
@@ -28,16 +28,18 @@ class Response(object):
     locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
 
     def _load_headers(self):
+        self.headers = Headers()
         # plenty of ways to arrange this
         hf_map = self._header_field_map
-        for hname, hval in self.headers.items():
+        for hname, hval in self._raw_headers.items():
             # TODO: multi=True and folding
             try:
                 norm_hname = CAP_MAP[hname.lower()]
                 field = hf_map[norm_hname]
             except KeyError:
-                # NB: this preserves the original insertion order
-                self.headers[hname] = hval  # TODO: default loader?
+                # preserves insertion order and duplicates
+                # TODO: default loader?
+                self.headers.add(hname, hval)
             else:
                 field.__set__(self, hval)
 

@@ -37,3 +37,14 @@ def test_cap_norm():
 
     assert 'Last-Modified' in resp_str
     assert len(resp_str) == len(raw_resp_str)
+
+
+def test_proprietary_dupes():
+    raw_resp_str = ('HTTP/1.1 200 OK\r\n'
+                    'X-App: lol\r\n'
+                    'X-App: lmao\r\n'
+                    '\r\n')
+    resp = Response.from_bytes(raw_resp_str)
+    assert resp.headers['X-App'] == 'lmao'
+    resp_str = resp.to_bytes()
+    assert resp_str == raw_resp_str
