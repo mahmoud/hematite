@@ -39,8 +39,19 @@ last_modified = HTTPHeaderField('last_modified',
                                 native_type=datetime)
 
 
+def expires_from_bytes(bytestr):
+    """
+    According to RFC2616 14.21, invalid Expires headers MUST treat
+    invalid timestamps as "already expired", thus the epoch datetime.
+    """
+    try:
+        return http_date_from_bytes(bytestr)
+    except:
+        return datetime.utcfromtimestamp(0)
+
+
 expires = HTTPHeaderField('expires',
-                          from_bytes=http_date_from_bytes,
+                          from_bytes=expires_from_bytes,
                           to_bytes=http_date_to_bytes,
                           native_type=datetime)
 

@@ -58,3 +58,14 @@ def test_empty_header():
     assert resp.headers['X-Terrible-Header'] == ''
     resp_str = resp.to_bytes()
     assert 'X-Terrible' not in resp_str
+
+
+def test_invalid_expires():
+    import datetime
+    raw_resp_str = ('HTTP/1.1 200 OK\r\n'
+                    'Expires: -1\r\n'
+                    '\r\n')
+    resp = Response.from_bytes(raw_resp_str)
+    assert resp.expires < datetime.datetime.utcnow()
+    resp_str = resp.to_bytes()
+    assert 'Expires' in resp_str
