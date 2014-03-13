@@ -41,6 +41,17 @@ content_language = HTTPHeaderField('content_language',
                                    to_bytes=serialize_list_header,
                                    native_type=list)
 
+if_modified_since = HTTPHeaderField('if_modified_since',
+                                    from_bytes=parse_http_date,
+                                    to_bytes=serialize_http_date,
+                                    native_type=datetime)
+
+
+if_unmodified_since = HTTPHeaderField('if_unmodified_since',
+                                      from_bytes=parse_http_date,
+                                      to_bytes=serialize_http_date,
+                                      native_type=datetime)
+
 
 _init_field_lists()
 del _init_field_lists
