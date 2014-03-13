@@ -47,6 +47,9 @@ class Response(object):
         ret = Headers()
         hf_map = self._header_field_map
         for hname, hval in self.headers.items(multi=True):
+            if drop_empty and hval is None or hval == '':
+                # TODO: gonna need a field.is_empty or something
+                continue
             try:
                 field = hf_map[hname]
             except KeyError:

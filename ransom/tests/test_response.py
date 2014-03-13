@@ -48,3 +48,13 @@ def test_proprietary_dupes():
     assert resp.headers['X-App'] == 'lmao'
     resp_str = resp.to_bytes()
     assert resp_str == raw_resp_str
+
+
+def test_empty_header():
+    raw_resp_str = ('HTTP/1.1 200 OK\r\n'
+                    'X-Terrible-Header: \r\n'
+                    '\r\n')
+    resp = Response.from_bytes(raw_resp_str)
+    assert resp.headers['X-Terrible-Header'] == ''
+    resp_str = resp.to_bytes()
+    assert 'X-Terrible' not in resp_str
