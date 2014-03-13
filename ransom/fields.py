@@ -84,5 +84,67 @@ cache_control = HTTPHeaderField('cache_control',
                                 native_type=list)
 
 
+"""
+Several key Request attributes are URL-based. Similar to the
+HTTPHeaderField, which is backed by a Headers dict, URL fields are
+backed by a URL object on the Request instance.
+
+desired url-related fields:
+
+request.url - bytes or unicode? can be set with URL instance, too
+request.host - host *header* (should be equal to url.host + url.port)
+request.hostname/request.domain - host attr of URL
+request.path - url path (unicode)
+request.port - int
+request.args/.params/.query_params/.GET - QueryArgDict
+request.query_string - bytes or unicode?
+request.scheme - http/https
+
+Some of these will need to trigger updates to the Host header and
+the Host header field will need to trigger updates to some of
+these.
+
+other potential fields (that will likely remain on the underlying URL
+object only for the time being):
+
+ - username
+ - password
+ - fragment
+
+note: wz request obj has 71 public attributes (not starting with '_')
+"""
+
+
+class URLField(object):
+    def __init__(self, name, **kw):
+        assert name
+        assert name == name.lower()
+        self.attr_name = name  # used for error messages
+        self.url_name = kw.pop('url_name', self.attr_name)
+        try:
+            self.__set__ = kw.pop('set_value')
+        except KeyError:
+            pass
+        if kw:
+            raise TypeError('unexpected keyword arguments: %r' % kw)
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        # TODO: error message?
+        return getattr(obj.url, self.url_name)
+
+    def __set__(self, obj, value):
+        pass
+
+    def __delete__(self, obj):
+        raise AttributeError("can't delete field '%s'" % self.attr_name)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s("%s")' % (cn, self.attr_name)
+
+
+
 _init_field_lists()
 del _init_field_lists
