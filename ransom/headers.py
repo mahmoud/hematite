@@ -95,14 +95,6 @@ def unquote_header_value(value, is_filename=False):
     return value
 
 
-# Accept-style headers
-
-_accept_re = re.compile(r'('
-                        r'(?P<media_type>[^,;]+)'
-                        r'(;\s*q='
-                        r'(?P<quality>[^,;]+))?),?')
-
-
 def list_header_from_bytes(val, unquote=True):
     "e.g., Accept-Ranges. skips blank values, per the RFC."
     ret = []
@@ -134,6 +126,21 @@ def items_header_from_bytes(val, unquote=True, sep=None):
             value = unquote_header_value(value)
         ret.append((key, value))
     return ret
+
+
+def items_header_to_bytes(items, sep=None):
+    parts, sep = [], sep or ', '
+    for key, val in items:
+        if val is None or val == '':
+            parts.append(key)
+        else:
+            parts.append('='.join([str(key), quote_header_value(val)]))
+    return sep.join(parts)
+
+_accept_re = re.compile(r'('
+                        r'(?P<media_type>[^,;]+)'
+                        r'(;\s*q='
+                        r'(?P<quality>[^,;]+))?),?')
 
 
 def accept_header_from_bytes(val):
@@ -406,6 +413,8 @@ def _test_items_header():
                     'private, community="UCI"']  # Cache control
     for t in _items_tests:
         print items_header_from_bytes(t)
+
+    print items_header_to_bytes([('Basic realm', 'myRealm')])
     return
 
 

@@ -9,10 +9,9 @@
 
 ## Features
 
-- to_/from_raw_request
 - Headers: most fundamental parsers done, but matching serialization is TBD
+- CacheControl and WWWAuthenticate types
 
-- Clarify high-level/low-level split
 - Composable URL
 
 

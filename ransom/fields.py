@@ -6,7 +6,9 @@ from headers import (HTTPHeaderField,
                      http_date_to_bytes,
                      http_date_from_bytes,
                      list_header_to_bytes,
-                     list_header_from_bytes)
+                     list_header_from_bytes,
+                     items_header_to_bytes,
+                     items_header_from_bytes)
 
 
 from datetime import datetime
@@ -56,6 +58,18 @@ if_unmodified_since = HTTPHeaderField('if_unmodified_since',
                                       from_bytes=http_date_from_bytes,
                                       to_bytes=http_date_to_bytes,
                                       native_type=datetime)
+
+
+www_authenticate = HTTPHeaderField('www_authenticate',
+                                   from_bytes=items_header_from_bytes,
+                                   to_bytes=items_header_to_bytes,
+                                   native_type=list)
+
+
+cache_control = HTTPHeaderField('cache_control',
+                                from_bytes=items_header_from_bytes,
+                                to_bytes=items_header_to_bytes,
+                                native_type=list)
 
 
 _init_field_lists()
