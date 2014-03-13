@@ -80,3 +80,6 @@ HOP_BY_HOP_HEADERS = ['Connection',
 
 _init_headers()
 del _init_headers
+
+from pprint import pprint
+pprint(RESPONSE_HEADERS)

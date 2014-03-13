@@ -103,10 +103,10 @@ _accept_re = re.compile(r'('
                         r'(?P<quality>[^,;]+))?),?')
 
 
-def parse_list_header(val, unquote=True):
+def list_header_from_bytes(val, unquote=True):
     "e.g., Accept-Ranges. skips blank values, per the RFC."
     ret = []
-    for v in _parse_list_header(val):
+    for v in _list_header_from_bytes(val):
         if not v:
             continue
         if unquote and v[0] == '"' == v[-1]:
@@ -115,17 +115,17 @@ def parse_list_header(val, unquote=True):
     return ret
 
 
-def serialize_list_header(val):
+def list_header_to_bytes(val):
     return ', '.join([quote_header_value(v) for v in val])
 
 
-def parse_items_header(val, unquote=True, sep=None):
+def items_header_from_bytes(val, unquote=True, sep=None):
     """
     TODO: I think unquote is always true here? values can always be
     quoted.
     """
     ret, sep = [], sep or ','
-    for item in _parse_list_header(val, sep=sep):
+    for item in _list_header_from_bytes(val, sep=sep):
         key, _part, value = item.partition('=')
         if not _part:
             ret.append((key, None))
@@ -136,7 +136,7 @@ def parse_items_header(val, unquote=True, sep=None):
     return ret
 
 
-def parse_accept_header(val):
+def accept_header_from_bytes(val):
     """
     Parses an Accept-style header (with q-vals) into a list of tuples
     of `(media_type, quality)`. Input order is maintained (does not sort
@@ -162,7 +162,7 @@ def parse_accept_header(val):
     return ret
 
 
-def parse_content_header(val):
+def content_header_from_bytes(val):
     """
     Parses a Content-Type header, a combination of list and key-value
     headers, separated by semicolons.. RFC2231 is crazy, so this initial
@@ -175,16 +175,16 @@ def parse_content_header(val):
     #  - rollup of asterisk-indexed parts (param continuations) (RFC2231 #3)
     #  - parameter encodings and languages (RFC2231 #4)
     """
-    items = parse_items_header(val, sep=';')
+    items = items_header_from_bytes(val, sep=';')
     if not items:
         return '', []
     media_type = items[0][0]
     return media_type, items[1:]
 
 
-def parse_http_date(date_str):
+def http_date_from_bytes(date_str):
     # TODO: is the strip really necessary?
-    timetuple = _parse_date_tz(date_str.strip())
+    timetuple = _date_tz_from_bytes(date_str.strip())
     tz_seconds = timetuple[-1] or 0
     tz_offset = timedelta(seconds=tz_seconds)
     return datetime(*timetuple[:7]) - tz_offset
@@ -196,7 +196,7 @@ _monthname = [None,  # Dummy so we can use 1-based month numbers
               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
-def serialize_http_date(date_val=None, sep=' '):
+def http_date_to_bytes(date_val=None, sep=' '):
     """
     Output an RFC1123-formatted date suitable for the Date header and
     cookies (with sep='-').
@@ -215,7 +215,7 @@ def serialize_http_date(date_val=None, sep=' '):
             (_dayname[wd], day, sep, _monthname[month], sep, year, hh, mm, ss))
 
 
-def _parse_list_header(s, sep=None):
+def _list_header_from_bytes(bytestr, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 
     In particular, parse comma-separated lists where the elements of
@@ -229,7 +229,7 @@ def _parse_list_header(s, sep=None):
     res, part, sep = [], '', sep or ','
 
     escape = quote = False
-    for cur in s:
+    for cur in bytestr:
         if escape:
             part += cur
             escape = False
@@ -260,7 +260,7 @@ def _parse_list_header(s, sep=None):
     return [part.strip() for part in res]
 
 
-def _parse_date_tz(data):
+def _date_tz_from_bytes(data):
     """Convert a date string to a time tuple.
 
     Accounts for military timezones (for some reason).
@@ -396,7 +396,7 @@ def _test_accept():
                      'none']
     for t in _accept_tests:
         print
-        print parse_accept_header(t)
+        print accept_header_from_bytes(t)
 
 
 def _test_items_header():
@@ -405,21 +405,21 @@ def _test_items_header():
                     'Basic realm="myRealm"',  # WWW-Authenticate
                     'private, community="UCI"']  # Cache control
     for t in _items_tests:
-        print parse_items_header(t)
+        print items_header_from_bytes(t)
     return
 
 
 def _test_list_header():
-    print parse_list_header('mi, en')  # Content-Language
-    print parse_list_header('')  # TODO: Allow, Vary, Pragma
+    print list_header_from_bytes('mi, en')  # Content-Language
+    print list_header_from_bytes('')  # TODO: Allow, Vary, Pragma
     return
 
 
 def _test_http_date():
     # date examples from 3.3.1 with seconds imcrementing
-    print parse_http_date('Sun, 06 Nov 1994 08:49:37 GMT')
-    print parse_http_date('Sunday, 06-Nov-94 08:49:38 GMT')
-    print parse_http_date('Sun Nov  6 08:49:39 1994')
+    print http_date_from_bytes('Sun, 06 Nov 1994 08:49:37 GMT')
+    print http_date_from_bytes('Sunday, 06-Nov-94 08:49:38 GMT')
+    print http_date_from_bytes('Sun Nov  6 08:49:39 1994')
 
 
 def _test_content_header():
@@ -432,7 +432,7 @@ def _test_content_header():
                       'text/html; charset=ISO-8859-4',
                       _rough_content_type]
     for t in _content_tests:
-        print parse_content_header(t)
+        print content_header_from_bytes(t)
 
 
 if __name__ == '__main__':

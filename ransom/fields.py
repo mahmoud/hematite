@@ -2,9 +2,12 @@
 
 from constants import REQUEST_HEADERS, RESPONSE_HEADERS
 
-from headers import HTTPHeaderField
-from headers import parse_http_date, serialize_http_date
-from headers import parse_list_header, serialize_list_header
+from headers import (HTTPHeaderField,
+                     http_date_to_bytes,
+                     http_date_from_bytes,
+                     list_header_to_bytes,
+                     list_header_from_bytes)
+
 
 from datetime import datetime
 
@@ -24,34 +27,34 @@ def _init_field_lists():
 
 
 date = HTTPHeaderField('date',
-                       from_bytes=parse_http_date,
-                       to_bytes=serialize_http_date,
+                       from_bytes=http_date_from_bytes,
+                       to_bytes=http_date_to_bytes,
                        native_type=datetime)
 
 last_modified = HTTPHeaderField('last_modified',
-                                from_bytes=parse_http_date,
-                                to_bytes=serialize_http_date,
+                                from_bytes=http_date_from_bytes,
+                                to_bytes=http_date_to_bytes,
                                 native_type=datetime)
 
 expires = HTTPHeaderField('expires',
-                          from_bytes=parse_http_date,
-                          to_bytes=serialize_http_date,
+                          from_bytes=http_date_from_bytes,
+                          to_bytes=http_date_to_bytes,
                           native_type=datetime)
 
 content_language = HTTPHeaderField('content_language',
-                                   from_bytes=parse_list_header,
-                                   to_bytes=serialize_list_header,
+                                   from_bytes=list_header_from_bytes,
+                                   to_bytes=list_header_to_bytes,
                                    native_type=list)
 
 if_modified_since = HTTPHeaderField('if_modified_since',
-                                    from_bytes=parse_http_date,
-                                    to_bytes=serialize_http_date,
+                                    from_bytes=http_date_from_bytes,
+                                    to_bytes=http_date_to_bytes,
                                     native_type=datetime)
 
 
 if_unmodified_since = HTTPHeaderField('if_unmodified_since',
-                                      from_bytes=parse_http_date,
-                                      to_bytes=serialize_http_date,
+                                      from_bytes=http_date_from_bytes,
+                                      to_bytes=http_date_to_bytes,
                                       native_type=datetime)
 
 
