@@ -145,6 +145,8 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         return b' '.join(map(bytes, bs)) + b'\r\n'
 
 
+# TODO: uri or url?
+
 class RequestLine(namedtuple('RequestLine', 'method uri version'),
                   BytestringHelper):
     METHOD = core.advancer('[^' + re.escape(core.TOKEN_EXCLUDE) + ']+')
