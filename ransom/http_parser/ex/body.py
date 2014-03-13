@@ -58,6 +58,11 @@ class IdentityEncodedBody(Body):
         while size > 0:
             read = self.sock.recv(min(self._read_amount, size))
             if not read:
+                if self.content_length:
+                    cl = self.content_length
+                    raise core.IncompleteRead('connection terminated before '
+                                              'sending Content-Length: '
+                                              '{0}'.format(cl))
                 break
             size -= len(read)
             ret.append(read)
@@ -106,12 +111,13 @@ class ChunkEncodedBody(Body):
 
         to_read += 2            # trailing CRLF?
 
-        partial_chunk = self.sock.recv(to_read, socket.MSG_WAITALL)
-        if len(partial_chunk) != to_read:
-            raise core.IncompleteRead('Chunk interrupted, connection '
-                                      'probably closed')
-
-        chunk.append(partial_chunk)
+        while to_read:
+            partial_chunk = self.sock.recv(to_read)
+            if not partial_chunk:
+                raise core.IncompleteRead('Incomplete chunk before connection '
+                                          'closed')
+            to_read -= len(partial_chunk)
+            chunk.append(partial_chunk)
 
         # we know we asked for 2 too much, so hack off the last 2 bytes
         # for inspection and replace the last chunk with the trimmed version
