@@ -179,12 +179,14 @@ class QueryArgDict(OrderedMultiDict):
         encoding = encoding or DEFAULT_ENCODING
         safe = "!$'()*+,/:;?@[]~"  # unsafe = '#&='
         ret_list = []
-        for k, v in self.iteritems():
+        for k, v in self.iteritems(multi=True):
             key = quote(unicode(k).encode(encoding), safe=safe)
             val = quote(unicode(v).encode(encoding), safe=safe)
             ret_list.append('='.join((key, val)))
         return '&'.join(ret_list)
 
+
+# TODO: naming: 'args', 'query_args', or 'query_params'?
 
 class URL(BytestringHelper):
     _attrs = ('scheme', 'username', 'password', 'family',
@@ -198,7 +200,7 @@ class URL(BytestringHelper):
             url_dict = parse_url(url_str, encoding=encoding, strict=strict)
 
         _d = unicode()
-        self.params = _d  # TODO: support params?
+        self.params = _d  # TODO: support path params?
         for attr in self._attrs:
             setattr(self, attr, url_dict.get(attr, _d) or _d)
         self.args = QueryArgDict.from_string(self.query)

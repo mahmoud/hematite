@@ -12,6 +12,7 @@ from ransom.url import URL, _URL_RE, parse_authority
 TEST_URLS = [
     'http://googlewebsite.com/e-shops.aspx',
     'http://example.com:8080/search?q=123&business=Nothing%20Special',
+    'http://hatnote.com:9000?arg=1&arg=2&arg=3',
     'https://xn--bcher-kva.ch',
     'http://tools.ietf.org/html/rfc3986#section-3.4',
     'http://wiki:pedia@hatnote.com',
@@ -71,4 +72,12 @@ def test_idna():
 
 def test_urlparse_equiv(test_url):
     from urlparse import urlparse, urlunparse
-    assert urlunparse(urlparse(test_url)) == urlunparse(URL(test_url))
+    url_obj = URL(test_url)
+    assert urlunparse(urlparse(test_url)) == urlunparse(url_obj)
+
+
+def test_query_params(test_url):
+    url_obj = URL(test_url)
+    if not url_obj.args:
+        return True
+    assert test_url.endswith(url_obj.query_string)
