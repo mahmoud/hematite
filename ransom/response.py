@@ -47,13 +47,13 @@ class Response(object):
         # TODO: option for unserialized?
         ret = Headers()
         hf_map = self._header_field_map
-        for hname, hval in self.headers.items():
+        for hname, hval in self.headers.items(multi=True):
             try:
                 field = hf_map[hname]
             except KeyError:
-                ret[hname] = hval  # TODO: default serialize/encode?
+                ret.add(hname, hval)  # TODO: default serialize/encode?
             else:
-                ret[hname] = field.to_bytes(hval)
+                ret.add(hname, field.to_bytes(hval))
         return ret
 
     @classmethod
