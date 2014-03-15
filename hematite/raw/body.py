@@ -14,6 +14,10 @@ class InvalidChunk(BodyReadException):
 
 class Body(object):
     def __init__(self, io_obj, headers):
+        # TODO: required keys should be called out explicitly. Instead
+        # of accepting a whole headers object, have a
+        # from_headers(io_obj, headers) classmethod
+
         self.io_obj = io_obj
 
         # TODO: better handling for case sensitivity/preservation
