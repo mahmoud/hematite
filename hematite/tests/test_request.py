@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime
 from hematite.request import Request
 
 
@@ -11,6 +12,27 @@ def test_request_basic():
     print repr(req_str)
     assert 'Host:' in req_str
     #import pdb;pdb.set_trace()
+
+
+def test_request_rt():
+    raw_req_lines = ('GET /wiki/Main_Page HTTP/1.1',
+                     'Host: en.wikipedia.org',
+                     'Connection: keep-alive',
+                     'Cache-Control: max-age=0',
+                     'Accept: text/html,application/xhtml+xml,*/*;q=0.9',
+                     'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
+                     'Accept-Encoding: gzip,deflate',
+                     'Accept-Language: en-US,en;q=0.8',
+                     'If-Modified-Since: Sat, 15 Mar 2014 18:41:58 GMT',
+                     '', '')  # required to get trailing CRLF
+    raw_req_bytes = '\r\n'.join(raw_req_lines)
+    req = Request.from_bytes(raw_req_bytes)
+    assert req.host == 'en.wikipedia.org'
+    assert req.path == '/wiki/Main_Page'
+    assert req.version == (1, 1)
+    assert req.if_modified_since < datetime.utcnow()
+    rt_req_bytes = req.to_bytes()
+    assert raw_req_bytes == rt_req_bytes
 
 
 def test_path_field():

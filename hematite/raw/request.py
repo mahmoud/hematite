@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from io import BytesIO
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper
+from hematite.raw.headers import RequestLine, Headers
+from hematite.raw.body import Body
 
 
 class RawRequest(namedtuple('RawRequest', 'request_line, headers, body'),
@@ -16,5 +19,9 @@ class RawRequest(namedtuple('RawRequest', 'request_line, headers, body'),
         return '\r\n'.join(parts)
 
     @classmethod
-    def from_bytes(self, bytestr):
-        pass
+    def from_bytes(cls, bytestr):
+        bio = BytesIO(bytestr)
+        req_line = RequestLine.from_io(bio)
+        headers = Headers.from_io(bio)
+        body = Body(bio, headers)
+        return cls(req_line, headers, body)

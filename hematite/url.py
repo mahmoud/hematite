@@ -256,7 +256,7 @@ class URL(BytestringHelper):
         return self.encode()
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.encode())
+        return '%s(%r)' % (self.__class__.__name__, self.to_text())
 
 
 def url2parseresult(url_str):

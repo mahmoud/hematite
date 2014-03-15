@@ -52,9 +52,11 @@ class HTTPHeaderField(Field):
         self.attr_name = name  # used for error messages
         self.http_name = kw.pop('http_name', http_header_case(name))
         try:
-            self.__set__ = kw.pop('set_value')
+            self.__set__ = kw.pop('set_value').__get__(self, type(self))
         except KeyError:
             pass
+        except TypeError:
+            raise TypeError('expected unbound function for set_value')
         self.native_type = kw.pop('native_type', unicode)
 
         # TODO: better defaults
@@ -85,6 +87,7 @@ class HTTPHeaderField(Field):
             # TODO: include trunc'd value in addition to input type name
             raise TypeError('expected bytes or %s for %s, not %s'
                             % (ntn, self.attr_name, vtn))
+        # TODO: if obj.headers.get(self.http_name) != value:
         obj.headers[self.http_name] = value
 
     __set__ = _default_set_value
@@ -204,7 +207,6 @@ class URLField(Field):
         return obj._url.to_text()  # unicode for now
 
     def __set__(self, obj, value):
-        # TODO: None handling?
         if isinstance(value, URL):
             url_obj = value
         else:
@@ -213,7 +215,6 @@ class URLField(Field):
             # TODO: is modifying the url like this kosher?
             url_obj.path = '/'
         obj._url = url_obj
-        obj.host = url_obj.http_request_host
 
 
 url_field = URLField()
@@ -223,11 +224,12 @@ def _set_host_value(self, obj, value):
     self._default_set_value(obj, value)
     cur_val = obj.headers.get('Host')
     url = obj._url
+
     if not cur_val:
         family, host, port = None, '', ''
     else:
         family, host, port = parse_hostinfo(cur_val)
-        url.host, url.port, url.family = family, host, port
+        url.family, url.host, url.port = family, host, port
 
 
 host = HTTPHeaderField('host',

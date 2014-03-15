@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from url import URL
-
-from raw.request import RawRequest
-from raw.headers import RequestLine, Headers, HTTPVersion
+from hematite.raw.request import RawRequest
+from hematite.raw.headers import RequestLine, Headers, HTTPVersion
 
 from hematite import serdes
+from hematite.url import parse_hostinfo
 from hematite.fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
 
 DEFAULT_METHOD = 'GET'
@@ -25,11 +24,21 @@ class Request(object):
         self.version = kw.pop('version', DEFAULT_VERSION)
 
         self._body = kw.pop('body', None)
-        self._raw_url = url or URL('/')
+        self._raw_url = url or None
         self._raw_headers = kw.pop('headers', Headers())
 
+        self.url = self._raw_url
         self._init_headers()
-        self._init_url()
+
+        # TODO: maybe should defer this
+        _url = self._url
+        host_header = self.headers.get('Host')
+        if not _url.host and host_header:
+            if host_header:
+                family, host, port = parse_hostinfo(host_header)
+                _url.family, _url.host, _url.port = family, host, port
+        if not host_header and _url.host:
+            self.host = _url.http_request_host
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)
@@ -37,11 +46,6 @@ class Request(object):
     locals().update([(hf.attr_name, hf) for hf in REQUEST_FIELDS])
     _init_headers = serdes._init_headers
     _get_header_dict = serdes._get_headers
-
-    def _init_url(self):
-        # TODO: request line overrides Host header
-        # but if request line doesn't have abspath, have to merge the two
-        self.url = self._raw_url
 
     @classmethod
     def from_raw_request(cls, raw_req):
@@ -63,7 +67,7 @@ class Request(object):
     @classmethod
     def from_bytes(cls, bytestr):
         rr = RawRequest.from_bytes(bytestr)
-        return cls.from_raw_response(rr)
+        return cls.from_raw_request(rr)
 
     def to_bytes(self):
         raw_req = self.to_raw_request()
