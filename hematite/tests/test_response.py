@@ -69,3 +69,12 @@ def test_invalid_expires():
     assert resp.expires < datetime.datetime.utcnow()
     resp_str = resp.to_bytes()
     assert 'Expires' in resp_str
+
+
+def test_status_reason():
+    resp = Response(200)
+    assert resp.reason == 'OK'
+    resp = Response(500)
+    assert resp.reason == 'Internal Server Error'
+    resp = Response(9000)
+    assert resp.reason == ''

@@ -5,15 +5,18 @@ from hematite.raw.response import RawResponse
 
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
+from hematite.constants import CODE_REASONS
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
 
 class Response(object):
     # TODO: from_request convenience method?
-    def __init__(self, status_code, body, **kw):
-        self.status_code = status_code
-        self.reason = kw.pop('reason', '')  # TODO look up
+    def __init__(self, status_code, body=None, **kw):
+        self.status_code = int(status_code)
+        self.reason = kw.pop('reason', None)
+        if self.reason is None:
+            self.reason = CODE_REASONS.get(self.status_code, '')
         self._raw_headers = kw.pop('headers', Headers())  # TODO
         self.version = kw.pop('version', _DEFAULT_VERSION)
 

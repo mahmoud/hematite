@@ -2,15 +2,12 @@
 
 ## Refactors
 
-- BytestringHelper class decorator
-- Get off of namedtuple as base class for parser components
-- Switch off new-style formatting (up to 2x slower)
+- Get off of namedtuple as base class for parser components?
 
 ## Features
 
-- Headers: most fundamental parsers done, but matching serialization is TBD
+- status_code, version, and method fields (reason field?)
 - CacheControl and WWWAuthenticate types
-
 - Composable URL
 
 
