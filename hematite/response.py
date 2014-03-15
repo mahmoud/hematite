@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from io import BytesIO
-
 from raw.headers import StatusLine, Headers, HTTPVersion
 from raw.response import RawResponse
 
-from headers import CAP_MAP, default_header_to_bytes, default_header_from_bytes
+import headers
 from fields import RESPONSE_FIELDS
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -21,44 +19,15 @@ class Response(object):
 
         self._body = body
 
-        self._load_headers()
+        self._init_headers()
         # TODO: lots
         return
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf) for hf in RESPONSE_FIELDS])
     locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
-
-    def _load_headers(self):
-        self.headers = Headers()
-        # plenty of ways to arrange this
-        hf_map = self._header_field_map
-        for hname, hval in self._raw_headers.items(multi=True):
-            # TODO: folding
-            try:
-                norm_hname = CAP_MAP[hname.lower()]
-                field = hf_map[norm_hname]
-            except KeyError:
-                # preserves insertion order and duplicates
-                self.headers.add(hname, default_header_from_bytes(hval))
-            else:
-                field.__set__(self, hval)
-
-    def _get_header_dict(self, drop_empty=True):
-        # TODO: option for unserialized?
-        ret = Headers()
-        hf_map = self._header_field_map
-        for hname, hval in self.headers.items(multi=True):
-            if drop_empty and hval is None or hval == '':
-                # TODO: gonna need a field.is_empty or something
-                continue
-            try:
-                field = hf_map[hname]
-            except KeyError:
-                ret.add(hname, default_header_to_bytes(hval))
-            else:
-                ret.add(hname, field.to_bytes(hval))
-        return ret
+    _init_headers = headers._init_headers
+    _get_header_dict = headers._get_headers
 
     @classmethod
     def from_raw_response(cls, raw_resp):

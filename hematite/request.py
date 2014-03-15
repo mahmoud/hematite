@@ -44,14 +44,13 @@ class Request(object):
     _header_field_map = dict([(hf.http_name, hf)
                               for hf in HTTP_REQUEST_FIELDS])
     locals().update([(hf.attr_name, hf) for hf in REQUEST_FIELDS])
+    _init_headers = headers._init_headers
+    _get_header_dict = headers._get_headers
 
     def _init_url(self):
         # TODO: request line overrides Host header
         # but if request line doesn't have abspath, have to merge the two
         self.url = self._raw_url
-
-    _init_headers = headers._load_headers
-    _get_header_dict = headers._get_header_dict
 
     @classmethod
     def from_raw_request(cls, raw_req):

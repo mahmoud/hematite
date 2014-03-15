@@ -11,8 +11,42 @@ from constants import CAP_MAP, http_header_case
 from hematite.raw.headers import Headers
 
 
-# TODO: lazy loading headers: good or bad?
-# TODO: class decorator to make a map of headerfields, etc. for Request/Response
+# these two functions are shared by Request and Response. Could use a
+# metaclass maybe, but we'll see.
+
+def _init_headers(self):
+    self.headers = Headers()
+    # plenty of ways to arrange this
+    hf_map = self._header_field_map
+    for hname, hval in self._raw_headers.items(multi=True):
+        # TODO: folding
+        try:
+            norm_hname = CAP_MAP[hname.lower()]
+            field = hf_map[norm_hname]
+        except KeyError:
+            # preserves insertion order and duplicates
+            self.headers.add(hname, default_header_from_bytes(hval))
+        else:
+            field.__set__(self, hval)
+
+
+def _get_headers(self, drop_empty=True):
+    # TODO: option for unserialized?
+    ret = Headers()
+    hf_map = self._header_field_map
+    for hname, hval in self.headers.items(multi=True):
+        if drop_empty and hval is None or hval == '':
+            # TODO: gonna need a field.is_empty or something
+            continue
+        try:
+            field = hf_map[hname]
+        except KeyError:
+            ret.add(hname, default_header_to_bytes(hval))
+        else:
+            ret.add(hname, field.to_bytes(hval))
+    return ret
+
+###
 
 
 class HTTPHeaderField(object):
@@ -399,36 +433,6 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
 
 ##
 
-def _load_headers(self):
-    self.headers = Headers()
-    # plenty of ways to arrange this
-    hf_map = self._header_field_map
-    for hname, hval in self._raw_headers.items(multi=True):
-        # TODO: folding
-        try:
-            norm_hname = CAP_MAP[hname.lower()]
-            field = hf_map[norm_hname]
-        except KeyError:
-            # preserves insertion order and duplicates
-            self.headers.add(hname, default_header_from_bytes(hval))
-        else:
-            field.__set__(self, hval)
-
-def _get_header_dict(self, drop_empty=True):
-    # TODO: option for unserialized?
-    ret = Headers()
-    hf_map = self._header_field_map
-    for hname, hval in self.headers.items(multi=True):
-        if drop_empty and hval is None or hval == '':
-            # TODO: gonna need a field.is_empty or something
-            continue
-        try:
-            field = hf_map[hname]
-        except KeyError:
-            ret.add(hname, default_header_to_bytes(hval))
-        else:
-            ret.add(hname, field.to_bytes(hval))
-    return ret
 
 ##
 
