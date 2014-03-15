@@ -27,7 +27,8 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    REQUEST_FIELDS = HTTP_REQUEST_FIELDS + [url_field]
+    URL_REQUEST_FIELDS = [url_field, url_path_field]
+    REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
 
 
 class Field(object):
@@ -39,7 +40,6 @@ class Field(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s("%s")' % (cn, self.attr_name)
-
 
 
 class HTTPHeaderField(Field):
@@ -212,8 +212,22 @@ host = HTTPHeaderField('host',
                        set_value=_set_host_value)
 
 
+class URLPathField(Field):
+    attr_name = 'path'
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._url.path
+
+    def __set__(self, obj, value):
+        # TODO: how to handle stuff like OPTIONS *
+        if value is None or value == '':
+            value = '/'
+        obj._url.path = value  # TODO: type checking/parsing?
 
 
+url_path_field = URLPathField()
 
 _init_field_lists()
 del _init_field_lists

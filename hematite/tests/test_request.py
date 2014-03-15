@@ -11,3 +11,10 @@ def test_request_basic():
     print repr(req_str)
     assert 'Host:' in req_str
     #import pdb;pdb.set_trace()
+
+
+def test_req_path():
+    req = Request(url='http://blog.hatnote.com/post/74043483777')
+    assert req.path == '/post/74043483777'
+    req.path = None
+    assert req.path == '/'
