@@ -13,8 +13,16 @@ def test_request_basic():
     #import pdb;pdb.set_trace()
 
 
-def test_req_path():
+def test_req_path_field():
     req = Request(url='http://blog.hatnote.com/post/74043483777')
     assert req.path == '/post/74043483777'
     req.path = None
     assert req.path == '/'
+
+
+def test_req_port_field():
+    req = Request(url='http://hatnote.com:9000/')
+    assert req.port == 9000
+    req.port = None
+    assert req.port == ''
+    assert req.url == 'http://hatnote.com/'

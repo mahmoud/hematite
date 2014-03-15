@@ -27,7 +27,7 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    URL_REQUEST_FIELDS = [url_field, url_path_field]
+    URL_REQUEST_FIELDS = [url_field, url_path_field, url_port_field]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
 
 
@@ -189,6 +189,7 @@ class URLField(Field):
         else:
             url_obj = URL(value)
         if not url_obj.path:
+            # TODO: is modifying the url like this kosher?
             url_obj.path = '/'
         obj._url = url_obj
         obj.host = url_obj.http_request_host
@@ -228,6 +229,26 @@ class URLPathField(Field):
 
 
 url_path_field = URLPathField()
+
+
+class URLPortField(Field):
+    attr_name = 'port'
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._url.port
+
+    def __set__(self, obj, value):
+        # TODO: how to handle stuff like OPTIONS *
+        if value is None or value == '':
+            value = ''
+        else:
+            value = int(value)
+        obj._url.port = value
+
+
+url_port_field = URLPortField()
 
 _init_field_lists()
 del _init_field_lists
