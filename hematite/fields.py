@@ -12,7 +12,9 @@ from hematite.serdes import (http_date_to_bytes,
                              items_header_to_bytes,
                              items_header_from_bytes,
                              accept_header_to_bytes,
-                             accept_header_from_bytes)
+                             accept_header_from_bytes,
+                             default_header_to_bytes,
+                             default_header_from_bytes)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -59,9 +61,8 @@ class HTTPHeaderField(Field):
             raise TypeError('expected unbound function for set_value')
         self.native_type = kw.pop('native_type', unicode)
 
-        # TODO: better defaults
-        self.from_bytes = kw.pop('from_bytes', lambda val: val)
-        self.to_bytes = kw.pop('to_bytes', lambda val: val)
+        self.from_bytes = kw.pop('from_bytes', default_header_from_bytes)
+        self.to_bytes = kw.pop('to_bytes', default_header_to_bytes)
         if kw:
             raise TypeError('unexpected keyword arguments: %r' % kw)
         # TODO: documentation field
@@ -148,6 +149,8 @@ cache_control = HTTPHeaderField('cache_control',
                                 to_bytes=items_header_to_bytes,
                                 native_type=list)
 
+user_agent = HTTPHeaderField('user_agent')
+connection = HTTPHeaderField('connection')
 
 accept = HTTPHeaderField('accept',
                          from_bytes=accept_header_from_bytes,

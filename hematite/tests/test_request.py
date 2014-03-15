@@ -3,6 +3,18 @@
 from datetime import datetime
 from hematite.request import Request
 
+_GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
+                  'Host: en.wikipedia.org',
+                  'Connection: keep-alive',
+                  'Cache-Control: max-age=0',
+                  'Accept: text/html,application/xhtml+xml,*/*;q=0.9',
+                  'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
+                  'Accept-Encoding: gzip,deflate',
+                  'Accept-Language: en-US,en;q=0.8',
+                  'If-Modified-Since: Sat, 15 Mar 2014 18:41:58 GMT',
+                  '', '')  # required to get trailing CRLF
+GET_REQ_BYTES = '\r\n'.join(_GET_REQ_LINES)
+
 
 def test_request_basic():
     req = Request(url='//google.com')
@@ -15,24 +27,29 @@ def test_request_basic():
 
 
 def test_request_rt():
-    raw_req_lines = ('GET /wiki/Main_Page HTTP/1.1',
-                     'Host: en.wikipedia.org',
-                     'Connection: keep-alive',
-                     'Cache-Control: max-age=0',
-                     'Accept: text/html,application/xhtml+xml,*/*;q=0.9',
-                     'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
-                     'Accept-Encoding: gzip,deflate',
-                     'Accept-Language: en-US,en;q=0.8',
-                     'If-Modified-Since: Sat, 15 Mar 2014 18:41:58 GMT',
-                     '', '')  # required to get trailing CRLF
-    raw_req_bytes = '\r\n'.join(raw_req_lines)
-    req = Request.from_bytes(raw_req_bytes)
+    req = Request.from_bytes(GET_REQ_BYTES)
     assert req.host == 'en.wikipedia.org'
     assert req.path == '/wiki/Main_Page'
     assert req.version == (1, 1)
     assert req.if_modified_since < datetime.utcnow()
     rt_req_bytes = req.to_bytes()
-    assert raw_req_bytes == rt_req_bytes
+    assert GET_REQ_BYTES == rt_req_bytes
+
+
+def test_request_construct():
+    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
+    req.connection = 'keep-alive'
+    req.cache_control = [('max-age', 0)]
+    req.accept = [('text/html', 1.0),
+                  ('application/xhtml+xml', 1.0),
+                  ('*/*', 0.9)]
+    req.user_agent = 'Mozilla/3000.0 (X11; Linux x86_64)'
+    req.accept_encoding = [('gzip', 1.0), ('deflate', 1.0)]
+    req.accept_language = [('en-US', 1.0), ('en', 0.8)]
+    req.if_modified_since = datetime(2014, 3, 15, 18, 41, 58)
+    req_bytes = req.to_bytes()
+
+    assert GET_REQ_BYTES == req_bytes
 
 
 def test_path_field():
