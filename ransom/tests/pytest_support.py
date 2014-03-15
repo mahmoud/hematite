@@ -8,7 +8,7 @@ def file_fixture(request):
     test_module, _ = os.path.splitext(filename)
     fixture_path = os.path.join(dirpath, 'fixtures', test_module)
 
-    def file_fixture(fn):
+    def file_fixture(fn, open=open):
         return open(os.path.join(fixture_path, fn))
 
     return file_fixture

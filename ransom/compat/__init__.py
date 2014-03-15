@@ -6,6 +6,7 @@ is_py3 = sys.version_info[0] == 3
 
 from collections import OrderedDict  # TODO
 from dictutils import OrderedMultiDict
+from io import StringIO
 
 
 def make_BytestringHelperMeta(target):
@@ -24,7 +25,7 @@ if is_py2:
     from urllib2 import parse_http_list
     import cookielib
     from Cookie import Morsel
-    from StringIO import StringIO
+    from ransom.compat._py2_socketio import SocketIO, bio_from_socket
 
     BytestringHelperMeta = make_BytestringHelperMeta(target='__str__')
 
@@ -36,7 +37,9 @@ elif is_py3:
     from urllib.request import parse_http_list
     from http import cookiejar as cookielib
     from http.cookies import Morsel
-    from io import StringIO
+    from socket import SocketIO, socket as _socket
+
+    bio_from_socket = _socket.makefile
 
     BytestringHelperMeta = make_BytestringHelperMeta(target='__bytes__')
 

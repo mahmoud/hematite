@@ -3,7 +3,8 @@ from collections import namedtuple
 from ransom.http_parser.ex import core
 from ransom.http_parser.ex import headers as h
 from ransom.http_parser.ex import body as b
-from ransom.compat import BytestringHelper
+from ransom.compat import BytestringHelper, bio_from_socket
+from ransom.constants import REASON_CODES
 
 
 # TODO: timeouts
@@ -14,61 +15,38 @@ class ResponseException(Exception):
 
 
 class RequestURITooLarge(ResponseException, core.OverlongRead):
-    status_code = h.StatusCode.REASON_CODES['Request-URI Too Large']
+    status_code = REASON_CODES['Request-URI Too Large']
 
 
 class Response(namedtuple('Response', 'status_line headers body'),
                BytestringHelper):
 
-    def to_bytes(self):
-        return b'{0!s}{1!s}\r\n'.format(self.status_line, self.headers)
+    def to_io(self, io_obj):
+        self.status_line.to_io(io_obj)
+        self.headers.to_io(io_obj)
+        io_obj.write(b'\r\n')
 
     @classmethod
-    def from_socket(cls, s):
-        # TODO: timeouts
-        try:
-            slandhlines = core._advance_until_lf(s)
-        except core.OverlongRead:
-            raise RequestURITooLarge
-
-        header_lines, status_line = h.StatusLine.from_bytes(slandhlines)
-        _, m = core.HAS_HEADERS_END(header_lines)
-
-        if not m:
-            try:
-                header_lines += core._advance_until_lflf(s)
-            except core.IncompleteRead:
-                msg = ('Could not find header terminator: '
-                       '{0}'.format(core._cut(header_lines)))
-                raise h.InvalidHeaders(msg)
-
-        body_start, headers = h.Headers.from_bytes(header_lines)
-
+    def from_io(cls, io_obj):
+        status_line = h.StatusLine.from_io(io_obj)
+        headers = h.Headers.from_io(io_obj)
         bcls = (b.ChunkEncodedBody
                 if cls._is_chunked(headers)
                 else b.IdentityEncodedBody)
 
-        return cls(status_line, headers, bcls(backlog=body_start,
-                                              sock=s,
-                                              headers=headers))
+        return cls(status_line, headers, bcls(io_obj, headers))
 
     @core._callable_staticmethod
     def _is_chunked(headers):
         # 4.4 #2
         try:
-            return headers['Transfer-Encoding'].lower() != 'identity'
+            return headers['transfer-encoding'].lower() != 'identity'
         except KeyError:
             return False
 
     @property
     def is_chunked(self):
         return self._is_chunked(self.headers)
-
-    @classmethod
-    def from_bytes(cls, bstr):
-        header_lines, status_line = h.StatusLine.from_bytes(bstr)
-        body_start, headers = h.Headers.from_bytes(header_lines)
-        return cls(status_line, headers, body_start)
 
 
 def test(addr, host, url):
@@ -81,7 +59,7 @@ def test(addr, host, url):
                                ('TE', 'chunked')]))
     req = reql + headers + '\r\n\r\n'
     c.sendall(req)
-    resp = Response.from_socket(c)
+    resp = Response.from_io(bio_from_socket(c, mode='rb'))
     if resp.is_chunked:
         body = []
         while True:
