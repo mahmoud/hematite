@@ -64,10 +64,12 @@ def istext(t):
 
 
 class HTTPException(Exception):
-
     def __init__(self, msg, raw=None):
         if raw:
-            msg += ': {0}'.format(_cut(raw))
+            try:
+                msg = ''.join([msg, ': ', _cut(raw)])
+            except:
+                pass
         super(HTTPException, self).__init__(msg)
 
 
@@ -84,8 +86,8 @@ class IncompleteRead(ReadException):
 
 
 def _advance_until_lf(sock, amt=1024, limit=MAXLINE):
-    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-        amt, limit)
+    # assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+    #     amt, limit)
     read_amt = 0
     buf = []
     while True:
@@ -101,8 +103,8 @@ def _advance_until_lf(sock, amt=1024, limit=MAXLINE):
 
 
 def _advance_until_lflf(sock, amt=1024, limit=MAXLINE):
-    assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-        amt, limit)
+    # assert amt < limit, "amt {0} should be lower than limit! {1}".format(
+    #     amt, limit)
     read_amt = 0
     buf = []
     prev = ''
