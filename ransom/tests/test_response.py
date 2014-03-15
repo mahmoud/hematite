@@ -3,7 +3,7 @@ from io import BytesIO
 from datetime import datetime
 
 from ransom.response import Response
-from ransom.http_parser.ex.response import Response as RawResponse
+from ransom.http_parser.ex.response import RawResponse
 
 
 def test_resp_raw_resp():

@@ -4,7 +4,8 @@
 from url import URL
 
 from http_parser.ex.headers import RequestLine, Headers, HTTPVersion
-from http_parser.ex.request import Request as RawRequest
+from http_parser.ex.request import RawRequest
+
 import headers
 from fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
 

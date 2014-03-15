@@ -1,3 +1,4 @@
+
 import socket
 from collections import namedtuple
 from ransom.http_parser.ex import core
@@ -18,7 +19,7 @@ class RequestURITooLarge(ResponseException, core.OverlongRead):
     status_code = REASON_CODES['Request-URI Too Large']
 
 
-class Response(namedtuple('Response', 'status_line headers body'),
+class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
                BytestringHelper):
 
     def to_io(self, io_obj):
@@ -59,7 +60,7 @@ def test(addr, host, url):
                                ('TE', 'chunked')]))
     req = reql + headers + '\r\n\r\n'
     c.sendall(req)
-    resp = Response.from_io(bio_from_socket(c, mode='rb'))
+    resp = RawResponse.from_io(bio_from_socket(c, mode='rb'))
     if resp.is_chunked:
         body = []
         while True:
@@ -71,6 +72,7 @@ def test(addr, host, url):
     else:
         body = resp.body.read()
     return resp, body
+
 
 if __name__ == '__main__':
     test(('localhost', 8080), host='localhost', url=h.URL('/'))

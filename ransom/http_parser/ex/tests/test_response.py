@@ -1,15 +1,16 @@
+
 import io
-from ransom.http_parser.ex import response as r
+from ransom.http_parser.ex.response import RawResponse
 
 
 def io_open(path):
     return io.open(path, mode='rb')
 
 
-def test_Response_from_bytes_with_google(file_fixture):
+def test_RawResponse_from_bytes_with_google(file_fixture):
 
     with file_fixture('google.txt', open=io_open) as f:
-        resp = r.Response.from_io(f)
+        resp = RawResponse.from_io(f)
 
         assert resp.status_line == ((1, 1), 301, 'Moved Permanently')
 
@@ -40,12 +41,12 @@ def test_Response_from_bytes_with_google(file_fixture):
         assert resp.body.read() == expected_body
 
 
-def test_Response_to_bytes(file_fixture):
+def test_RawResponse_to_bytes(file_fixture):
     with file_fixture('normalized_google_headers.txt',
                       open=io_open) as f:
         expected = io.BytesIO(f.read())
         actual = io.BytesIO()
         f.seek(0)
-        resp = r.Response.from_io(f)
+        resp = RawResponse.from_io(f)
         resp.to_io(actual)
         assert expected.getvalue() == actual.getvalue()
