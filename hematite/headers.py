@@ -5,9 +5,7 @@ import time
 import string
 from datetime import datetime, timedelta
 
-from constants import CAP_MAP, http_header_case
-
-
+from hematite.constants import CAP_MAP
 from hematite.raw.headers import Headers
 
 
@@ -47,58 +45,6 @@ def _get_headers(self, drop_empty=True):
     return ret
 
 ###
-
-
-class HTTPHeaderField(object):
-    def __init__(self, name, **kw):
-        assert name
-        assert name == name.lower()
-        self.attr_name = name  # used for error messages
-        self.http_name = kw.pop('http_name', http_header_case(name))
-        try:
-            self.__set__ = kw.pop('set_value')
-        except KeyError:
-            pass
-        self.native_type = kw.pop('native_type', unicode)
-
-        # TODO: better defaults
-        self.from_bytes = kw.pop('from_bytes', lambda val: val)
-        self.to_bytes = kw.pop('to_bytes', lambda val: val)
-        if kw:
-            raise TypeError('unexpected keyword arguments: %r' % kw)
-        # TODO: documentation field
-        # TODO: validate
-
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        try:
-            return obj.headers[self.http_name]
-        except KeyError:
-            raise AttributeError(self.attr_name)
-
-    def _default_set_value(self, obj, value):
-        # TODO: special handling for None? text/unicode type? (i.e, not bytes)
-        if isinstance(value, str):
-            value = self.from_bytes(value)
-        elif value is None:
-            pass
-        elif not isinstance(value, self.native_type):
-            vtn = value.__class__.__name__
-            ntn = self.native_type.__name__
-            # TODO: include trunc'd value in addition to input type name
-            raise TypeError('expected bytes or %s for %s, not %s'
-                            % (ntn, self.attr_name, vtn))
-        obj.headers[self.http_name] = value
-
-    __set__ = _default_set_value
-
-    def __delete__(self, obj):
-        raise AttributeError("can't delete field '%s'" % self.attr_name)
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s("%s")' % (cn, self.attr_name)
 
 
 _TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
@@ -428,13 +374,6 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
               'MST': -700, 'MDT': -600,  # Mountain
               'PST': -800, 'PDT': -700   # Pacific
               }
-
-
-
-##
-
-
-##
 
 
 def _test_accept():

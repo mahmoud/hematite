@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
-from constants import REQUEST_HEADERS, RESPONSE_HEADERS
-
-from headers import (HTTPHeaderField,
-                     http_date_to_bytes,
-                     http_date_from_bytes,
-                     list_header_to_bytes,
-                     list_header_from_bytes,
-                     items_header_to_bytes,
-                     items_header_from_bytes)
-from url import URL, parse_hostinfo
-
 from datetime import datetime
+
+from hematite.constants import (REQUEST_HEADERS,
+                                RESPONSE_HEADERS,
+                                http_header_case)
+from hematite.headers import (http_date_to_bytes,
+                              http_date_from_bytes,
+                              list_header_to_bytes,
+                              list_header_from_bytes,
+                              items_header_to_bytes,
+                              items_header_from_bytes)
+from hematite.url import URL, parse_hostinfo
 
 ALL_FIELDS = None
 RESPONSE_FIELDS = None
@@ -28,6 +28,58 @@ def _init_field_lists():
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + [url_field]
+
+
+class HTTPHeaderField(object):
+    def __init__(self, name, **kw):
+        assert name
+        assert name == name.lower()
+        self.attr_name = name  # used for error messages
+        self.http_name = kw.pop('http_name', http_header_case(name))
+        try:
+            self.__set__ = kw.pop('set_value')
+        except KeyError:
+            pass
+        self.native_type = kw.pop('native_type', unicode)
+
+        # TODO: better defaults
+        self.from_bytes = kw.pop('from_bytes', lambda val: val)
+        self.to_bytes = kw.pop('to_bytes', lambda val: val)
+        if kw:
+            raise TypeError('unexpected keyword arguments: %r' % kw)
+        # TODO: documentation field
+        # TODO: validate
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        try:
+            return obj.headers[self.http_name]
+        except KeyError:
+            raise AttributeError(self.attr_name)
+
+    def _default_set_value(self, obj, value):
+        # TODO: special handling for None? text/unicode type? (i.e, not bytes)
+        if isinstance(value, str):
+            value = self.from_bytes(value)
+        elif value is None:
+            pass
+        elif not isinstance(value, self.native_type):
+            vtn = value.__class__.__name__
+            ntn = self.native_type.__name__
+            # TODO: include trunc'd value in addition to input type name
+            raise TypeError('expected bytes or %s for %s, not %s'
+                            % (ntn, self.attr_name, vtn))
+        obj.headers[self.http_name] = value
+
+    __set__ = _default_set_value
+
+    def __delete__(self, obj):
+        raise AttributeError("can't delete field '%s'" % self.attr_name)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s("%s")' % (cn, self.attr_name)
 
 
 date = HTTPHeaderField('date',
