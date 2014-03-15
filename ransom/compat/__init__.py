@@ -4,8 +4,7 @@ import sys
 is_py2 = sys.version_info[0] == 2
 is_py3 = sys.version_info[0] == 3
 
-from collections import OrderedDict  # TODO
-from dictutils import OrderedMultiDict
+from dictutils import OrderedMultiDict, OMD
 from io import StringIO
 
 
