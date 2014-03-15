@@ -46,6 +46,8 @@ class Request(object):
     locals().update([(hf.attr_name, hf) for hf in REQUEST_FIELDS])
 
     def _init_url(self):
+        # TODO: request line overrides Host header
+        # but if request line doesn't have abspath, have to merge the two
         self.url = self._raw_url
 
     _init_headers = headers._load_headers

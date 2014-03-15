@@ -7,16 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 
-from constants import CAP_MAP
-
-
-def http_header_case(text):
-    text = text.replace('_', '-').lower()
-    try:
-        return CAP_MAP[text]
-    except KeyError:
-        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
-        return '-'.join([p.capitalize() for p in text.split('-')])
+from constants import CAP_MAP, http_header_case
 
 
 # TODO: lazy loading headers: good or bad?

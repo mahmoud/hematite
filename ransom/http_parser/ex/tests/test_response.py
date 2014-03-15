@@ -13,17 +13,17 @@ def test_Response_from_bytes_with_google(file_fixture):
 
         assert resp.status_line == ((1, 1), 301, 'Moved Permanently')
 
-        expected_headers = [('location', 'http://www.google.com/'),
-                            ('content-type', 'text/html; charset=UTF-8'),
-                            ('date', 'Sat, 01 Mar 2014 23:10:17 GMT'),
-                            ('expires', 'Mon, 31 Mar 2014 23:10:17 GMT'),
-                            ('cache-control', 'public, max-age=2592000'),
-                            ('server', 'gws'),
-                            ('content-length', '219'),
-                            ('x-xss-protection', '1; mode=block'),
-                            ('x-frame-options', 'SAMEORIGIN'),
-                            ('alternate-protocol', '80:quic'),
-                            ('connection', 'close')]
+        expected_headers = [('Location', 'http://www.google.com/'),
+                            ('Content-Type', 'text/html; charset=UTF-8'),
+                            ('Date', 'Sat, 01 Mar 2014 23:10:17 GMT'),
+                            ('Expires', 'Mon, 31 Mar 2014 23:10:17 GMT'),
+                            ('Cache-Control', 'public, max-age=2592000'),
+                            ('Server', 'gws'),
+                            ('Content-Length', '219'),
+                            ('X-XSS-Protection', '1; mode=block'),
+                            ('X-Frame-Options', 'SAMEORIGIN'),
+                            ('Alternate-Protocol', '80:quic'),
+                            ('Connection', 'close')]
 
         assert resp.headers.items() == expected_headers
 
@@ -46,5 +46,6 @@ def test_Response_to_bytes(file_fixture):
         expected = io.BytesIO(f.read())
         actual = io.BytesIO()
         f.seek(0)
-        r.Response.from_io(f).to_io(actual)
+        resp = r.Response.from_io(f)
+        resp.to_io(actual)
         assert expected.getvalue() == actual.getvalue()

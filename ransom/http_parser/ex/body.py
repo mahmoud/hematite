@@ -1,23 +1,7 @@
-from ransom.http_parser.ex import core
-from ransom.compat import SocketIO
+
 import re
-import socket
-import sys
 
-
-def content_length(headers):
-    cl = headers.get('content-length')
-    if cl is None:
-        return None
-    if not cl.isdigit():
-        # TODO: this is an error per the RFC
-        return None
-    return int(cl)
-
-
-def connection_close(headers):
-    conn = headers.get('connection', '')
-    return conn.lower() == 'close'
+from ransom.http_parser.ex import core
 
 
 class BodyReadException(core.HTTPException):
@@ -31,8 +15,21 @@ class InvalidChunk(BodyReadException):
 class Body(object):
     def __init__(self, io_obj, headers):
         self.io_obj = io_obj
-        self.content_length = content_length(headers)
-        self.connection_close = connection_close(headers)
+
+        # TODO: better handling for case sensitivity/preservation
+        norm_headers = dict([(k.lower(), v) for k, v in headers.items()])
+
+        try:
+            self.content_length = int(norm_headers['content-length'])
+        except:
+            self.content_length = None
+
+        try:
+            conn_close = norm_headers['connection'].lower() == 'close'
+        except:
+            conn_close = False
+        self.connection_close = conn_close
+
         self.read_amt = 0
         self.closed = False
         if not (self.content_length or self.connection_close):

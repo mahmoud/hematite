@@ -1,11 +1,14 @@
 # TODO: byte strings have no .format in python3.3
+
+import re
 from collections import namedtuple
 from ransom.compat import BytestringHelper
 from ransom.compat import OrderedMultiDict as OMD
 import ransom.http_parser.ex.core as core
-from ransom.constants import CODE_REASONS, REASON_CODES
+from ransom.constants import CODE_REASONS, http_header_case
 from ransom.url import URL, _ABS_RE
-import re
+
+# TODO: maintain case
 
 
 class HTTPParseException(core.HTTPException):
@@ -165,10 +168,12 @@ class Headers(BytestringHelper, OMD):
     ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
                                                          set(core._CRLF)))
                                 + ']')
+
     def to_bytes(self):
-        return (b'\r\n'.join(b': '.join([bytes(k), bytes(v)])
-                             for k, v in self.items(multi=True))
-                + b'\r\n')       # trailing CRLF is necessary
+        items = self.items(multi=True)
+        lines = [b': '.join([bytes(k), bytes(v)]) for k, v in items]
+        lines.append(b'')  # trailing CRLF is required
+        return b'\r\n'.join(lines)
 
     @classmethod
     def from_io(cls, io_obj):
@@ -196,7 +201,7 @@ class Headers(BytestringHelper, OMD):
                 continue
 
             k, _, v = line.partition(':')
-            k, v = k.lower(), v.strip()
+            k, v = k.strip(), v.strip()
             if not core.TOKEN.match(k):
                 raise InvalidHeaders('Invalid field name', k)
 

@@ -16,6 +16,16 @@ def _init_headers():
     return
 
 
+def http_header_case(text):
+    # TODO: integrate into CAP_MAP default dict for caching?
+    text = text.replace('_', '-').lower()
+    try:
+        return CAP_MAP[text]
+    except KeyError:
+        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
+        return '-'.join([p.capitalize() for p in text.split('-')])
+
+
 GENERAL_HEADERS = ['Cache-Control',
                    'Connection',
                    'Date',
