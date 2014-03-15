@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from raw.headers import StatusLine, Headers, HTTPVersion
-from raw.response import RawResponse
+from hematite.raw.headers import StatusLine, Headers, HTTPVersion
+from hematite.raw.response import RawResponse
 
-import headers
-from fields import RESPONSE_FIELDS
+from hematite import serdes
+from hematite.fields import RESPONSE_FIELDS
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -26,8 +26,8 @@ class Response(object):
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf) for hf in RESPONSE_FIELDS])
     locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
-    _init_headers = headers._init_headers
-    _get_header_dict = headers._get_headers
+    _init_headers = serdes._init_headers
+    _get_header_dict = serdes._get_headers
 
     @classmethod
     def from_raw_response(cls, raw_resp):

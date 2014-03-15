@@ -5,8 +5,8 @@ from url import URL
 from raw.request import RawRequest
 from raw.headers import RequestLine, Headers, HTTPVersion
 
-import headers
-from fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
+from hematite import serdes
+from hematite.fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
 
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -30,22 +30,13 @@ class Request(object):
 
         self._init_headers()
         self._init_url()
-        """
-        host_header = headers.pop('Host', '')
-        f, h, p = parse_hostinfo(host_header)
-        if not self.url.host:
-            # Request-line URL overrides Host header
-            self.url.family, self.url.host, self.url.port = f, h, p
-        if not self.url.scheme:
-            self.url.scheme = DEFAULT_SCHEME
-        """
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)
                               for hf in HTTP_REQUEST_FIELDS])
     locals().update([(hf.attr_name, hf) for hf in REQUEST_FIELDS])
-    _init_headers = headers._init_headers
-    _get_header_dict = headers._get_headers
+    _init_headers = serdes._init_headers
+    _get_header_dict = serdes._get_headers
 
     def _init_url(self):
         # TODO: request line overrides Host header

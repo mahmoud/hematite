@@ -5,12 +5,12 @@ from datetime import datetime
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
                                 http_header_case)
-from hematite.headers import (http_date_to_bytes,
-                              http_date_from_bytes,
-                              list_header_to_bytes,
-                              list_header_from_bytes,
-                              items_header_to_bytes,
-                              items_header_from_bytes)
+from hematite.serdes import (http_date_to_bytes,
+                             http_date_from_bytes,
+                             list_header_to_bytes,
+                             list_header_from_bytes,
+                             items_header_to_bytes,
+                             items_header_from_bytes)
 from hematite.url import URL, parse_hostinfo
 
 ALL_FIELDS = None
