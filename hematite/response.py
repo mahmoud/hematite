@@ -49,12 +49,21 @@ class Response(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        rr = RawResponse.from_bytes(bytestr)
-        return cls.from_raw_response(rr)
+        raw_resp = RawResponse.from_bytes(bytestr)
+        return cls.from_raw_response(raw_resp)
 
     def to_bytes(self):
-        rr = self.to_raw_response()
-        return rr.to_bytes()
+        raw_resp = self.to_raw_response()
+        return raw_resp.to_bytes()
+
+    @classmethod
+    def from_io(cls, io_obj):
+        raw_resp = RawResponse.from_io(io_obj)
+        return cls.from_raw_response(raw_resp)
+
+    def to_io(self, io_obj):
+        raw_resp = self.to_raw_response()
+        return raw_resp.to_io(raw_resp)
 
     def validate(self):
         pass
