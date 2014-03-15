@@ -11,7 +11,7 @@ from hematite.serdes import (http_date_to_bytes,
                              list_header_from_bytes,
                              items_header_to_bytes,
                              items_header_from_bytes)
-from hematite.url import URL, parse_hostinfo
+from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
 RESPONSE_FIELDS = None
@@ -27,7 +27,8 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    URL_REQUEST_FIELDS = [url_field, url_path_field, url_port_field]
+    URL_REQUEST_FIELDS = [url_field, url_path_field, url_port_field,
+                          url_args_field, url_query_string_field]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
 
 
@@ -249,6 +250,48 @@ class URLPortField(Field):
 
 
 url_port_field = URLPortField()
+
+
+class URLArgsField(Field):
+    attr_name = 'args'
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._url.args
+
+    def __set__(self, obj, value):
+        if value is None:
+            obj._url.args.clear()
+        elif not isinstance(value, QueryArgDict):
+            raise TypeError('expected QueryArgDict, not %r' % type(value))
+        else:
+            obj._url.args = value
+        return
+
+
+url_args_field = URLArgsField()
+
+
+class URLQueryStringField(Field):
+    attr_name = 'query_string'
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._url.query_string
+
+    def __set__(self, obj, value):
+        if value is None:
+            obj._url.args.clear()
+        elif not isinstance(value, unicode):  # allow bytestrings?
+            raise TypeError('expected unicode, not %r' % type(value))
+        else:
+            obj._url.args = QueryArgDict.from_string(value)
+
+
+url_query_string_field = URLQueryStringField()
+
 
 _init_field_lists()
 del _init_field_lists

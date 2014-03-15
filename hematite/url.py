@@ -168,6 +168,7 @@ def requote(url):
 
 class QueryArgDict(OrderedMultiDict):
     # TODO: caching
+    # TODO: self.update_extend_from_string()?
 
     @classmethod
     def from_string(cls, query_string):
