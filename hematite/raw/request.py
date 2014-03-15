@@ -9,9 +9,9 @@ class RawRequest(namedtuple('RawRequest', 'request_line, headers, body'),
                  BytestringHelper):
 
     def to_bytes(self):
-        parts = [str(self.request_line)]
+        parts = [self.request_line.to_bytes()]
         if self.headers:
-            parts.append(str(self.headers))
+            parts.append(self.headers.to_bytes())
         parts.append('')
         return '\r\n'.join(parts)
 

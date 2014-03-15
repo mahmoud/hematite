@@ -77,15 +77,12 @@ class Response(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        bio = BytesIO(bytestr)
-        rr = RawResponse.from_io(bio)
+        rr = RawResponse.from_bytes(bytestr)
         return cls.from_raw_response(rr)
 
     def to_bytes(self):
         rr = self.to_raw_response()
-        rrio = BytesIO()
-        rr.to_io(rrio)
-        return rrio.getvalue()
+        return rr.to_bytes()
 
     def validate(self):
         pass

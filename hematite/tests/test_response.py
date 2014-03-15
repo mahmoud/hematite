@@ -1,5 +1,4 @@
 
-from io import BytesIO
 from datetime import datetime
 
 from hematite.response import Response
@@ -16,7 +15,7 @@ def test_resp_raw_resp():
                     'X-Proprietary-Header: lol\r\n'
                     '\r\n')
 
-    raw_resp = RawResponse.from_io(BytesIO(raw_resp_str))
+    raw_resp = RawResponse.from_bytes(raw_resp_str)
     resp = Response.from_raw_response(raw_resp)
     assert isinstance(resp.date, datetime)
     assert isinstance(resp.content_language, list)

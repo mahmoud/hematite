@@ -1,5 +1,6 @@
 
 import socket
+from io import BytesIO
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper, bio_from_socket
@@ -29,6 +30,11 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
         self.headers.to_io(io_obj)
         io_obj.write(b'\r\n')
 
+    def to_bytes(self):
+        io_obj = BytesIO()
+        self.to_io(io_obj)
+        return io_obj.getvalue()
+
     @classmethod
     def from_io(cls, io_obj):
         status_line = h.StatusLine.from_io(io_obj)
@@ -38,6 +44,10 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
                 else b.IdentityEncodedBody)
 
         return cls(status_line, headers, bcls(io_obj, headers))
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        return cls.from_io(BytesIO(bytestr))
 
     @core._callable_staticmethod
     def _is_chunked(headers):
