@@ -1,4 +1,3 @@
-# TODO: byte strings have no .format in python3.3
 
 import re
 from collections import namedtuple
@@ -136,13 +135,16 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         + core._LINE_END)
 
     def to_bytes(self):
-        return b' '.join(map(bytes, self)) + b'\r\n'
+        return b' '.join(map(bytes, self))
+
+    def to_io(self, io_obj):
+        return io_obj.write(self.to_bytes())
 
     @classmethod
     def from_io(cls, io_obj):
         line = _start_line(io_obj)
 
-        m = cls.PARSE_LINE(line)
+        m = cls.PARSE_LINE.match(line)
         if not m:
             raise InvalidRequestLine('Could not parse request line', line)
 
@@ -155,13 +157,11 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
             raise InvalidURL('Could not parse url', line)
 
         url = URL(raw_url, strict=True)
+        print repr(url)
 
         version = HTTPVersion.from_match(m)
 
         return cls(method, url, version)
-
-    def to_io(self, io_obj):
-        io_obj.write(bytes(self))
 
 
 class Headers(BytestringHelper, OMD):
@@ -174,6 +174,9 @@ class Headers(BytestringHelper, OMD):
         lines = [b': '.join([bytes(k), bytes(v)]) for k, v in items]
         lines.append(b'')  # trailing CRLF is required
         return b'\r\n'.join(lines)
+
+    def to_io(self, io_obj):
+        io_obj.write(self.to_bytes())
 
     @classmethod
     def from_io(cls, io_obj):
@@ -213,6 +216,3 @@ class Headers(BytestringHelper, OMD):
             parsed.append((k, v))
 
         return cls(parsed)
-
-    def to_io(self, io_obj):
-        return io_obj.write(self.to_bytes())
