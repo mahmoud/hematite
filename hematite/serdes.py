@@ -158,13 +158,13 @@ def accept_header_from_bytes(val):
 
 
 def accept_header_to_bytes(val):
-    ret = ''
+    parts = []
     for mediatype, qval in val:
-        ret += mediatype
+        cur = mediatype
         if qval != 1.0:
-            ret += ';q=' + str(qval)
-        ret += ','
-    return ret
+            cur += ';q=' + str(qval)
+        parts.append(cur)
+    return ','.join(parts)
 
 
 def content_header_from_bytes(val):
