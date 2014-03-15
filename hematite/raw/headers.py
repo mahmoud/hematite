@@ -3,12 +3,12 @@
 import re
 from collections import namedtuple
 
-from ransom.compat import BytestringHelper
-from ransom.compat import OrderedMultiDict as OMD
+from hematite.compat import BytestringHelper
+from hematite.compat import OrderedMultiDict as OMD
 
-from ransom.raw import core
-from ransom.url import URL, _ABS_RE
-from ransom.constants import CODE_REASONS
+from hematite.raw import core
+from hematite.url import URL, _ABS_RE
+from hematite.constants import CODE_REASONS
 
 # TODO: maintain case
 

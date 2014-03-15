@@ -1,7 +1,7 @@
 
 import io
 
-from ransom.raw.response import RawResponse
+from hematite.raw.response import RawResponse
 
 
 def io_open(path):

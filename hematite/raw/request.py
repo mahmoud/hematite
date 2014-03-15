@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 
-from ransom.compat import BytestringHelper
+from hematite.compat import BytestringHelper
 
 
 class RawRequest(namedtuple('RawRequest', 'request_line, headers, body'),

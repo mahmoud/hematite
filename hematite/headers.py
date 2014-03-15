@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from constants import CAP_MAP, http_header_case
 
 
-from ransom.raw.headers import Headers
+from hematite.raw.headers import Headers
 
 
 # TODO: lazy loading headers: good or bad?

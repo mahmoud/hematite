@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from ransom.compat.dictutils import OMD
+
+from .compat.dictutils import OMD
 
 CAP_MAP = None
 ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS = None, None, None

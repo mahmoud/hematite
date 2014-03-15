@@ -1,11 +1,13 @@
 
 import socket
 from collections import namedtuple
-from ransom.raw import core
-from ransom.raw import headers as h
-from ransom.raw import body as b
-from ransom.compat import BytestringHelper, bio_from_socket
-from ransom.constants import REASON_CODES
+
+from hematite.compat import BytestringHelper, bio_from_socket
+from hematite.constants import REASON_CODES
+
+from hematite.raw import core
+from hematite.raw import headers as h
+from hematite.raw import body as b
 
 
 # TODO: timeouts
@@ -20,7 +22,7 @@ class RequestURITooLarge(ResponseException, core.OverlongRead):
 
 
 class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
-               BytestringHelper):
+                  BytestringHelper):
 
     def to_io(self, io_obj):
         self.status_line.to_io(io_obj)

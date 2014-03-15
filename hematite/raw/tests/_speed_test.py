@@ -1,6 +1,6 @@
 
 import StringIO
-from ransom.raw import response
+from hematite.raw import response
 
 headers = '''Location: http://www.google.com/
 Content-Type: text/html; charset=UTF-8

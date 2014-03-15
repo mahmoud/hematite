@@ -24,7 +24,7 @@ if is_py2:
     from urllib2 import parse_http_list
     import cookielib
     from Cookie import Morsel
-    from ransom.compat._py2_socketio import SocketIO, bio_from_socket
+    from ._py2_socketio import SocketIO, bio_from_socket
 
     BytestringHelperMeta = make_BytestringHelperMeta(target='__str__')
 

@@ -6,7 +6,7 @@
 
 import pytest
 
-from ransom.url import URL, _URL_RE, parse_authority
+from hematite.url import URL, _URL_RE, parse_authority
 
 
 TEST_URLS = [

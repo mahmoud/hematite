@@ -2,8 +2,8 @@
 from io import BytesIO
 from datetime import datetime
 
-from ransom.response import Response
-from ransom.raw.response import RawResponse
+from hematite.response import Response
+from hematite.raw.response import RawResponse
 
 
 def test_resp_raw_resp():

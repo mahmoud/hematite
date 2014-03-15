@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ransom.request import Request
+from hematite.request import Request
 
 
 def test_request_basic():
