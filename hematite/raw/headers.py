@@ -47,7 +47,7 @@ class InvalidHeaders(HTTPParseException):
 def _start_line(io_obj):
     # TODO: make sure that an external timer watches this
     while True:
-        line = io_obj.readline()
+        line = io_obj.readline(core.MAXLINE)
         if line.strip():
             return line
 
@@ -183,7 +183,7 @@ class Headers(BytestringHelper, OMD):
         lines = []
         bytes_read = 0
         while bytes_read < core.MAXHEADERBYTES:
-            line = io_obj.readline()
+            line = io_obj.readline(core.MAXLINE)
             if not line:
                 raise InvalidHeaders('Cannot find header termination; '
                                      'connection closed')
