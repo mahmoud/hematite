@@ -30,7 +30,19 @@ def _init_field_lists():
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + [url_field]
 
 
-class HTTPHeaderField(object):
+class Field(object):
+    attr_name = None
+
+    def __delete__(self, obj):
+        raise AttributeError("can't delete field '%s'" % self.attr_name)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s("%s")' % (cn, self.attr_name)
+
+
+
+class HTTPHeaderField(Field):
     def __init__(self, name, **kw):
         assert name
         assert name == name.lower()
@@ -73,13 +85,6 @@ class HTTPHeaderField(object):
         obj.headers[self.http_name] = value
 
     __set__ = _default_set_value
-
-    def __delete__(self, obj):
-        raise AttributeError("can't delete field '%s'" % self.attr_name)
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s("%s")' % (cn, self.attr_name)
 
 
 date = HTTPHeaderField('date',
@@ -169,7 +174,7 @@ note: wz request obj has 71 public attributes (not starting with '_')
 """
 
 
-class URLField(object):
+class URLField(Field):
     attr_name = 'url'
 
     def __get__(self, obj, objtype=None):
@@ -178,20 +183,15 @@ class URLField(object):
         return obj._url.to_text()  # unicode for now
 
     def __set__(self, obj, value):
+        # TODO: None handling?
         if isinstance(value, URL):
             url_obj = value
         else:
-            url_obj = URL(value, strict=True)
+            url_obj = URL(value)
         if not url_obj.path:
             url_obj.path = '/'
         obj._url = url_obj
         obj.host = url_obj.http_request_host
-
-    def __delete__(self, obj):
-        raise AttributeError("can't delete field '%s'" % self.attr_name)
-
-    def __repr__(self):
-        return '%s()' % self.__class__.__name__
 
 
 url_field = URLField()
@@ -210,6 +210,9 @@ def _set_host_value(self, obj, value):
 
 host = HTTPHeaderField('host',
                        set_value=_set_host_value)
+
+
+
 
 
 _init_field_lists()
