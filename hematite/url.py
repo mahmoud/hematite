@@ -218,7 +218,7 @@ class URL(BytestringHelper):
         return unicode().join(ret)
 
     @property
-    def http_request_uri(self):  # TODO: name
+    def http_request_url(self):  # TODO: name
         return ''.join([self.path, self.query_string])
 
     @property

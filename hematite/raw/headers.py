@@ -37,7 +37,7 @@ class InvalidMethod(InvalidRequestLine):
     pass
 
 
-class InvalidURI(InvalidRequestLine):
+class InvalidURL(InvalidRequestLine):
     pass
 
 
@@ -125,14 +125,12 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         return io_obj.write(self.to_bytes())
 
 
-# TODO: uri or url?
-
-class RequestLine(namedtuple('RequestLine', 'method uri version'),
+class RequestLine(namedtuple('RequestLine', 'method url version'),
                   BytestringHelper):
     PARSE_LINE = re.compile(
         '(?P<method>' + core.TOKEN.pattern + ')?'
         + core.START_LINE_SEP.pattern +
-        '(?P<uri>' + _ABS_RE + ')?'
+        '(?P<url>' + _ABS_RE + ')?'
         + core.START_LINE_SEP.pattern +
         '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?'
         + core._LINE_END)
@@ -152,15 +150,15 @@ class RequestLine(namedtuple('RequestLine', 'method uri version'),
         if not method:
             raise InvalidMethod('Could not parse method', line)
 
-        raw_uri = m.group('uri')
-        if not raw_uri:
-            raise InvalidURI('Could not parse uri', line)
+        raw_url = m.group('url')
+        if not raw_url:
+            raise InvalidURL('Could not parse url', line)
 
-        uri = URL(raw_uri, strict=True)
+        url = URL(raw_url, strict=True)
 
         version = HTTPVersion.from_match(m)
 
-        return cls(method, uri, version)
+        return cls(method, url, version)
 
     def to_io(self, io_obj):
         io_obj.write(bytes(self))

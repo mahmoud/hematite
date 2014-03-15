@@ -57,7 +57,7 @@ class Request(object):
     def from_raw_request(cls, raw_req):
         rl = raw_req.request_line
         kw = {'method': rl.method,
-              'url': rl.uri,
+              'url': rl.url,
               'version': rl.version,
               'headers': raw_req.headers,
               'body': raw_req.body}
@@ -65,7 +65,7 @@ class Request(object):
 
     def to_raw_request(self):
         status_line = RequestLine(self.method,
-                                  self._url.http_request_uri,
+                                  self._url.http_request_url,
                                   self.version)
         headers = self._get_header_dict()
         return RawRequest(status_line, headers, self._body)
@@ -104,7 +104,7 @@ class Request(object):
     @property
     def request_line(self):
         return ' '.join([self.method,
-                         self.url.http_request_uri,
+                         self.url.http_request_url,
                          'HTTP/%d.%d' % self.version])
 
     @property
