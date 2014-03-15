@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from io import BytesIO
+
 from http_parser.ex.headers import StatusLine, Headers, HTTPVersion
 from http_parser.ex.response import Response as RawResponse
 
@@ -75,12 +77,15 @@ class Response(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        rr = RawResponse.from_bytes(bytestr)
+        bio = BytesIO(bytestr)
+        rr = RawResponse.from_io(bio)
         return cls.from_raw_response(rr)
 
     def to_bytes(self):
         rr = self.to_raw_response()
-        return str(rr)
+        rrio = BytesIO()
+        rr.to_io(rrio)
+        return rrio.getvalue()
 
     def validate(self):
         pass
