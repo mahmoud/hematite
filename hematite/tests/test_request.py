@@ -59,6 +59,16 @@ def test_path_field():
     assert req.path == '/'
 
 
+def test_hostname_field():
+    req = Request(url='http://hatnote.com')
+    assert req.hostname == 'hatnote.com'
+    req = Request(url='http://127.0.0.1')
+    assert req.hostname == '127.0.0.1'
+    req.hostname = None
+    assert req.hostname == ''
+    assert req.url == 'http:///'  # TODO?
+
+
 def test_port_field():
     req = Request(url='http://hatnote.com:9000/')
     assert req.port == 9000
