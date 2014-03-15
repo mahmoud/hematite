@@ -1,9 +1,8 @@
-
+from hematite.raw import headers as h
+import hematite.raw.core as core
 import io
-
 import pytest
 
-from hematite.raw import headers as h
 
 
 @pytest.mark.parametrize('input,output',
@@ -55,3 +54,14 @@ def test_StatusLine_exc(input, exc_type):
     io_obj = io.BytesIO(input)
     with pytest.raises(exc_type):
         h.StatusLine.from_io(io_obj)
+
+
+def test_Headers_maxheaders(monkeypatch):
+    monkeypatch.setattr(core, 'MAXHEADERBYTES', 31)
+    with pytest.raises(h.InvalidHeaders):
+        h.Headers.from_io(io.BytesIO('a' * 32))
+
+
+def test_Headers_missing_clrf_terminates():
+    with pytest.raises(h.InvalidHeaders):
+        h.Headers.from_io(io.BytesIO('One\r\n\Two\r\n'))

@@ -181,12 +181,17 @@ class Headers(BytestringHelper, OMD):
         bytes_read = 0
         while bytes_read < core.MAXHEADERBYTES:
             line = io_obj.readline()
+            if not line:
+                raise InvalidHeaders('Cannot find header termination; '
+                                     'connection closed')
             if core.LINE_END.match(line):
                 break
             bytes_read += len(line)
             lines.append(line)
         else:
-            raise InvalidHeaders('Cannot find header termination')
+            raise InvalidHeaders('Consumed limit of {0} bytes '
+                                 'without finding '
+                                 ' headers'.format(core.MAXHEADERBYTES))
 
         if cls.ISCONTINUATION.match(lines[0]):
             raise InvalidHeaders('Cannot begin with a continuation',
