@@ -39,3 +39,35 @@ def test_args_fields():
     req.query_string = u''
     assert len(req.query_string) == 0
     assert '?' not in req.url
+
+
+def test_accept_header():
+    acc_str = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+    req = Request()
+    req.accept = acc_str
+    acc_dict = dict(req.accept)
+    assert acc_dict['text/html'] == 1
+    req_bytes = req.to_bytes()
+    assert acc_str in req_bytes
+
+
+def test_accept_encoding_header():
+    acc_enc_str = 'gzip,deflate;q=0.9'
+    req = Request()
+    req.accept_encoding = acc_enc_str
+    acc_dict = dict(req.accept_encoding)
+    assert acc_dict['gzip'] == 1
+    assert acc_dict['deflate'] == 0.9
+    req_bytes = req.to_bytes()
+    assert acc_enc_str in req_bytes
+
+
+def test_accept_language_header():
+    acc_lang_str = 'en-US,en;q=0.8'
+    req = Request()
+    req.accept_language = acc_lang_str
+    acc_dict = dict(req.accept_language)
+    assert acc_dict['en-US'] == 1
+    assert acc_dict['en'] == 0.8
+    req_bytes = req.to_bytes()
+    assert acc_lang_str in req_bytes

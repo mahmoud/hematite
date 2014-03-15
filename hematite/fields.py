@@ -10,7 +10,9 @@ from hematite.serdes import (http_date_to_bytes,
                              list_header_to_bytes,
                              list_header_from_bytes,
                              items_header_to_bytes,
-                             items_header_from_bytes)
+                             items_header_from_bytes,
+                             accept_header_to_bytes,
+                             accept_header_from_bytes)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -142,6 +144,24 @@ cache_control = HTTPHeaderField('cache_control',
                                 from_bytes=items_header_from_bytes,
                                 to_bytes=items_header_to_bytes,
                                 native_type=list)
+
+
+accept = HTTPHeaderField('accept',
+                         from_bytes=accept_header_from_bytes,
+                         to_bytes=accept_header_to_bytes,
+                         native_type=list)
+
+
+accept_language = HTTPHeaderField('accept_language',
+                                  from_bytes=accept_header_from_bytes,
+                                  to_bytes=accept_header_to_bytes,
+                                  native_type=list)
+
+
+accept_encoding = HTTPHeaderField('accept_encoding',
+                                  from_bytes=accept_header_from_bytes,
+                                  to_bytes=accept_header_to_bytes,
+                                  native_type=list)
 
 
 """

@@ -157,6 +157,16 @@ def accept_header_from_bytes(val):
     return ret
 
 
+def accept_header_to_bytes(val):
+    ret = ''
+    for mediatype, qval in val:
+        ret += mediatype
+        if qval != 1.0:
+            ret += ';q=' + str(qval)
+        ret += ','
+    return ret
+
+
 def content_header_from_bytes(val):
     """
     Parses a Content-Type header, a combination of list and key-value
