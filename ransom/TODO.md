@@ -2,7 +2,6 @@
 
 ## Refactors
 
-- Excise pyparser standin
 - BytestringHelper class decorator
 - Get off of namedtuple as base class for parser components
 - Switch off new-style formatting (up to 2x slower)
