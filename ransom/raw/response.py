@@ -1,9 +1,9 @@
 
 import socket
 from collections import namedtuple
-from ransom.http_parser.ex import core
-from ransom.http_parser.ex import headers as h
-from ransom.http_parser.ex import body as b
+from ransom.raw import core
+from ransom.raw import headers as h
+from ransom.raw import body as b
 from ransom.compat import BytestringHelper, bio_from_socket
 from ransom.constants import REASON_CODES
 

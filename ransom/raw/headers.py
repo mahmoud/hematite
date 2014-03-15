@@ -2,11 +2,13 @@
 
 import re
 from collections import namedtuple
+
 from ransom.compat import BytestringHelper
 from ransom.compat import OrderedMultiDict as OMD
-import ransom.http_parser.ex.core as core
-from ransom.constants import CODE_REASONS, http_header_case
+
+from ransom.raw import core
 from ransom.url import URL, _ABS_RE
+from ransom.constants import CODE_REASONS
 
 # TODO: maintain case
 

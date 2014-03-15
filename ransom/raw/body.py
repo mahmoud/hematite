@@ -1,7 +1,7 @@
 
 import re
 
-from ransom.http_parser.ex import core
+from ransom.raw import core
 
 
 class BodyReadException(core.HTTPException):

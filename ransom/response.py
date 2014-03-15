@@ -2,8 +2,8 @@
 
 from io import BytesIO
 
-from http_parser.ex.headers import StatusLine, Headers, HTTPVersion
-from http_parser.ex.response import RawResponse
+from raw.headers import StatusLine, Headers, HTTPVersion
+from raw.response import RawResponse
 
 from headers import CAP_MAP, default_header_to_bytes, default_header_from_bytes
 from fields import RESPONSE_FIELDS

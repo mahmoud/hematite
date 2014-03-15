@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-
 from url import URL
 
-from http_parser.ex.headers import RequestLine, Headers, HTTPVersion
-from http_parser.ex.request import RawRequest
+from raw.request import RawRequest
+from raw.headers import RequestLine, Headers, HTTPVersion
 
 import headers
 from fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS

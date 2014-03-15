@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import re
-import string
-
 import time
+import string
 from datetime import datetime, timedelta
 
-
 from constants import CAP_MAP, http_header_case
+
+
+from ransom.raw.headers import Headers
 
 
 # TODO: lazy loading headers: good or bad?
@@ -397,9 +398,6 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
 
 
 ##
-from http_parser.ex.headers import Headers
-from headers import CAP_MAP, default_header_to_bytes, default_header_from_bytes
-
 
 def _load_headers(self):
     self.headers = Headers()

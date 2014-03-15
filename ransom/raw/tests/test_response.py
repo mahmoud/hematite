@@ -1,6 +1,7 @@
 
 import io
-from ransom.http_parser.ex.response import RawResponse
+
+from ransom.raw.response import RawResponse
 
 
 def io_open(path):

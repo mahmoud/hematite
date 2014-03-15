@@ -1,3 +1,7 @@
+
+import StringIO
+from ransom.raw import response
+
 headers = '''Location: http://www.google.com/
 Content-Type: text/html; charset=UTF-8
 Date: Sat, 01 Mar 2014 23:10:17 GMT
@@ -21,8 +25,6 @@ The document has moved
 </BODY></HTML>
 ''' % headers
 
-import ransom.http_parser.ex.response as response
-import StringIO
 
 fake = StringIO.StringIO(resp)
 fake.recv = fake.read
