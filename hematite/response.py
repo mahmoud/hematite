@@ -23,6 +23,7 @@ class Response(object):
         self.version = kw.pop('version', _DEFAULT_VERSION)
 
         self._body = body
+        self._data = None
 
         self._init_headers()
         # TODO: lots
@@ -37,6 +38,26 @@ class Response(object):
     @property
     def is_chunked(self):
         return isinstance(self._body, ChunkEncodedBody)
+
+    def _load_data(self):
+        if self.is_chunked:
+            chunk_list = []
+            while True:
+                chunk = self._body.read_chunk()
+                if not chunk:
+                    break
+                chunk_list.append(chunk)
+            data = ''.join(chunk_list)
+        else:
+            data = self._body.read()
+        self._data = data
+
+    def get_data(self, as_bytes=True):
+        if self._data is None:
+            self._load_data()
+        if as_bytes:
+            return self._data
+        return self._data  # TODO: return self._data.decode(self.charset)
 
     @classmethod
     def from_raw_response(cls, raw_resp):

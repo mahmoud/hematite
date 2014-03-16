@@ -32,15 +32,4 @@ class Client(object):
         req_bytes = req.to_bytes()
         conn.sendall(req_bytes)
         resp = Response.from_io(bio_from_socket(conn, mode='rb'))
-
-        if resp.is_chunked:
-            body = []
-            while True:
-                chunk = resp._body.read_chunk()
-                if not chunk:
-                    break
-                body.append(chunk)
-            body = ''.join(body)
-        else:
-            body = resp._body.read()
-        return resp, body
+        return resp.get_data()
