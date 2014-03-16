@@ -53,7 +53,7 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
     def _is_chunked(headers):
         # 4.4 #2
         try:
-            return headers['transfer-encoding'].lower() != 'identity'
+            return headers['Transfer-Encoding'].lower() != 'identity'
         except KeyError:
             return False
 

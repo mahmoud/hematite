@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from hematite.raw.headers import StatusLine, Headers, HTTPVersion
-from hematite.raw.response import RawResponse
 
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
+
+from hematite.raw.body import ChunkEncodedBody
+from hematite.raw.response import RawResponse
+from hematite.raw.headers import StatusLine, Headers, HTTPVersion
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -31,6 +33,10 @@ class Response(object):
     locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
     _init_headers = serdes._init_headers
     _get_header_dict = serdes._get_headers
+
+    @property
+    def is_chunked(self):
+        return isinstance(self._body, ChunkEncodedBody)
 
     @classmethod
     def from_raw_response(cls, raw_resp):
