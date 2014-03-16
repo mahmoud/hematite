@@ -9,7 +9,8 @@
 - status_code, version, and method fields (reason field?)
 - CacheControl and WWWAuthenticate types
 - Composable URL
-
+- Gzip/deflate support
+- Automatic charset/decoding handling
 
 ## Big features
 
@@ -20,3 +21,5 @@
   - Pluggable cache
   - Other "session" variables (e.g., referer)
   - Profile (user-agent, browser stuff)
+- File upload
+- Chardet

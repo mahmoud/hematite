@@ -14,8 +14,8 @@ class Client(object):
     def __init__(self):
         pass
 
-    def get(self, url, **kw):
-        kw['method'] = 'GET'
+    def request(self, method, url, **kw):
+        kw['method'] = method
         kw['url'] = url
         req = Request(**kw)
 
@@ -27,9 +27,18 @@ class Client(object):
         if not port:
             raise ValueError('unknown scheme %r and no port found in URL: %r'
                              % (scheme, url))
-
         conn = socket.create_connection((hostname, port))
         req_bytes = req.to_bytes()
         conn.sendall(req_bytes)
         resp = Response.from_io(bio_from_socket(conn, mode='rb'))
         return resp
+
+    def get(self, url, **kw):
+        kw['method'] = 'GET'
+        kw['url'] = url
+        return self.request(**kw)
+
+    def post(self, url, **kw):
+        kw['method'] = 'POST'
+        kw['url'] = url
+        return self.request(**kw)
