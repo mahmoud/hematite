@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from hematite.raw.headers import StatusLine, Headers, HTTPVersion
-from hematite.raw.response import RawResponse
 
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
+
+from hematite.raw.body import ChunkEncodedBody
+from hematite.raw.response import RawResponse
+from hematite.raw.headers import StatusLine, Headers, HTTPVersion
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -21,6 +23,7 @@ class Response(object):
         self.version = kw.pop('version', _DEFAULT_VERSION)
 
         self._body = body
+        self._data = None
 
         self._init_headers()
         # TODO: lots
@@ -31,6 +34,30 @@ class Response(object):
     locals().update([(hf.attr_name, hf) for hf in RESPONSE_FIELDS])
     _init_headers = serdes._init_headers
     _get_header_dict = serdes._get_headers
+
+    @property
+    def is_chunked(self):
+        return isinstance(self._body, ChunkEncodedBody)
+
+    def _load_data(self):
+        if self.is_chunked:
+            chunk_list = []
+            while True:
+                chunk = self._body.read_chunk()
+                if not chunk:
+                    break
+                chunk_list.append(chunk)
+            data = ''.join(chunk_list)
+        else:
+            data = self._body.read()
+        self._data = data
+
+    def get_data(self, as_bytes=True):
+        if self._data is None:
+            self._load_data()
+        if as_bytes:
+            return self._data
+        return self._data  # TODO: return self._data.decode(self.charset)
 
     @classmethod
     def from_raw_response(cls, raw_resp):
@@ -49,12 +76,21 @@ class Response(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        rr = RawResponse.from_bytes(bytestr)
-        return cls.from_raw_response(rr)
+        raw_resp = RawResponse.from_bytes(bytestr)
+        return cls.from_raw_response(raw_resp)
 
     def to_bytes(self):
-        rr = self.to_raw_response()
-        return rr.to_bytes()
+        raw_resp = self.to_raw_response()
+        return raw_resp.to_bytes()
+
+    @classmethod
+    def from_io(cls, io_obj):
+        raw_resp = RawResponse.from_io(io_obj)
+        return cls.from_raw_response(raw_resp)
+
+    def to_io(self, io_obj):
+        raw_resp = self.to_raw_response()
+        return raw_resp.to_io(raw_resp)
 
     def validate(self):
         pass
