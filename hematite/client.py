@@ -32,4 +32,4 @@ class Client(object):
         req_bytes = req.to_bytes()
         conn.sendall(req_bytes)
         resp = Response.from_io(bio_from_socket(conn, mode='rb'))
-        return resp.get_data()
+        return resp
