@@ -59,6 +59,16 @@ def test_path_field():
     assert req.path == '/'
 
 
+def test_scheme_field():
+    req = Request(url='http://hatnote.com')
+    assert req.scheme == 'http'
+    req.scheme = u'https'
+    assert req.url == 'https://hatnote.com/'
+    req.scheme = None
+    assert req.scheme == ''
+    assert req.url == '//hatnote.com/'
+
+
 def test_hostname_field():
     req = Request(url='http://hatnote.com')
     assert req.hostname == 'hatnote.com'

@@ -23,7 +23,7 @@ class Client(object):
         if not hostname:
             raise ValueError('no hostname found in URL: %r' % url)
         scheme = req._url.scheme
-        port = req.port or DEFAULT_PORTS.get(req._url.scheme)  # TODO
+        port = req.port or DEFAULT_PORTS.get(req.scheme)
         if not port:
             raise ValueError('unknown scheme %r and no port found in URL: %r'
                              % (scheme, url))

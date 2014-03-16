@@ -31,7 +31,7 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    URL_REQUEST_FIELDS = [url_field, url_path_field,
+    URL_REQUEST_FIELDS = [url_field, url_scheme_field, url_path_field,
                           url_hostname_field, url_port_field,
                           url_args_field, url_query_string_field]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
@@ -333,6 +333,26 @@ class URLQueryStringField(Field):
 
 
 url_query_string_field = URLQueryStringField()
+
+
+class URLSchemeField(Field):
+    attr_name = 'scheme'
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._url.scheme
+
+    def __set__(self, obj, value):
+        if value is None:
+            obj._url.scheme = ''
+        elif not isinstance(value, unicode):  # allow bytestrings?
+            raise TypeError('expected unicode, not %r' % type(value))
+        else:
+            obj._url.scheme = value
+
+
+url_scheme_field = URLSchemeField()
 
 
 _init_field_lists()
