@@ -1,5 +1,5 @@
 import socket
-from hematite.compat import bio_from_socket
+from hematite.compat.socket_io import bio_from_socket
 
 
 def test_bio_from_socket_read():

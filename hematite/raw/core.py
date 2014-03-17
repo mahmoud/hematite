@@ -59,10 +59,6 @@ IS_LINE_END = advancer(LINE_END.pattern, re.DOTALL)
 IS_HEADERS_END = advancer(HEADERS_END.pattern, re.DOTALL)
 
 
-def istext(t):
-    return t.translate('', '', TEXT_EXCLUDE) == t
-
-
 class HTTPException(Exception):
     def __init__(self, msg, raw=None):
         if raw:
@@ -85,38 +81,14 @@ class IncompleteRead(ReadException):
     pass
 
 
-def _advance_until_lf(sock, amt=1024, limit=MAXLINE):
-    # assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-    #     amt, limit)
-    read_amt = 0
-    buf = []
-    while True:
-        read = sock.recv(amt)
-        if not read:
-            raise IncompleteRead
-        read_amt += len(read)
-        if read_amt > limit:
-            raise OverlongRead
-        buf.append(read)
-        if '\n' in read:
-            return ''.join(buf)
+class EndOfStream(ReadException):
+    pass
 
 
-def _advance_until_lflf(sock, amt=1024, limit=MAXLINE):
-    # assert amt < limit, "amt {0} should be lower than limit! {1}".format(
-    #     amt, limit)
-    read_amt = 0
-    buf = []
-    prev = ''
-    while True:
-        read = sock.recv(amt)
-        if not read:
-            raise IncompleteRead
-        read_amt += len(read)
-        if read_amt > limit:
-            raise OverlongRead
-        buf.append(read)
-        if (HEADERS_END.search(read) or HEADERS_END.match(prev[-2:] +
-                                                          read[:2])):
-            return ''.join(buf)
-        prev = read
+def readline(io_obj):
+    line = io_obj.readline(MAXLINE)
+    if not line:
+        raise EndOfStream
+    elif len(line) == MAXLINE and not LINE_END.match(line):
+        raise OverlongRead
+    return line

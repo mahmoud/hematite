@@ -45,9 +45,8 @@ class InvalidHeaders(HTTPParseException):
 
 
 def _start_line(io_obj):
-    # TODO: make sure that an external timer watches this
     while True:
-        line = io_obj.readline(core.MAXLINE)
+        line = core.readline(io_obj)
         if line.strip():
             return line
 
@@ -169,6 +168,11 @@ class Headers(BytestringHelper, OMD):
                                                          set(core._CRLF)))
                                 + ']')
 
+    def __init__(self, *args, **kwargs):
+        super(Headers, self).__init__(*args, **kwargs)
+        self.bytes_read = 0
+        self.ready = False
+
     def to_bytes(self):
         items = self.items(multi=True)
         lines = [b': '.join([bytes(k), bytes(v)]) for k, v in items]
@@ -177,6 +181,18 @@ class Headers(BytestringHelper, OMD):
 
     def to_io(self, io_obj):
         io_obj.write(self.to_bytes())
+
+    def feed(self, io_boj):
+        line = core.readline(io_obj)
+        self.bytes_read += len(line)
+        if self.bytes_read > core.MAXHEADERBYTES:
+            raise InvalidHeaders('Consumed limit of {0} bytes '
+                                 'without finding '
+                                 ' headers'.format(core.MAXHEADERBYTES))
+        if self.ISCONTINUATION.match(line):
+            if len(self) < 1:
+                raise InvalidHeaders('Cannot begin with a continuation',
+                                     line)
 
     @classmethod
     def from_io(cls, io_obj):
@@ -198,7 +214,7 @@ class Headers(BytestringHelper, OMD):
 
         if cls.ISCONTINUATION.match(lines[0]):
             raise InvalidHeaders('Cannot begin with a continuation',
-                                 lines[0])
+                                 line)
 
         parsed = []
         for idx in xrange(len(lines)):

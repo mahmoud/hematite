@@ -24,7 +24,7 @@ if is_py2:
     from urllib2 import parse_http_list
     import cookielib
     from Cookie import Morsel
-    from ._py2_socketio import SocketIO, bio_from_socket
+    from ._py2_socketio import SocketIO
 
     BytestringHelperMeta = make_BytestringHelperMeta(target='__str__')
 
@@ -36,9 +36,7 @@ elif is_py3:
     from urllib.request import parse_http_list
     from http import cookiejar as cookielib
     from http.cookies import Morsel
-    from socket import SocketIO, socket as _socket
-
-    bio_from_socket = _socket.makefile
+    from socket import SocketIO
 
     BytestringHelperMeta = make_BytestringHelperMeta(target='__bytes__')
 

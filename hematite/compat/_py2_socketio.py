@@ -59,7 +59,7 @@ class _SocketIO_py27(io.RawIOBase):
                 en = e.args[0]
                 if en == errno.EINTR:
                     continue
-                elif en in socket._blocking_errnos:
+                elif en in _blocking_errnos:
                     return None
                 raise
 
@@ -124,7 +124,6 @@ class _SocketIO_py27(io.RawIOBase):
         if self.closed:
             return
         io.RawIOBase.close(self)
-        self._sock._decref_socketios()
         self._sock = None
 
 
@@ -147,44 +146,3 @@ if sys.version_info < (2, 7, 0, 'final'):
     SocketIO = _SocketIO_py26
 else:
     SocketIO = _SocketIO_py27
-
-
-def bio_from_socket(sock, mode="r", buffering=None, encoding=None,
-                    errors=None, newline=None):
-    """\
-    Backport of Python 3's socket.makefile; returns a Buffered* IO
-    class that wraps a SocketIO instance
-    """
-    for _c in mode:
-        if _c not in "rwb":
-            raise ValueError("invalid mode %r (only r, w, b allowed)")
-    writing = "w" in mode
-    reading = "r" in mode or not writing
-    assert reading or writing
-    binary = "b" in mode
-    rawmode = ""
-    if reading:
-        rawmode += "r"
-    if writing:
-        rawmode += "w"
-    raw = SocketIO(sock, rawmode)
-    if buffering is None:
-        buffering = -1
-    if buffering < 0:
-        buffering = io.DEFAULT_BUFFER_SIZE
-    if buffering == 0:
-        if not binary:
-            raise ValueError("unbuffered streams must be binary")
-        return raw
-    if reading and writing:
-        buffer = io.BufferedRWPair(raw, raw, buffering)
-    elif reading:
-        buffer = io.BufferedReader(raw, buffering)
-    else:
-        assert writing
-        buffer = io.BufferedWriter(raw, buffering)
-    if binary:
-        return buffer
-    text = io.TextIOWrapper(buffer, encoding, errors, newline)
-    text.mode = mode
-    return text
