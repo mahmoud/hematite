@@ -31,9 +31,9 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    URL_REQUEST_FIELDS = [url_field, url_scheme_field, url_path_field,
-                          url_hostname_field, url_port_field,
-                          url_args_field, url_query_string_field]
+    _url_request_field_types = [f for f in global_vals if isinstance(f, type)
+                                and issubclass(f, BaseURLField)]
+    URL_REQUEST_FIELDS = [f() for f in _url_request_field_types]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
 
 
@@ -171,6 +171,22 @@ accept_encoding = HTTPHeaderField('accept_encoding',
                                   native_type=list)
 
 
+def _set_host_value(self, obj, value):
+    self._default_set_value(obj, value)
+    cur_val = obj.headers.get('Host')
+    url = obj._url
+
+    if not cur_val:
+        family, host, port = None, '', ''
+    else:
+        family, host, port = parse_hostinfo(cur_val)
+        url.family, url.host, url.port = family, host, port
+
+
+host = HTTPHeaderField('host',
+                       set_value=_set_host_value)
+
+
 """
 Several key Request attributes are URL-based. Similar to the
 HTTPHeaderField, which is backed by a Headers dict, URL fields are
@@ -202,7 +218,11 @@ note: wz request obj has 71 public attributes (not starting with '_')
 """
 
 
-class URLField(Field):
+class BaseURLField(Field):
+    pass
+
+
+class URLField(BaseURLField):
     attr_name = 'url'
 
     def __get__(self, obj, objtype=None):
@@ -221,26 +241,7 @@ class URLField(Field):
         obj._url = url_obj
 
 
-url_field = URLField()
-
-
-def _set_host_value(self, obj, value):
-    self._default_set_value(obj, value)
-    cur_val = obj.headers.get('Host')
-    url = obj._url
-
-    if not cur_val:
-        family, host, port = None, '', ''
-    else:
-        family, host, port = parse_hostinfo(cur_val)
-        url.family, url.host, url.port = family, host, port
-
-
-host = HTTPHeaderField('host',
-                       set_value=_set_host_value)
-
-
-class URLPathField(Field):
+class URLPathField(BaseURLField):
     attr_name = 'path'
 
     def __get__(self, obj, objtype=None):
@@ -255,10 +256,7 @@ class URLPathField(Field):
         obj._url.path = value  # TODO: type checking/parsing?
 
 
-url_path_field = URLPathField()
-
-
-class URLHostnameField(Field):
+class URLHostnameField(BaseURLField):
     attr_name = 'hostname'
 
     def __get__(self, obj, objtype=None):
@@ -272,10 +270,7 @@ class URLHostnameField(Field):
         obj._url.host = value
 
 
-url_hostname_field = URLHostnameField()
-
-
-class URLPortField(Field):
+class URLPortField(BaseURLField):
     attr_name = 'port'
 
     def __get__(self, obj, objtype=None):
@@ -291,10 +286,7 @@ class URLPortField(Field):
         obj._url.port = value
 
 
-url_port_field = URLPortField()
-
-
-class URLArgsField(Field):
+class URLArgsField(BaseURLField):
     attr_name = 'args'
 
     def __get__(self, obj, objtype=None):
@@ -312,10 +304,7 @@ class URLArgsField(Field):
         return
 
 
-url_args_field = URLArgsField()
-
-
-class URLQueryStringField(Field):
+class URLQueryStringField(BaseURLField):
     attr_name = 'query_string'
 
     def __get__(self, obj, objtype=None):
@@ -332,10 +321,7 @@ class URLQueryStringField(Field):
             obj._url.args = QueryArgDict.from_string(value)
 
 
-url_query_string_field = URLQueryStringField()
-
-
-class URLSchemeField(Field):
+class URLSchemeField(BaseURLField):
     attr_name = 'scheme'
 
     def __get__(self, obj, objtype=None):
@@ -350,9 +336,6 @@ class URLSchemeField(Field):
             raise TypeError('expected unicode, not %r' % type(value))
         else:
             obj._url.scheme = value
-
-
-url_scheme_field = URLSchemeField()
 
 
 _init_field_lists()
