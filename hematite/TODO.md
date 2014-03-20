@@ -57,13 +57,20 @@ Question: Which of these are actually more a characteristic of the ValueWrapper 
 - Need at least levels (notice/warning/error).
 - Operate on Request/Response or RawRequest/RawResponse?
 
+* Basic presence
+  * Response.reason should not be blank
 * Status code-specific headers
   * Location for redirects
-* Unrecognized/unregistered values for certain headers
+* Unrecognized/unregistered values for certain headers/fields
   * Accept-Ranges: "bytes" or "none"
   * Allow: GET, POST, other known HTTP methods
   * Transfer-Encoding: "chunked"
   * Accept-Encoding/Content-Encoding: identity, gzip, compress, deflate, *
+  * Warn on unknown status codes?
+* Valid mimetype format for headers using media types
+  * Content-Type
+  * Content-Disposition
+  * Accept
 * Unrecognized charset
 * URLs missing components (e.g, has a scheme, but no host)
 
