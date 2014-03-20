@@ -15,6 +15,7 @@ from hematite.serdes import (http_date_to_bytes,
                              accept_header_from_bytes,
                              default_header_to_bytes,
                              default_header_from_bytes,
+                             content_header_from_bytes,
                              quote_header_value,
                              unquote_header_value)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
@@ -40,6 +41,9 @@ def _init_field_lists():
 
 
 class HeaderValueWrapper(object):
+    # TODO: how to indicate whether header value should be included
+    # - __nonzero__ can collide with int-typed headers where 0 is valid
+    # - a blank to_bytes() output might work, but is a bit confusing
     pass
 
 
@@ -186,6 +190,33 @@ expires = HTTPHeaderField('expires',
                           from_bytes=expires_from_bytes,
                           to_bytes=http_date_to_bytes,
                           native_type=datetime)
+
+
+class ContentType(HeaderValueWrapper):
+    def __init__(self, media_type, charset=None, params=None):
+        self.media_type = media_type
+        self.charset = charset
+        self.params = dict(params) if params else {}
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        # TODO: order
+        media_type, items = content_header_from_bytes(bytestr)
+        params = dict(items)
+        charset = params.pop('charset', None)
+        return cls(media_type=media_type, charset=charset, params=params)
+
+    def to_bytes(self):
+        # TODO: quote parameter values
+        parts = [self.media_type]
+        if self.charset:
+            parts.append('charset=' + self.charset)
+        if self.params:
+            parts.extend(['%s=%s' % (k, v) for k, v in self.params.items()])
+        return '; '.join(parts)
+
+
+content_type = HTTPHeaderField('content_type', native_type=ContentType)
 
 content_language = HTTPHeaderField('content_language',
                                    from_bytes=list_header_from_bytes,
