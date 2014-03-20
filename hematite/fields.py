@@ -90,8 +90,10 @@ class HTTPHeaderField(Field):
         self.http_name = kw.pop('http_name', http_header_case(name))
         self.native_type = kw.pop('native_type', unicode)
 
-        default_from_bytes = getattr(self.native_type, 'from_bytes', None) or default_header_from_bytes
-        default_to_bytes = getattr(self.native_type, 'to_bytes', None) or default_header_to_bytes
+        default_from_bytes = (getattr(self.native_type, 'from_bytes', None)
+                              or default_header_from_bytes)
+        default_to_bytes = (getattr(self.native_type, 'to_bytes', None)
+                            or default_header_to_bytes)
 
         self.from_bytes = kw.pop('from_bytes', default_from_bytes)
         self.to_bytes = kw.pop('to_bytes', default_to_bytes)
@@ -136,7 +138,6 @@ last_modified = HTTPHeaderField('last_modified',
                                 to_bytes=http_date_to_bytes,
                                 native_type=datetime)
 
-
 etag = HTTPHeaderField('etag',
                        native_type=ETag)
 
@@ -167,18 +168,15 @@ if_modified_since = HTTPHeaderField('if_modified_since',
                                     to_bytes=http_date_to_bytes,
                                     native_type=datetime)
 
-
 if_unmodified_since = HTTPHeaderField('if_unmodified_since',
                                       from_bytes=http_date_from_bytes,
                                       to_bytes=http_date_to_bytes,
                                       native_type=datetime)
 
-
 www_authenticate = HTTPHeaderField('www_authenticate',
                                    from_bytes=items_header_from_bytes,
                                    to_bytes=items_header_to_bytes,
                                    native_type=list)
-
 
 cache_control = HTTPHeaderField('cache_control',
                                 from_bytes=items_header_from_bytes,
@@ -193,12 +191,10 @@ accept = HTTPHeaderField('accept',
                          to_bytes=accept_header_to_bytes,
                          native_type=list)
 
-
 accept_language = HTTPHeaderField('accept_language',
                                   from_bytes=accept_header_from_bytes,
                                   to_bytes=accept_header_to_bytes,
                                   native_type=list)
-
 
 accept_encoding = HTTPHeaderField('accept_encoding',
                                   from_bytes=accept_header_from_bytes,
@@ -275,7 +271,8 @@ class URLField(BaseURLField):
         else:
             url_obj = URL(value)
         if not url_obj.path:
-            # TODO: is modifying the url like this kosher?
+            # A bit concerned about this, but Chrome does add a slash
+            # to the end of many URLs, client-side
             url_obj.path = '/'
         obj._url = url_obj
 
