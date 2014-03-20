@@ -70,6 +70,7 @@ RESPONSE_ONLY_HEADERS = ['Accept-Ranges',
                          'WWW-Authenticate']
 
 ENTITY_HEADERS = ['Allow',
+                  'Content-Disposition',  # RFC6266
                   'Content-Encoding',
                   'Content-Language',
                   'Content-Length',
