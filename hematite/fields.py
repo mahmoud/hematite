@@ -59,7 +59,7 @@ class ETag(HeaderValueWrapper):
     @classmethod
     def from_bytes(cls, bytestr):
         tag = bytestr.strip()
-        first_two = bytestr[:2]
+        first_two = tag[:2]
         if first_two == 'W/' or first_two == 'w/':
             is_weak = True
             tag = tag[2:]

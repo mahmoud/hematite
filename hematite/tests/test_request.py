@@ -138,3 +138,7 @@ def test_if_match():
     req = Request()
     req.if_match = 'xyzzy'
     assert len(req.if_match) == 1
+    req.if_match = 'xyzzy, W/"lol"'
+    assert req.if_match.etags[-1].is_weak is True
+    req.if_match = None
+    assert req.if_match is None
