@@ -227,10 +227,12 @@ class Headers(BytestringHelper, OMD):
             yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
         yield b'\r\n'
 
-h = Headers()
-print h.readline('Host: google.com\r\n')
-print h.readline(' other.com\r\n')
-print h.readline('Other: Something\r\n')
-print h.readline("\r\n")
 
-print repr(h.to_bytes())
+if __name__ == '__main__':
+    h = Headers()
+    print h.readline('Host: google.com\r\n')
+    print h.readline(' other.com\r\n')
+    print h.readline('Other: Something\r\n')
+    print h.readline("\r\n")
+
+    print repr(h.to_bytes())
