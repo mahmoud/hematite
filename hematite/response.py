@@ -59,11 +59,11 @@ class Response(object):
             return self._data
         try:
             charset = self.content_type.charset
+            return self._data.decode(charset)
         except:
             # TODO: what to do here?
-            return self._data
-        else:
-            return self._data.decode(charset)
+            pass
+        return self._data
 
     @classmethod
     def from_raw_response(cls, raw_resp):
