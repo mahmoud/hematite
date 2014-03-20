@@ -71,6 +71,15 @@ def test_invalid_expires():
     assert 'Expires' in resp_str
 
 
+def test_etag_field():
+    resp = Response(200)
+    resp.etag = '1234'
+    assert resp.etag.tag == '1234'
+    assert not resp.etag.is_weak
+    resp.etag = None
+    assert resp.etag is None
+
+
 def test_status_reason():
     resp = Response(200)
     assert resp.reason == 'OK'

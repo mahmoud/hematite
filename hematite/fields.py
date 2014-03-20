@@ -14,7 +14,9 @@ from hematite.serdes import (http_date_to_bytes,
                              accept_header_to_bytes,
                              accept_header_from_bytes,
                              default_header_to_bytes,
-                             default_header_from_bytes)
+                             default_header_from_bytes,
+                             quote_header_value,
+                             unquote_header_value)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -37,6 +39,38 @@ def _init_field_lists():
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
 
 
+class HeaderValueWrapper(object):
+    pass
+
+
+class ETag(HeaderValueWrapper):
+    def __init__(self, tag, is_weak=None):
+        self.tag = tag
+        self.is_weak = is_weak or False
+
+    def to_bytes(self):
+        ret = quote_header_value(self.tag, allow_token=False)
+        if self.is_weak:
+            ret = 'W/' + ret
+        return ret
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        tag = bytestr.strip()
+        first_two = bytestr[:2]
+        if first_two == 'W/' or first_two == 'w/':
+            is_weak = True
+            tag = tag[2:]
+        else:
+            is_weak = False
+        tag = unquote_header_value(tag)
+        return cls(tag=tag, is_weak=is_weak)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, is_weak=%r)' % (cn, self.tag, self.is_weak)
+
+
 class Field(object):
     attr_name = None
 
@@ -56,8 +90,11 @@ class HTTPHeaderField(Field):
         self.http_name = kw.pop('http_name', http_header_case(name))
         self.native_type = kw.pop('native_type', unicode)
 
-        self.from_bytes = kw.pop('from_bytes', default_header_from_bytes)
-        self.to_bytes = kw.pop('to_bytes', default_header_to_bytes)
+        default_from_bytes = getattr(self.native_type, 'from_bytes', None) or default_header_from_bytes
+        default_to_bytes = getattr(self.native_type, 'to_bytes', None) or default_header_to_bytes
+
+        self.from_bytes = kw.pop('from_bytes', default_from_bytes)
+        self.to_bytes = kw.pop('to_bytes', default_to_bytes)
         if kw:
             raise TypeError('unexpected keyword arguments: %r' % kw)
         # TODO: documentation field
@@ -98,6 +135,10 @@ last_modified = HTTPHeaderField('last_modified',
                                 from_bytes=http_date_from_bytes,
                                 to_bytes=http_date_to_bytes,
                                 native_type=datetime)
+
+
+etag = HTTPHeaderField('etag',
+                       native_type=ETag)
 
 
 def expires_from_bytes(bytestr):
