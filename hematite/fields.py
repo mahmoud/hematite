@@ -54,12 +54,6 @@ class HTTPHeaderField(Field):
         assert name == name.lower()
         self.attr_name = name  # used for error messages
         self.http_name = kw.pop('http_name', http_header_case(name))
-        try:
-            self.__set__ = kw.pop('set_value').__get__(self, type(self))
-        except KeyError:
-            pass
-        except TypeError:
-            raise TypeError('expected unbound function for set_value')
         self.native_type = kw.pop('native_type', unicode)
 
         self.from_bytes = kw.pop('from_bytes', default_header_from_bytes)
@@ -171,20 +165,24 @@ accept_encoding = HTTPHeaderField('accept_encoding',
                                   native_type=list)
 
 
-def _set_host_value(self, obj, value):
-    self._default_set_value(obj, value)
-    cur_val = obj.headers.get('Host')
-    url = obj._url
+class HostHeaderField(HTTPHeaderField):
+    def __init__(self):
+        super(HostHeaderField, self).__init__(name='host')
 
-    if not cur_val:
-        family, host, port = None, '', ''
-    else:
-        family, host, port = parse_hostinfo(cur_val)
+    def __set__(self, obj, value):
+        super(HostHeaderField, self).__set__(obj, value)
+        cur_val = obj.headers.get('Host')
+        url = obj._url
+
+        if not cur_val:
+            family, host, port = None, '', ''
+        else:
+            family, host, port = parse_hostinfo(cur_val)
         url.family, url.host, url.port = family, host, port
+        return
 
 
-host = HTTPHeaderField('host',
-                       set_value=_set_host_value)
+host = HostHeaderField()
 
 
 """
