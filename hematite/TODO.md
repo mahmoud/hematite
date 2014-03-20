@@ -38,3 +38,32 @@ Things fields have:
 * validation
 
 Question: Which of these are actually more a characteristic of the ValueWrapper (native_type)?
+
+## HeaderValueWrappers
+
+- CacheControl
+- ContentType
+- ContentDisposition
+- Cookie
+- ETagSet
+- UserAgent
+- WWWAuthenticate
+- Warning
+(more)
+
+
+# Validation thoughts
+
+- Need at least levels (notice/warning/error).
+- Operate on Request/Response or RawRequest/RawResponse?
+
+* Status code-specific headers
+  * Location for redirects
+* Unrecognized/unregistered values for certain headers
+  * Accept-Ranges: "bytes" or "none"
+  * Allow: GET, POST, other known HTTP methods
+  * Transfer-Encoding: "chunked"
+  * Accept-Encoding/Content-Encoding: identity, gzip, compress, deflate, *
+* Unrecognized charset
+
+* Maybe: validation for 1.0-compatibility
