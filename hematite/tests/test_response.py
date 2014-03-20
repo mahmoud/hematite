@@ -80,6 +80,19 @@ def test_etag_field():
     assert resp.etag is None
 
 
+def test_content_type():
+    resp_bytes = ('HTTP/1.1 200 OK\r\n'
+                  'Content-Type: text/html; charset=UTF-8\r\n'
+                  '\r\n')
+    resp = Response.from_bytes(resp_bytes)
+    assert resp.content_type.media_type == 'text/html'
+    assert resp.content_type.charset == 'UTF-8'
+    data = resp.get_data(as_bytes=False)
+    assert isinstance(data, unicode)
+    rt_resp_bytes = resp.to_bytes()
+    assert 'text/html; charset=UTF-8' in rt_resp_bytes
+
+
 def test_status_reason():
     resp = Response(200)
     assert resp.reason == 'OK'
