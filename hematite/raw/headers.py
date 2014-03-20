@@ -1,15 +1,18 @@
-
 import re
 from collections import namedtuple
 
-from hematite.compat import BytestringHelper
-from hematite.compat import OrderedMultiDict as OMD
+from hematite.compat import (BytestringHelper,
+                             OrderedMultiDict as OMD,
+                             make_sentinel)
 
 from hematite.raw import core
 from hematite.url import URL, _ABS_RE
 from hematite.constants import CODE_REASONS
+from threading import Lock
 
 # TODO: maintain case
+
+_MISSING = make_sentinel()
 
 
 class HTTPParseException(core.HTTPException):
@@ -42,13 +45,6 @@ class InvalidURL(InvalidRequestLine):
 
 class InvalidHeaders(HTTPParseException):
     pass
-
-
-def _start_line(io_obj):
-    while True:
-        line = core.readline(io_obj)
-        if line.strip():
-            return line
 
 
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
@@ -97,9 +93,13 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
             bs.append(reason)
         return b' '.join(map(bytes, bs)) + b'\r\n'
 
+    def iterlines(self):
+        yield bytes(self)
+
     @classmethod
-    def from_io(cls, io_obj):
-        line = _start_line(io_obj)
+    def readline(cls, line):
+        if not line.strip():
+            return
         m = cls.PARSE_LINE.match(line)
         if not m:
             raise InvalidStatusLine('Could not parse status line', line)
@@ -136,13 +136,13 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
     def to_bytes(self):
         return b' '.join(map(bytes, self))
 
-    def to_io(self, io_obj):
-        return io_obj.write(self.to_bytes())
+    def iterlines(self):
+        yield bytes(self)
 
     @classmethod
-    def from_io(cls, io_obj):
-        line = _start_line(io_obj)
-
+    def readline(cls, line):
+        if not line.strip():
+            return
         m = cls.PARSE_LINE.match(line)
         if not m:
             raise InvalidRequestLine('Could not parse request line', line)
@@ -156,7 +156,6 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
             raise InvalidURL('Could not parse url', line)
 
         url = URL(raw_url, strict=True)
-        print repr(url)
 
         version = HTTPVersion.from_match(m)
 
@@ -172,56 +171,39 @@ class Headers(BytestringHelper, OMD):
         super(Headers, self).__init__(*args, **kwargs)
         self.bytes_read = 0
         self.ready = False
+        self._reader = self._readline()
+        next(self._reader)
 
     def to_bytes(self):
-        items = self.items(multi=True)
-        lines = [b': '.join([bytes(k), bytes(v)]) for k, v in items]
-        lines.append(b'')  # trailing CRLF is required
-        return b'\r\n'.join(lines)
+        return b''.join(self.iterlines())
 
-    def to_io(self, io_obj):
-        io_obj.write(self.to_bytes())
+    def readline(self, line):
+        return self._reader.send(line)
 
-    def feed(self, io_boj):
-        line = core.readline(io_obj)
-        self.bytes_read += len(line)
-        if self.bytes_read > core.MAXHEADERBYTES:
-            raise InvalidHeaders('Consumed limit of {0} bytes '
-                                 'without finding '
-                                 ' headers'.format(core.MAXHEADERBYTES))
-        if self.ISCONTINUATION.match(line):
-            if len(self) < 1:
-                raise InvalidHeaders('Cannot begin with a continuation',
-                                     line)
+    def _readline(self):
+        if self.ready:
+            yield self.ready
+            return
 
-    @classmethod
-    def from_io(cls, io_obj):
-        lines = []
-        bytes_read = 0
-        while bytes_read < core.MAXHEADERBYTES:
-            line = io_obj.readline(core.MAXLINE)
+        prev_key = _MISSING
+        while self.bytes_read < core.MAXHEADERBYTES:
+            line = yield self.ready
+
             if not line:
                 raise InvalidHeaders('Cannot find header termination; '
                                      'connection closed')
+
             if core.LINE_END.match(line):
                 break
-            bytes_read += len(line)
-            lines.append(line)
-        else:
-            raise InvalidHeaders('Consumed limit of {0} bytes '
-                                 'without finding '
-                                 ' headers'.format(core.MAXHEADERBYTES))
 
-        if cls.ISCONTINUATION.match(lines[0]):
-            raise InvalidHeaders('Cannot begin with a continuation',
-                                 line)
+            self.bytes_read += len(line)
 
-        parsed = []
-        for idx in xrange(len(lines)):
-            line = lines[idx]
-            if cls.ISCONTINUATION.match(line):
-                pidx = idx - 1
-                lines[pidx] = lines[pidx] + line
+            if self.ISCONTINUATION.match(line):
+                if prev_key is _MISSING:
+                    raise InvalidHeaders('Cannot begin with a continuation',
+                                         line)
+                last_value = self.poplast(prev_key)
+                self.add(prev_key, last_value + line.rstrip())
                 continue
 
             k, _, v = line.partition(':')
@@ -229,6 +211,26 @@ class Headers(BytestringHelper, OMD):
             if not core.TOKEN.match(k):
                 raise InvalidHeaders('Invalid field name', k)
 
-            parsed.append((k, v))
+            prev_key = k
+            self.add(k, v)
+        else:
+            raise InvalidHeaders('Consumed limit of {0} bytes '
+                                 'without finding '
+                                 ' headers'.format(core.MAXHEADERBYTES))
+        self.ready = True
 
-        return cls(parsed)
+        while True:
+            yield self.ready
+
+    def iterlines(self):
+        for k, v in self.iteritems(multi=True):
+            yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
+        yield b'\r\n'
+
+h = Headers()
+print h.readline('Host: google.com\r\n')
+print h.readline(' other.com\r\n')
+print h.readline('Other: Something\r\n')
+print h.readline("\r\n")
+
+print repr(h.to_bytes())

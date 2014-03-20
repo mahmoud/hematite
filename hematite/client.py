@@ -2,7 +2,7 @@
 
 import socket
 
-from hematite.compat.socket_io import bio_from_socket
+from hematite.socket_io import bio_from_socket
 from hematite.request import Request
 from hematite.response import Response
 

@@ -12,16 +12,16 @@ class NonblockingBufferedReader(io.BufferedReader):
         self.linebuffer = []
 
     def readline(self, limit):
-        line = super(NonblockingBufferedReader, self).readline(limit)
-        if not line:
-            return line
-
         with self.linebuffer_lock:
+            line = super(NonblockingBufferedReader, self).readline(limit)
+            if not line:
+                return line
+
             self.linebuffer.append(line)
             if not core.LINE_END.search(line):
                 raise io.BlockingIOError
             line, self.linebuffer = ''.join(self.linebuffer), []
-        return line
+            return line
 
 
 class BufferedRWPair(io.BufferedIOBase):

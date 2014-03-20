@@ -58,10 +58,12 @@ def test_StatusLine_exc(input, exc_type):
 
 def test_Headers_maxheaders(monkeypatch):
     monkeypatch.setattr(core, 'MAXHEADERBYTES', 31)
+    headers = h.Headers()
     with pytest.raises(h.InvalidHeaders):
-        h.Headers.from_io(io.BytesIO('a' * 32))
+        headers.readline('a' * 32)
 
 
 def test_Headers_missing_clrf_terminates():
+    headers = h.Headers()
     with pytest.raises(h.InvalidHeaders):
-        h.Headers.from_io(io.BytesIO('One\r\n\Two\r\n'))
+        headers.readline('')

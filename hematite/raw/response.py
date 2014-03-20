@@ -4,7 +4,7 @@ from io import BytesIO
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper
-from hematite.compat.socket_io import bio_from_socket
+from hematite.socket_io import bio_from_socket
 from hematite.constants import REASON_CODES
 
 from hematite.raw import core
