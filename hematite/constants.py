@@ -148,3 +148,40 @@ CODE_REASONS = OMD([(100, 'Continue'),
                     ])
 
 REASON_CODES = CODE_REASONS.inverted()
+
+
+# Headers are foldable if they contain comma-separated values ("1#")
+# relevant:
+"""
+RFC2616 4.2:
+Multiple message-header fields with the same field-name MAY be
+present in a message if and only if the entire field-value for that
+header field is defined as a comma-separated list [i.e., #(values)].
+It MUST be possible to combine the multiple header fields into one
+"field-name: field-value" pair, without changing the semantics of the
+message, by appending each subsequent field-value to the first, each
+separated by a comma. The order in which header fields with the same
+field-name are received is therefore significant to the
+interpretation of the combined field value, and thus a proxy MUST NOT
+change the order of these field values when a message is forwarded.
+"""
+_FOLDABLE_HEADERS = ['Accept-Charset',
+                     'Accept-Encoding',
+                     'Accept-Language',
+                     'Accept-Ranges',
+                     'Cache-Control',
+                     'Connection',
+                     'Content-Encoding',
+                     'Content-Language',
+                     'Expect',
+                     'If-Match',
+                     'If-None-Match',
+                     'Pragma',
+                     'Proxy-Authenticate',
+                     'Trailer',
+                     'Transfer-Encoding',
+                     'Upgrade',
+                     'Vary',
+                     'Via',
+                     'Warning',
+                     'WWW-Authenticate']
