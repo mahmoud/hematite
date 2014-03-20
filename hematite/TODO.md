@@ -23,3 +23,18 @@
   - Profile (user-agent, browser stuff)
 - File upload
 - Chardet
+
+
+# Field thoughts
+
+Things fields have:
+
+* name
+* attr_name
+* duplicate behavior (fold or overwrite)
+* from_* methods
+* to_bytes method
+* documentation
+* validation
+
+Question: Which of these are actually more a characteristic of the ValueWrapper (native_type)?
