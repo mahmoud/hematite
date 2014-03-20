@@ -49,6 +49,8 @@ class ETag(HeaderValueWrapper):
         self.is_weak = is_weak or False
 
     def to_bytes(self):
+        if self.tag == '*':
+            return '*'  # can't have a weak star
         ret = quote_header_value(self.tag, allow_token=False)
         if self.is_weak:
             ret = 'W/' + ret
@@ -69,6 +71,34 @@ class ETag(HeaderValueWrapper):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, is_weak=%r)' % (cn, self.tag, self.is_weak)
+
+
+class ETagSet(HeaderValueWrapper):
+    """
+    TODO: all the matching logic
+    """
+    def __init__(self, etags=None):
+        etags = list(etags or [])
+        self.etags = etags
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        etags = []
+        raw_tags = bytestr.split(',')
+        for raw_tag in raw_tags:
+            etags.append(ETag.from_bytes(raw_tag))
+            # TODO except on ValueError, drop invalid etags
+        return cls(etags=etags)
+
+    def to_bytes(self):
+        return ', '.join([etag.to_bytes() for etag in self.etags])
+
+    def __len__(self):
+        return len(self.etags)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self.etags)
 
 
 class Field(object):
@@ -138,8 +168,7 @@ last_modified = HTTPHeaderField('last_modified',
                                 to_bytes=http_date_to_bytes,
                                 native_type=datetime)
 
-etag = HTTPHeaderField('etag',
-                       native_type=ETag)
+etag = HTTPHeaderField('etag', native_type=ETag)
 
 
 def expires_from_bytes(bytestr):
@@ -162,6 +191,9 @@ content_language = HTTPHeaderField('content_language',
                                    from_bytes=list_header_from_bytes,
                                    to_bytes=list_header_to_bytes,
                                    native_type=list)
+
+if_match = HTTPHeaderField('if_match', native_type=ETagSet)
+if_none_match = HTTPHeaderField('if_none_match', native_type=ETagSet)
 
 if_modified_since = HTTPHeaderField('if_modified_since',
                                     from_bytes=http_date_from_bytes,

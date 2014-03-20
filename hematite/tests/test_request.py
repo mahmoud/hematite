@@ -11,6 +11,7 @@ _GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
                   'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
                   'Accept-Encoding: gzip,deflate',
                   'Accept-Language: en-US,en;q=0.8',
+                  'If-None-Match: W/"lolololol", "lmao"',
                   'If-Modified-Since: Sat, 15 Mar 2014 18:41:58 GMT',
                   '', '')  # required to get trailing CRLF
 GET_REQ_BYTES = '\r\n'.join(_GET_REQ_LINES)
@@ -46,6 +47,7 @@ def test_request_construct():
     req.user_agent = 'Mozilla/3000.0 (X11; Linux x86_64)'
     req.accept_encoding = [('gzip', 1.0), ('deflate', 1.0)]
     req.accept_language = [('en-US', 1.0), ('en', 0.8)]
+    req.if_none_match = 'W/"lolololol", "lmao"'
     req.if_modified_since = datetime(2014, 3, 15, 18, 41, 58)
     req_bytes = req.to_bytes()
 
@@ -130,3 +132,9 @@ def test_accept_language_header():
     assert acc_dict['en'] == 0.8
     req_bytes = req.to_bytes()
     assert acc_lang_str in req_bytes
+
+
+def test_if_match():
+    req = Request()
+    req.if_match = 'xyzzy'
+    assert len(req.if_match) == 1
