@@ -215,6 +215,13 @@ class ContentType(HeaderValueWrapper):
             parts.extend(['%s=%s' % (k, v) for k, v in self.params.items()])
         return '; '.join(parts)
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self.params:
+            return ('%s(%r, charset=%r, params=%r)' %
+                    (cn, self.media_type, self.charset, self.params))
+        return '%s(%r, charset=%r)' % (cn, self.media_type, self.charset)
+
 
 content_type = HTTPHeaderField('content_type', native_type=ContentType)
 

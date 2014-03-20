@@ -91,6 +91,9 @@ def test_content_type():
     assert isinstance(data, unicode)
     rt_resp_bytes = resp.to_bytes()
     assert 'text/html; charset=UTF-8' in rt_resp_bytes
+    repr(resp.content_type)
+    resp.content_type.params['lol'] = 'lmao'
+    repr(resp.content_type)
 
 
 def test_status_reason():
