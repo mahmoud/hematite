@@ -208,6 +208,10 @@ class URL(BytestringHelper):
         self.args = QueryArgDict.from_string(self.query)
 
     @property
+    def is_absolute(self):
+        return bool(self.scheme)  # RFC2396 3.1
+
+    @property
     def authority(self):
         ret = []
         if self.username:

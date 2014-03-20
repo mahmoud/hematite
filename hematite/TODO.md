@@ -65,5 +65,6 @@ Question: Which of these are actually more a characteristic of the ValueWrapper 
   * Transfer-Encoding: "chunked"
   * Accept-Encoding/Content-Encoding: identity, gzip, compress, deflate, *
 * Unrecognized charset
+* URLs missing components (e.g, has a scheme, but no host)
 
 * Maybe: validation for 1.0-compatibility

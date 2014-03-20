@@ -87,3 +87,10 @@ def test_query_params(test_url):
 def test_urlparse_obj_input():
     with pytest.raises(TypeError):
         URL(object())
+
+
+def test_is_absolute():
+    url = URL('/hi/hello?yes=no')
+    assert not url.is_absolute
+    url = URL('http://googlewebsite.biz/hi')
+    assert url.is_absolute
