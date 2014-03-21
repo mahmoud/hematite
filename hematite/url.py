@@ -3,8 +3,8 @@
 import re
 import socket
 
-from compat import (unicode, bytes, urlparse, urlunparse,
-                    quote, parse_qsl, OrderedMultiDict, BytestringHelper)
+from compat import (unicode, bytes, urlunparse, quote,
+                    parse_qsl, OrderedMultiDict, BytestringHelper)
 
 """
 TODO:
@@ -262,12 +262,3 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
-
-
-def url2parseresult(url_str):
-    from urlparse import ParseResult  # TODO: temporary, for testing
-    pd = parse_url(url_str)
-    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
-                         '', pd['query'], pd['fragment'])
-    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
-    return parsed

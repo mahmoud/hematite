@@ -89,6 +89,12 @@ def test_urlparse_obj_input():
         URL(object())
 
 
+def test_invalid_url():
+    pass
+    #with pytest.raises(ValueError):
+    #    URL('this is pretty much the furthest thing from a url')  # TODO
+    #    URL('???????????????????')  # TODOx2
+
 def test_invalid_port():
     with pytest.raises(ValueError):
         URL('http://reader.googlewebsite.com:neverforget')
@@ -107,3 +113,13 @@ def test_is_absolute():
     assert not url.is_absolute
     url = URL('http://googlewebsite.biz/hi')
     assert url.is_absolute
+
+
+def _url2parseresult(url_str):
+    # TODO: is this necessary anymores?
+    from urlparse import ParseResult
+    pd = parse_url(url_str)
+    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
+                         '', pd['query'], pd['fragment'])
+    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
+    return parsed
