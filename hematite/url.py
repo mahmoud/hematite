@@ -97,7 +97,7 @@ def parse_hostinfo(au_str):
             try:
                 socket.inet_pton(socket.AF_INET6, host)
             except socket.error:
-                raise
+                raise ValueError('invalid IPv6 host: %r' % host)
             else:
                 family = socket.AF_INET6
                 return family, host, port

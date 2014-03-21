@@ -94,6 +94,14 @@ def test_invalid_port():
         URL('http://reader.googlewebsite.com:neverforget')
 
 
+def test_invalid_ipv6():
+    invalid_ipv6_ips = ['2001::0234:C1ab::A0:aabc:003F',
+                        '2001::1::3F']
+    for ip in invalid_ipv6_ips:
+        with pytest.raises(ValueError):
+            URL('http://[' + ip + ']')
+
+
 def test_is_absolute():
     url = URL('/hi/hello?yes=no')
     assert not url.is_absolute
