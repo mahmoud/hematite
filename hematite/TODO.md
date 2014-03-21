@@ -4,6 +4,11 @@
 
 - Get off of namedtuple as base class for parser components?
 
+## Issues
+
+- coverage/pytest-cov not seeing globals as covered (e.g., function
+  defs or global regexes)
+
 ## Features
 
 - status_code, version, and method fields (reason field?)

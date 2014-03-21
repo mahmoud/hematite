@@ -89,6 +89,11 @@ def test_urlparse_obj_input():
         URL(object())
 
 
+def test_invalid_port():
+    with pytest.raises(ValueError):
+        URL('http://reader.googlewebsite.com:neverforget')
+
+
 def test_is_absolute():
     url = URL('/hi/hello?yes=no')
     assert not url.is_absolute

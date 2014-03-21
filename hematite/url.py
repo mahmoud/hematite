@@ -87,8 +87,9 @@ def parse_hostinfo(au_str):
         if port_str and ']' not in port_str:
             try:
                 port = int(port_str)
-            except TypeError:
-                raise
+            except ValueError:
+                raise ValueError('invalid authority in URL %r expected int'
+                                 ' for port, not %r)' % (au_str, port_str))
         else:
             host, port = au_str, None
         if host and '[' == host[0] and ']' == host[-1]:
