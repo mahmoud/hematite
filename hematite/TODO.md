@@ -78,5 +78,17 @@ Question: Which of these are actually more a characteristic of the ValueWrapper 
   * Accept
 * Unrecognized charset
 * URLs missing components (e.g, has a scheme, but no host)
+* Length restrictions
+  * Warn on long URLs, long cookies
 
 * Maybe: validation for 1.0-compatibility
+
+
+# Cookie thoughts
+
+- Implement a parser from scratch or use cookielib? (leaning toward the former)
+- Haven't quite figured out yet what charset cookies are encoded in?
+  Specifiable on a per-cookie basis? Latin-1? Or the same as the page?
+- The HTTPHeaderField construct doesn't do great with cookie headers
+  because it's perfectly valid and common to have multiple Cookie/Set-Cookie
+  headers. Gonna need a special field/hook.
