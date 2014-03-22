@@ -268,6 +268,38 @@ def range_spec_to_bytes(val):
     return ret
 
 
+def content_range_spec_from_bytes(bytestr):
+    stripped = bytestr.strip()
+    if not stripped:
+        return None
+    try:
+        unit, resp_range_spec = stripped.split(None, 1)
+    except TypeError:
+        raise ValueError('invalid content range spec: %r' % bytestr)
+    resp_range, _, total_length = resp_range_spec.partition('/')
+    try:
+        total_length = int(total_length)
+    except ValueError:
+        if total_length == '*':
+            pass  # TODO: total_length = None ?
+        else:
+            raise ValueError('invalid content range spec: %r (expected int'
+                             ' or "*" for total_length)' % bytestr)
+    begin, _, end = resp_range.partition('-')
+    try:
+        begin, end = int(begin), int(end)
+    except ValueError:
+        raise ValueError('invalid content range spec: %r (invalid range)'
+                         % bytestr)
+    return unit, begin, end, total_length
+
+
+def content_range_spec_to_bytes(val):
+    unit, begin, end, total_length = val
+    parts = [unit, ' ', str(begin), '-', str(end), '/', str(total_length)]
+    return ''.join(parts)
+
+
 def _list_header_from_bytes(bytestr, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 

@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from hematite.serdes import (content_header_from_bytes,
+from hematite.serdes import (content_range_spec_from_bytes,
+                             content_range_spec_to_bytes,
+                             content_header_from_bytes,
                              accept_header_from_bytes,
                              items_header_from_bytes,
                              list_header_from_bytes,
                              range_spec_from_bytes,
-                             http_date_from_bytes,
-                             range_spec_to_bytes)
+                             range_spec_to_bytes,
+                             http_date_from_bytes)
+
 
 
 
@@ -120,3 +123,20 @@ def test_valid_bytes_range_specifiers():
 
         rt_spec_str = range_spec_to_bytes(r_spec)
         assert rt_spec_str == r_str
+
+
+VALID_CONTENT_RANGES = ['bytes 0-499/1234',
+                        'bytes 500-999/1234',
+                        'bytes 500-1233/1234',
+                        'bytes 734-1233/1234',
+                        'bytes 5000-5001/*']
+
+
+def test_valid_content_ranges():
+    for cr_str in VALID_CONTENT_RANGES:
+        cr_spec = content_range_spec_from_bytes(cr_str)
+        assert cr_spec[0] == 'bytes'
+        assert cr_spec[-1]
+
+        rt_cr_str = content_range_spec_to_bytes(cr_spec)
+        assert rt_cr_str == cr_str
