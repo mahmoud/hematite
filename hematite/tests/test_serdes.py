@@ -4,7 +4,9 @@ from hematite.serdes import (content_header_from_bytes,
                              accept_header_from_bytes,
                              items_header_from_bytes,
                              list_header_from_bytes,
-                             http_date_from_bytes)
+                             range_spec_from_bytes,
+                             http_date_from_bytes,
+                             range_spec_to_bytes)
 
 
 
@@ -99,3 +101,22 @@ def test_content_from_bytes():
     for serialized, expected in _CONTENT_TESTS:
         deserialized = content_header_from_bytes(serialized)
         assert deserialized == expected
+
+
+VALID_BYTES_RANGE_SPECIFIERS = ['bytes=0-499',
+                                'bytes=500-999',
+                                'bytes=-500',
+                                'bytes=9500-',
+                                'bytes=0-0,-1',
+                                'bytes=500-600,601-999',
+                                'bytes=500-700,601-999']
+
+
+def test_valid_bytes_range_specifiers():
+    for r_str in VALID_BYTES_RANGE_SPECIFIERS:
+        r_spec = range_spec_from_bytes(r_str)
+        assert r_spec[0] == 'bytes'
+        assert r_spec[1] and all(r_spec[1:])
+
+        rt_spec_str = range_spec_to_bytes(r_spec)
+        assert rt_spec_str == r_str

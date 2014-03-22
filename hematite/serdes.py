@@ -220,6 +220,54 @@ def http_date_to_bytes(date_val=None, sep=' '):
             (_dayname[wd], day, sep, _monthname[month], sep, year, hh, mm, ss))
 
 
+def range_spec_from_bytes(bytestr):
+    # TODO: is bytes=500 valid? or does it have to be bytes=500-500
+    unit, _, range_str = bytestr.partition('=')
+    unit = unit.strip().lower()
+    if not unit:
+        return None
+    last_end, range_list = 0, []
+
+    for rng in range_str.split(','):
+        rng = rng.strip()
+        if '-' not in rng:
+            raise ValueError('invalid byte range specifier: %r' % bytestr)
+        if rng[:1] == '-':
+            if last_end < 0:
+                raise ValueError('invalid byte range specifier: %r' % bytestr)
+            begin, end, last_end = int(rng), None, -1
+        else:
+            begin, _, end = rng.partition('-')
+            begin = int(begin)
+            if end:
+                end = int(end)
+                if begin > end:
+                    raise ValueError('invalid byte range specifier: %r'
+                                     % bytestr)
+            else:
+                end = None
+            last_end = end
+        range_list.append((begin, end))
+    return (unit, range_list)
+
+
+def range_spec_to_bytes(val):
+    if not val:
+        return ''
+    unit, ranges = val
+    ret = str(unit) + '='
+    range_parts = []
+    for begin, end in ranges:
+        cur = str(begin)
+        if begin >= 0:
+            cur += '-'
+        if end is not None:
+            cur += str(end)
+        range_parts.append(cur)
+    ret += ','.join(range_parts)
+    return ret
+
+
 def _list_header_from_bytes(bytestr, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 
