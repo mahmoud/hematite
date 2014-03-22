@@ -300,6 +300,26 @@ def content_range_spec_to_bytes(val):
     return ''.join(parts)
 
 
+def retry_after_from_bytes(bytestr):
+    try:
+        seconds = int(bytestr)
+        val = timedelta(seconds=seconds)
+    except ValueError:
+        try:
+            val = http_date_from_bytes(bytestr)
+        except:
+            raise ValueError('expected HTTP-date or delta-seconds for'
+                             ' Retry-After, not %r' % bytestr)
+    return val
+
+
+def retry_after_to_bytes(val):
+    if isinstance(val, timedelta):
+        return bytes(int(round(total_seconds(val))))
+    else:
+        return http_date_to_bytes(val)
+
+
 def _list_header_from_bytes(bytestr, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 
@@ -465,3 +485,21 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
               'MST': -700, 'MDT': -600,  # Mountain
               'PST': -800, 'PDT': -700   # Pacific
               }
+
+
+def total_seconds(td):
+    """\
+    A pure-Python implementation of Python 2.7's timedelta.total_seconds().
+
+    Accepts a timedelta object, returns number of total seconds.
+
+    >>> td = datetime.timedelta(days=4, seconds=33)
+    >>> total_seconds(td)
+    345633.0
+
+    (from boltons)
+    """
+    a_milli = 1000000.0
+    td_ds = td.seconds + (td.days * 86400)  # 24 * 60 * 60
+    td_micro = td.microseconds + (td_ds * a_milli)
+    return td_micro / a_milli

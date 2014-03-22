@@ -6,11 +6,11 @@ from hematite.serdes import (content_range_spec_from_bytes,
                              accept_header_from_bytes,
                              items_header_from_bytes,
                              list_header_from_bytes,
+                             retry_after_from_bytes,
+                             retry_after_to_bytes,
                              range_spec_from_bytes,
                              range_spec_to_bytes,
                              http_date_from_bytes)
-
-
 
 
 _ACCEPT_TESTS = [('', []),
@@ -140,3 +140,16 @@ def test_valid_content_ranges():
 
         rt_cr_str = content_range_spec_to_bytes(cr_spec)
         assert rt_cr_str == cr_str
+
+
+VALID_RETRY_AFTERS = ['Fri, 31 Dec 1999 23:59:59 GMT',
+                      '120']
+
+
+def test_valid_retry_afters():
+    for ra_str in VALID_RETRY_AFTERS:
+        ra_obj = retry_after_from_bytes(ra_str)
+        assert ra_obj
+
+        rt_ra_str = retry_after_to_bytes(ra_obj)
+        assert ra_str == rt_ra_str
