@@ -361,6 +361,11 @@ class HostHeaderField(HTTPHeaderField):
 
 host = HostHeaderField()
 
+
+from_field = HTTPHeaderField('_from', http_name='From')
+
+
+
 """
 Several key Request attributes are URL-based. Similar to the
 HTTPHeaderField, which is backed by a Headers dict, URL fields are
