@@ -96,6 +96,29 @@ def test_content_type():
     repr(resp.content_type)
 
 
+def test_content_disposition():
+    #resp_bytes = ('HTTP/1.1 200 OK\r\n'
+    #              'Content-Disposition: attachment;\r\n'
+    #              '                     filename="EURO rates";\r\n'
+    #              '                     filename*=utf-8''%e2%82%ac%20rates\r\n'
+    #              '\r\n')
+    resp_bytes = ('HTTP/1.1 200 OK\r\n'
+                  'Content-Disposition: attachment; filename="EURO rates"; filename*=utf-8\'\'%e2%82%ac%20rates\r\n'
+                  '\r\n')
+    resp = Response.from_bytes(resp_bytes)
+    assert resp.content_disposition.disp_type == 'attachment'
+    assert resp.content_disposition.filename == 'EURO rates'
+    assert resp.content_disposition.filename_ext == "utf-8''%e2%82%ac%20rates"
+    assert resp.content_disposition.is_attachment
+    assert not resp.content_disposition.is_inline
+
+    rt_resp_bytes = resp.to_bytes()
+    assert 'attachment' in rt_resp_bytes
+    repr(resp.content_disposition)
+    resp.content_disposition.params['lol'] = 'lmao'
+    repr(resp.content_disposition)
+
+
 def test_status_reason():
     resp = Response(200)
     assert resp.reason == 'OK'

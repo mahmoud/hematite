@@ -225,6 +225,60 @@ class ContentType(HeaderValueWrapper):
 
 content_type = HTTPHeaderField('content_type', native_type=ContentType)
 
+
+class ContentDisposition(HeaderValueWrapper):
+    def __init__(self,
+                 disp_type,
+                 filename=None,
+                 filename_ext=None,
+                 params=None):
+        self.disp_type = disp_type
+        self.filename = filename
+        self.filename_ext = filename_ext
+        self.params = dict(params) if params else {}
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        disp_type, params = content_header_from_bytes(bytestr)
+        filename, filename_ext, ext_params = None, None, []
+        for item in params:
+            if item[0].lower() == 'filename':
+                filename = item[1]
+            elif item[0].lower() == 'filename*':
+                filename_ext = item[1]
+            else:
+                ext_params.append(item)
+        return cls(disp_type=disp_type,
+                   filename=filename,
+                   filename_ext=filename_ext,
+                   params=ext_params)
+
+    def to_bytes(self):
+        # TODO: quote parameter values
+        parts = [self.disp_type]
+        if self.filename is not None:
+            parts.append('filename=' + self.filename)
+        if self.filename_ext is not None:
+            parts.append('filename*=' + self.filename_ext)
+        if self.params:
+            parts.extend(['%s=%s' % (k, v) for k, v in self.params.items()])
+        return '; '.join(parts)
+
+    def get_filename(self, coerce_ext=True):
+        """TODO: convenience method that automatically bridges the
+        presence of filename/filename_ext"""
+
+    @property
+    def is_inline(self):
+        return self.disp_type.lower() == 'inline'
+
+    @property
+    def is_attachment(self):
+        return self.disp_type.lower() == 'attachment'
+
+content_disposition = HTTPHeaderField('content_disposition',
+                                      native_type=ContentDisposition)
+
 content_language = HTTPHeaderField('content_language',
                                    from_bytes=list_header_from_bytes,
                                    to_bytes=list_header_to_bytes,

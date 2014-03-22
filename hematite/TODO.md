@@ -92,3 +92,14 @@ Question: Which of these are actually more a characteristic of the ValueWrapper 
 - The HTTPHeaderField construct doesn't do great with cookie headers
   because it's perfectly valid and common to have multiple Cookie/Set-Cookie
   headers. Gonna need a special field/hook.
+
+
+# Other header thoughts
+
+Some common response headers that may be worthy of official fields at
+some point:
+
+- Content-Security-Policy
+- X-XSS-Protection
+- X-Frame-Options
+- Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
