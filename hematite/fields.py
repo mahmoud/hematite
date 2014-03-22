@@ -218,8 +218,8 @@ class ContentType(HeaderValueWrapper):
     def __repr__(self):
         cn = self.__class__.__name__
         if self.params:
-            return ('%s(%r, charset=%r, params=%r)' %
-                    (cn, self.media_type, self.charset, self.params))
+            return ('%s(%r, charset=%r, params=%r)'
+                    % (cn, self.media_type, self.charset, self.params))
         return '%s(%r, charset=%r)' % (cn, self.media_type, self.charset)
 
 
@@ -275,6 +275,16 @@ class ContentDisposition(HeaderValueWrapper):
     @property
     def is_attachment(self):
         return self.disp_type.lower() == 'attachment'
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self.params:
+            return ('%s(%r, filename=%r, filename_ext=%r, params=%r)'
+                    % (cn, self.disp_type, self.filename,
+                       self.filename_ext, self.params))
+        return ('%s(%r, filename=%r, filename_ext=%r)'
+                % (cn, self.disp_type, self.filename, self.filename_ext))
+
 
 content_disposition = HTTPHeaderField('content_disposition',
                                       native_type=ContentDisposition)

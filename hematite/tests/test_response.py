@@ -106,11 +106,12 @@ def test_content_disposition():
                   'Content-Disposition: attachment; filename="EURO rates"; filename*=utf-8\'\'%e2%82%ac%20rates\r\n'
                   '\r\n')
     resp = Response.from_bytes(resp_bytes)
-    assert resp.content_disposition.disp_type == 'attachment'
-    assert resp.content_disposition.filename == 'EURO rates'
-    assert resp.content_disposition.filename_ext == "utf-8''%e2%82%ac%20rates"
-    assert resp.content_disposition.is_attachment
-    assert not resp.content_disposition.is_inline
+    content_disp = resp.content_disposition
+    assert content_disp.disp_type == 'attachment'
+    assert content_disp.filename == 'EURO rates'
+    assert content_disp.filename_ext == "utf-8''%e2%82%ac%20rates"
+    assert content_disp.is_attachment
+    assert not content_disp.is_inline
 
     rt_resp_bytes = resp.to_bytes()
     assert 'attachment' in rt_resp_bytes
