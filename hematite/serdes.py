@@ -231,6 +231,7 @@ def _list_header_from_bytes(bytestr, sep=None):
 
     (based on urllib2 from the stdlib)
     """
+    bytestr = bytestr.strip()
     res, part, sep = [], '', sep or ','
 
     escape = quote = False
@@ -384,70 +385,3 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
               'MST': -700, 'MDT': -600,  # Mountain
               'PST': -800, 'PDT': -700   # Pacific
               }
-
-
-def _test_accept():
-    _accept_tests = ['',
-                     ' ',
-                     'audio/*; q=0.2 , audio/basic',  # Accept
-                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                     'iso-8859-5, unicode-1-1;q=0.8',  # Accept-Charset
-                     '*',  # Accept-Encoding
-                     'compress, gzip',
-                     'compress;q=0.5, gzip;q=1.0',
-                     'gzip;q=1.0, identity; q=0.5, *;q=0',
-                     'da, en-gb;q=0.8, en;q=0.7',  # Accept-Language
-                     'bytes',  # Accept-Ranges  # TODO
-                     'none']
-    for t in _accept_tests:
-        print
-        print accept_header_from_bytes(t)
-
-
-def _test_items_header():
-    _items_tests = ['',
-                    ' ',
-                    'Basic realm="myRealm"',  # WWW-Authenticate
-                    'private, community="UCI"']  # Cache control
-    for t in _items_tests:
-        print items_header_from_bytes(t)
-
-    print items_header_to_bytes([('Basic realm', 'myRealm')])
-    return
-
-
-def _test_list_header():
-    print list_header_from_bytes('mi, en')  # Content-Language
-    print list_header_from_bytes('')  # TODO: Allow, Vary, Pragma
-    return
-
-
-def _test_http_date():
-    # date examples from 3.3.1 with seconds imcrementing
-    print http_date_from_bytes('Sun, 06 Nov 1994 08:49:37 GMT')
-    print http_date_from_bytes('Sunday, 06-Nov-94 08:49:38 GMT')
-    print http_date_from_bytes('Sun Nov  6 08:49:39 1994')
-
-
-def _test_content_header():
-    _rough_content_type = ('message/external-body; access-type=URL;'
-                           ' URL*0="ftp://";'
-                           ' URL*1="cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar"')
-    _content_tests = ['',
-                      ' ',
-                      'text/plain',
-                      'text/html; charset=ISO-8859-4',
-                      _rough_content_type]
-    for t in _content_tests:
-        print content_header_from_bytes(t)
-
-
-if __name__ == '__main__':
-    def _main():
-        _test_accept()
-        _test_items_header()
-        _test_list_header()
-        _test_http_date()
-        _test_content_header()
-
-    _main()
