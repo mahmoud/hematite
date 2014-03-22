@@ -7,6 +7,7 @@ _GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
                   'Host: en.wikipedia.org',
                   'Connection: keep-alive',
                   'Cache-Control: max-age=0',
+                  'Referer: http://blog.hatnote.com/post/1',
                   'Accept: text/html,application/xhtml+xml,*/*;q=0.9',
                   'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
                   'Accept-Encoding: gzip,deflate',
@@ -41,6 +42,7 @@ def test_request_construct():
     req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
     req.connection = 'keep-alive'
     req.cache_control = [('max-age', 0)]
+    req.referer = 'http://blog.hatnote.com/post/1'
     req.accept = [('text/html', 1.0),
                   ('application/xhtml+xml', 1.0),
                   ('*/*', 0.9)]
@@ -142,3 +144,9 @@ def test_if_match():
     assert req.if_match.etags[-1].is_weak is True
     req.if_match = None
     assert req.if_match is None
+
+
+def test_referer():
+    req = Request.from_bytes(GET_REQ_BYTES)
+    assert req.referer.scheme == 'http'
+    assert req.referer.is_absolute

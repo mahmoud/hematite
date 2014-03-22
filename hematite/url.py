@@ -260,5 +260,9 @@ class URL(BytestringHelper):
     def to_bytes(self):
         return self.encode()
 
+    @classmethod
+    def from_bytes(cls, bytestr):
+        return cls(bytestr)
+
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())

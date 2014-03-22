@@ -5,26 +5,26 @@ from hematite.response import Response
 from hematite.raw.response import RawResponse
 
 
-def test_resp_raw_resp():
-    raw_resp_str = ('HTTP/1.1 200 OK\r\n'
-                    'Date: Tue, 11 Mar 2014 06:29:33 GMT\r\n'
-                    'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT\r\n'
-                    'Server: hatnote.com\r\n'
-                    'Expires: Tue, 11 Mar 2014 06:29:34 GMT\r\n'
-                    'Content-Language: en, mi\r\n'
-                    'X-Proprietary-Header: lol\r\n'
-                    '\r\n')
+_RESP_200_LINES = ('HTTP/1.1 200 OK',
+                   'Date: Tue, 11 Mar 2014 06:29:33 GMT',
+                   'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT',
+                   'Server: hatnote.com',
+                   'Expires: Tue, 11 Mar 2014 06:29:34 GMT',
+                   'Content-Language: en, mi',
+                   'X-Proprietary-Header: lol',
+                   '', '')  # required to get trailing CRLF
 
-    raw_resp = RawResponse.from_bytes(raw_resp_str)
+RESP_200_BYTES = '\r\n'.join(_RESP_200_LINES)
+
+
+def test_resp_raw_resp():
+    raw_resp = RawResponse.from_bytes(RESP_200_BYTES)
     resp = Response.from_raw_response(raw_resp)
     assert isinstance(resp.date, datetime)
     assert isinstance(resp.content_language, list)
     the_bytes = resp.to_bytes()
 
-    print repr(raw_resp_str)
-    print repr(the_bytes)
-
-    assert raw_resp_str == the_bytes
+    assert RESP_200_BYTES == the_bytes
 
 
 def test_cap_norm():

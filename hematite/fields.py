@@ -5,7 +5,9 @@ from datetime import datetime
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
                                 http_header_case)
-from hematite.serdes import (http_date_to_bytes,
+from hematite.serdes import (quote_header_value,
+                             unquote_header_value,
+                             http_date_to_bytes,
                              http_date_from_bytes,
                              list_header_to_bytes,
                              list_header_from_bytes,
@@ -15,9 +17,7 @@ from hematite.serdes import (http_date_to_bytes,
                              accept_header_from_bytes,
                              default_header_to_bytes,
                              default_header_from_bytes,
-                             content_header_from_bytes,
-                             quote_header_value,
-                             unquote_header_value)
+                             content_header_from_bytes)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -239,6 +239,7 @@ class ContentDisposition(HeaderValueWrapper):
 
     @classmethod
     def from_bytes(cls, bytestr):
+        # TODO: RFC5987 decoding and saving of ext charsets where applicable
         disp_type, params = content_header_from_bytes(bytestr)
         filename, filename_ext, ext_params = None, None, []
         for item in params:
@@ -336,6 +337,11 @@ accept_encoding = HTTPHeaderField('accept_encoding',
                                   native_type=list)
 
 
+# TODO: referer or referrer?
+referer = HTTPHeaderField('referer',
+                          native_type=URL)
+
+
 class HostHeaderField(HTTPHeaderField):
     def __init__(self):
         super(HostHeaderField, self).__init__(name='host')
@@ -354,7 +360,6 @@ class HostHeaderField(HTTPHeaderField):
 
 
 host = HostHeaderField()
-
 
 """
 Several key Request attributes are URL-based. Similar to the
