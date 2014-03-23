@@ -164,3 +164,16 @@ def test_content_range():
 
     resp.content_range = None
     assert not resp.content_range
+
+
+def test_folding_headers():
+    resp_bytes = ('HTTP/1.1 200 OK\r\n'
+                  'Cache-Control: must-revalidate\r\n'
+                  'Cache-Control: proxy-revalidate\r\n'
+                  'Cache-Control: no-cache\r\n'
+                  'Content-Type: text/html; charset=UTF-8\r\n'
+                  '\r\n')
+    resp = Response.from_bytes(resp_bytes)
+    rt_headers = resp._get_header_dict()
+    cc_expected = 'must-revalidate, proxy-revalidate, no-cache'
+    assert rt_headers['Cache-Control'] == cc_expected

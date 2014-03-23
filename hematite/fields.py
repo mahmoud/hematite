@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
+                                FOLDABLE_HEADERS,
                                 http_header_case)
 from hematite.serdes import (quote_header_value,
                              unquote_header_value,
@@ -176,6 +177,8 @@ class HTTPHeaderField(Field):
         self.to_bytes = kw.pop('to_bytes', default_to_bytes)
         if kw:
             raise TypeError('unexpected keyword arguments: %r' % kw)
+        self.is_foldable = self.http_name in FOLDABLE_HEADERS
+
         # TODO: documentation field
         # TODO: validate
 

@@ -17,7 +17,6 @@ def _init_headers(self):
     # plenty of ways to arrange this
     hf_map = self._header_field_map
     for hname, hval in self._raw_headers.items(multi=True):
-        # TODO: folding
         try:
             norm_hname = CAP_MAP[hname.lower()]
             field = hf_map[norm_hname]
@@ -25,6 +24,13 @@ def _init_headers(self):
             # preserves insertion order and duplicates
             self.headers.add(hname, default_header_from_bytes(hval))
         else:
+            if field.is_foldable:
+                if norm_hname in self.headers:
+                    continue
+                # TODO: this won't catch e.g., Cache-Control + CACHE-CONTROL
+                # in the same preamble/envelope
+                val_list = self._raw_headers.getlist(hname)
+                hval = ','.join(val_list)
             field.__set__(self, hval)
 
 
