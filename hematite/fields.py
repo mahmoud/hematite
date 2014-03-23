@@ -289,7 +289,10 @@ class ContentDisposition(HeaderValueWrapper):
 
 content_disposition = HTTPHeaderField('content_disposition',
                                       native_type=ContentDisposition)
-
+content_encoding = HTTPHeaderField('content_encoding',
+                                   from_bytes=list_header_from_bytes,
+                                   to_bytes=list_header_to_bytes,
+                                   native_type=list)
 content_language = HTTPHeaderField('content_language',
                                    from_bytes=list_header_from_bytes,
                                    to_bytes=list_header_to_bytes,
@@ -301,6 +304,8 @@ content_length = HTTPHeaderField('content_length',
                                  to_bytes=bytes,
                                  native_type=int)
 content_md5 = HTTPHeaderField('content_md5')
+content_location = HTTPHeaderField('content_location',
+                                   native_type=URL)
 
 
 if_match = HTTPHeaderField('if_match', native_type=ETagSet)
