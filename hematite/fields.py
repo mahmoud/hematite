@@ -318,9 +318,6 @@ cache_control = HTTPHeaderField('cache_control',
                                 to_bytes=items_header_to_bytes,
                                 native_type=list)
 
-user_agent = HTTPHeaderField('user_agent')
-connection = HTTPHeaderField('connection')
-
 accept = HTTPHeaderField('accept',
                          from_bytes=accept_header_from_bytes,
                          to_bytes=accept_header_to_bytes,
@@ -363,6 +360,14 @@ host = HostHeaderField()
 
 
 from_field = HTTPHeaderField('_from', http_name='From')
+server_field = HTTPHeaderField('server')
+user_agent = HTTPHeaderField('user_agent')
+connection = HTTPHeaderField('connection')
+trailer = HTTPHeaderField('trailer',
+                          from_bytes=list_header_from_bytes,
+                          to_bytes=list_header_to_bytes)
+
+location = HTTPHeaderField('location', native_type=URL)
 
 
 

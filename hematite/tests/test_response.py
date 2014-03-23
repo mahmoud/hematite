@@ -8,7 +8,7 @@ from hematite.raw.response import RawResponse
 _RESP_200_LINES = ('HTTP/1.1 200 OK',
                    'Date: Tue, 11 Mar 2014 06:29:33 GMT',
                    'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT',
-                   'Server: hatnote.com',
+                   'Server: hematited/1.0',
                    'Expires: Tue, 11 Mar 2014 06:29:34 GMT',
                    'Content-Language: en, mi',
                    'X-Proprietary-Header: lol',

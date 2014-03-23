@@ -7,6 +7,7 @@ _GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
                   'Host: en.wikipedia.org',
                   'Connection: keep-alive',
                   'Cache-Control: max-age=0',
+                  'From: mahmoud@hatnote.com',
                   'Referer: http://blog.hatnote.com/post/1',
                   'Accept: text/html,application/xhtml+xml,*/*;q=0.9',
                   'User-Agent: Mozilla/3000.0 (X11; Linux x86_64)',
@@ -23,7 +24,6 @@ def test_request_basic():
     assert req.host == 'google.com'
     assert req._url.path == '/'
     req_str = req.to_bytes()
-    print repr(req_str)
     assert 'Host:' in req_str
     #import pdb;pdb.set_trace()
 
@@ -42,6 +42,7 @@ def test_request_construct():
     req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
     req.connection = 'keep-alive'
     req.cache_control = [('max-age', 0)]
+    req._from = 'mahmoud@hatnote.com'
     req.referer = 'http://blog.hatnote.com/post/1'
     req.accept = [('text/html', 1.0),
                   ('application/xhtml+xml', 1.0),
@@ -134,6 +135,12 @@ def test_accept_language_header():
     assert acc_dict['en'] == 0.8
     req_bytes = req.to_bytes()
     assert acc_lang_str in req_bytes
+
+
+def test_trailer_field():
+    req = Request()
+    req.trailer = 'Content-MD5, Pragma'
+    assert len(req.trailer) == 2
 
 
 def test_if_match():
