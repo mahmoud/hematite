@@ -9,6 +9,8 @@ from hematite.serdes import (quote_header_value,
                              unquote_header_value,
                              http_date_to_bytes,
                              http_date_from_bytes,
+                             range_spec_to_bytes,
+                             range_spec_from_bytes,
                              list_header_to_bytes,
                              list_header_from_bytes,
                              retry_after_to_bytes,
@@ -19,7 +21,9 @@ from hematite.serdes import (quote_header_value,
                              accept_header_from_bytes,
                              default_header_to_bytes,
                              default_header_from_bytes,
-                             content_header_from_bytes)
+                             content_header_from_bytes,
+                             content_range_spec_from_bytes,
+                             content_range_spec_to_bytes)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -105,6 +109,43 @@ class ETagSet(HeaderValueWrapper):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r)' % (cn, self.etags)
+
+
+class Range(HeaderValueWrapper):
+    def __init__(self, ranges=None, unit=None):
+        self.ranges = ranges or []
+        self.unit = unit or 'bytes'
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        unit, ranges = range_spec_from_bytes(bytestr)
+        return cls(unit=unit, ranges=ranges)
+
+    def to_bytes(self):
+        return range_spec_to_bytes((self.unit, self.ranges))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(ranges=%r, unit=%r)' % (cn, self.ranges, self.unit)
+
+
+class ContentRange(HeaderValueWrapper):
+    def __init__(self, begin=None, end=None, total=None, unit=None):
+        self.begin, self.end, self.total, self.unit = begin, end, total, unit
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        unit, begin, end, total = content_range_spec_from_bytes(bytestr)
+        return cls(begin=begin, end=end, total=total, unit=unit)
+
+    def to_bytes(self):
+        return content_range_spec_to_bytes((self.unit, self.begin,
+                                            self.end, self.total))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ('%s(begin=%r, end=%r, total=%r, unit=%r)'
+                % (cn, self.begin, self.end, self.total, self.unit))
 
 
 class Field(object):
@@ -309,6 +350,12 @@ content_md5 = HTTPHeaderField('content_md5')
 content_location = HTTPHeaderField('content_location',
                                    native_type=URL)
 
+content_range = HTTPHeaderField('content_range',
+                                native_type=ContentRange)
+
+range_field = HTTPHeaderField('range',
+                              native_type=Range)
+
 
 if_match = HTTPHeaderField('if_match', native_type=ETagSet)
 if_none_match = HTTPHeaderField('if_none_match', native_type=ETagSet)
@@ -347,7 +394,6 @@ accept_encoding = HTTPHeaderField('accept_encoding',
                                   from_bytes=accept_header_from_bytes,
                                   to_bytes=accept_header_to_bytes,
                                   native_type=list)
-
 
 accept_charset = HTTPHeaderField('accept_charset',
                                  from_bytes=accept_header_from_bytes,

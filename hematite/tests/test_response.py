@@ -148,3 +148,19 @@ def test_retry_after():
     resp.retry_after = '120'
     assert resp.retry_after.seconds == 120
     assert '120' in resp.to_bytes()
+
+
+def test_content_range():
+    resp = Response(200)
+    resp.content_range = 'bytes 0-499/1234'
+    cr = resp.content_range
+    assert cr.begin == 0
+    assert cr.end == 499
+    assert cr.total == 1234
+    repr(cr)
+
+    cr.begin = None
+    assert '*/' in cr.to_bytes()
+
+    resp.content_range = None
+    assert not resp.content_range

@@ -44,6 +44,12 @@ Things fields have:
 
 Question: Which of these are actually more a characteristic of the ValueWrapper (native_type)?
 
+Should "complex" field attributes (i.e., ones with
+HeaderValueWrappers, e.g., resp.range) start out with a blank version
+of the object, or should they be set to None? Usage will probably
+tell; if there's a lot of if checking and/or annoying imports, we can
+address it.
+
 ## HeaderValueWrappers
 
 - CacheControl
@@ -103,3 +109,5 @@ some point:
 - X-XSS-Protection
 - X-Frame-Options
 - Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
+- P3P
+- X-Powered-By?

@@ -296,7 +296,12 @@ def content_range_spec_from_bytes(bytestr):
 
 def content_range_spec_to_bytes(val):
     unit, begin, end, total_length = val
-    parts = [unit, ' ', str(begin), '-', str(end), '/', str(total_length)]
+    parts = [unit, ' ']
+    if begin is None:
+        parts.append('*')
+    else:
+        parts.extend([str(begin), '-', str(end)])
+    parts.extend(['/', str(total_length)])
     return ''.join(parts)
 
 

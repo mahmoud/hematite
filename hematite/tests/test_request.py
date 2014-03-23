@@ -168,3 +168,15 @@ def test_referer():
     req = Request.from_bytes(GET_REQ_BYTES)
     assert req.referer.scheme == 'http'
     assert req.referer.is_absolute
+
+
+def test_range():
+    req = Request()
+    req.range = 'bytes=500-999'
+    begin, end = req.range.ranges[0]
+    assert begin == 500
+    assert end == 999
+    assert req.range.unit == 'bytes'
+    repr(req.range)
+    req.range = None
+    assert not req.range

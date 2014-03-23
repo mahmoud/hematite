@@ -116,8 +116,10 @@ VALID_BYTES_RANGE_SPECIFIERS = ['bytes=0-499',
 
 
 def test_valid_bytes_range_specifiers():
+    print
     for r_str in VALID_BYTES_RANGE_SPECIFIERS:
         r_spec = range_spec_from_bytes(r_str)
+        print r_spec
         assert r_spec[0] == 'bytes'
         assert r_spec[1] and all(r_spec[1:])
 
