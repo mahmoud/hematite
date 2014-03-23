@@ -102,6 +102,14 @@ def test_content_type():
     repr(resp.content_type)
 
 
+def test_content_length_field():
+    resp = Response(200)
+    resp.content_length = 200
+    assert resp.content_length == 200
+    resp.content_length = '70'
+    assert resp.content_length == 70
+
+
 def test_content_disposition():
     #resp_bytes = ('HTTP/1.1 200 OK\r\n'
     #              'Content-Disposition: attachment;\r\n'

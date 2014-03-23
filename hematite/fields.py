@@ -295,6 +295,12 @@ content_language = HTTPHeaderField('content_language',
                                    to_bytes=list_header_to_bytes,
                                    native_type=list)
 
+# TODO: too simplistic with this one?
+content_length = HTTPHeaderField('content_length',
+                                 from_bytes=int,
+                                 to_bytes=bytes,
+                                 native_type=int)
+
 if_match = HTTPHeaderField('if_match', native_type=ETagSet)
 if_none_match = HTTPHeaderField('if_none_match', native_type=ETagSet)
 
@@ -374,7 +380,6 @@ trailer = HTTPHeaderField('trailer',
 vary = HTTPHeaderField('vary',
                        from_bytes=list_header_from_bytes,
                        to_bytes=list_header_to_bytes)
-
 location = HTTPHeaderField('location', native_type=URL)
 
 
