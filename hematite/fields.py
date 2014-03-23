@@ -371,6 +371,9 @@ connection = HTTPHeaderField('connection')
 trailer = HTTPHeaderField('trailer',
                           from_bytes=list_header_from_bytes,
                           to_bytes=list_header_to_bytes)
+vary = HTTPHeaderField('vary',
+                       from_bytes=list_header_from_bytes,
+                       to_bytes=list_header_to_bytes)
 
 location = HTTPHeaderField('location', native_type=URL)
 

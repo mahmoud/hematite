@@ -80,6 +80,12 @@ def test_etag_field():
     assert resp.etag is None
 
 
+def test_vary_field():
+    resp = Response(200)
+    resp.vary = 'Content-MD5, Pragma'
+    assert len(resp.vary) == 2
+
+
 def test_content_type():
     resp_bytes = ('HTTP/1.1 200 OK\r\n'
                   'Content-Type: text/html; charset=UTF-8\r\n'
