@@ -443,12 +443,17 @@ user_agent = HTTPHeaderField('user_agent')
 connection = HTTPHeaderField('connection')
 trailer = HTTPHeaderField('trailer',
                           from_bytes=list_header_from_bytes,
-                          to_bytes=list_header_to_bytes)
+                          to_bytes=list_header_to_bytes,
+                          native_type=list)
 vary = HTTPHeaderField('vary',
                        from_bytes=list_header_from_bytes,
-                       to_bytes=list_header_to_bytes)
+                       to_bytes=list_header_to_bytes,
+                       native_type=list)
+allow = HTTPHeaderField('allow',
+                        from_bytes=list_header_from_bytes,
+                        to_bytes=list_header_to_bytes,
+                        native_type=list)
 location = HTTPHeaderField('location', native_type=URL)
-
 
 
 """
