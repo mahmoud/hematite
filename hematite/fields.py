@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
@@ -11,6 +11,8 @@ from hematite.serdes import (quote_header_value,
                              http_date_from_bytes,
                              list_header_to_bytes,
                              list_header_from_bytes,
+                             retry_after_to_bytes,
+                             retry_after_from_bytes,
                              items_header_to_bytes,
                              items_header_from_bytes,
                              accept_header_to_bytes,
@@ -383,6 +385,11 @@ class HostHeaderField(HTTPHeaderField):
 
 host = HostHeaderField()
 
+transfer_encoding = HTTPHeaderField('transfer_encoding')
+retry_after = HTTPHeaderField('retry_after',
+                              from_bytes=retry_after_from_bytes,
+                              to_bytes=retry_after_to_bytes,
+                              native_type=(datetime, timedelta))
 
 from_field = HTTPHeaderField('_from', http_name='From')
 server_field = HTTPHeaderField('server')

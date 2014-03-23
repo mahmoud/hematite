@@ -141,3 +141,10 @@ def test_status_reason():
     assert resp.reason == 'Internal Server Error'
     resp = Response(9000)
     assert resp.reason == ''
+
+
+def test_retry_after():
+    resp = Response(503)
+    resp.retry_after = '120'
+    assert resp.retry_after.seconds == 120
+    assert '120' in resp.to_bytes()
