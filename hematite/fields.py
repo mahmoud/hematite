@@ -300,6 +300,8 @@ content_length = HTTPHeaderField('content_length',
                                  from_bytes=int,
                                  to_bytes=bytes,
                                  native_type=int)
+content_md5 = HTTPHeaderField('content_md5')
+
 
 if_match = HTTPHeaderField('if_match', native_type=ETagSet)
 if_none_match = HTTPHeaderField('if_none_match', native_type=ETagSet)
@@ -344,6 +346,13 @@ accept_charset = HTTPHeaderField('accept_charset',
                                  from_bytes=accept_header_from_bytes,
                                  to_bytes=accept_header_to_bytes,
                                  native_type=list)
+
+# TODO: accept_ranges could be implemented as a simpler field/flag,
+# because really it's either 'bytes', 'none', or unset.
+accept_ranges = HTTPHeaderField('accept_ranges',
+                                from_bytes=list_header_from_bytes,
+                                to_bytes=list_header_to_bytes,
+                                native_type=list)
 
 # TODO: referer or referrer?
 referer = HTTPHeaderField('referer',
