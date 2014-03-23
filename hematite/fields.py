@@ -334,6 +334,11 @@ accept_encoding = HTTPHeaderField('accept_encoding',
                                   native_type=list)
 
 
+accept_charset = HTTPHeaderField('accept_charset',
+                                 from_bytes=accept_header_from_bytes,
+                                 to_bytes=accept_header_to_bytes,
+                                 native_type=list)
+
 # TODO: referer or referrer?
 referer = HTTPHeaderField('referer',
                           native_type=URL)

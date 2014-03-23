@@ -137,6 +137,17 @@ def test_accept_language_header():
     assert acc_lang_str in req_bytes
 
 
+def test_accept_charset_header():
+    acc_lang_str = 'iso-8859-5,unicode-1-1;q=0.8'
+    req = Request()
+    req.accept_language = acc_lang_str
+    acc_dict = dict(req.accept_language)
+    assert acc_dict['iso-8859-5'] == 1
+    assert acc_dict['unicode-1-1'] == 0.8
+    req_bytes = req.to_bytes()
+    assert acc_lang_str in req_bytes
+
+
 def test_trailer_field():
     req = Request()
     req.trailer = 'Content-MD5, Pragma'
