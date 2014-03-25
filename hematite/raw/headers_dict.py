@@ -11,6 +11,7 @@ PREV, NEXT, KEY, VALUE, SPREV, SNEXT = range(6)
 # Additional: +Trailer +Expect +Upgrade
 
 
+# Case-insensitive, but case-preserving
 class HeadersDict(OrderedMultiDict):
     _tracked_keys = set(['Connection',
                          'Content-Encoding',
@@ -19,72 +20,20 @@ class HeadersDict(OrderedMultiDict):
 
     def _clear_ll(self):
         super(HeadersDict, self)._clear_ll()
-        self.is_conn_close = False
-        self.is_conn_keep_alive = False
-        self.is_chunked = False
-        self.content_length = None
-        self.content_encodings = []
+        self._node_case_map = {}
 
-    def _load_connection(self, value):
-        try:
-            for v in value.split(','):
-                v = v.strip().lower()
-                if v == 'close':
-                    self.is_conn_close = True
-                elif v == 'keep-alive':
-                    self.is_conn_keep_alive = True
-        except:
-            self.is_conn_close = False
-            self.is_conn_keep_alive = False
-
-    def _load_transfer_encoding(self, value):
-        try:
-            for v in value.split(','):
-                v = v.strip().lower()
-                if v == 'chunked':
-                    self.is_chunked = True
-        except:
-            self.is_chunked = False
-
-    def _load_content_length(self, value):
-        try:
-            self.content_length = int(value)
-        except:
-            self.content_length = None
-
-    def _load_content_encoding(self, value):
-        pass
-
-    def _insert(self, key, value):
-        super(HeadersDict, self)._insert(key, value)
-        canonical_key = HEADER_CASE_MAP[key]
-        if canonical_key == 'Connection':
-            self._load_connection(value)
-        elif canonical_key == 'Transfer-Encoding':
-            self._load_transfer_encoding(value)
-        elif canonical_key == 'Content-Length':
-            self._load_content_length(value)
-        elif canonical_key == 'Content-Encoding':
-            self._load_content_encoding(value)
-        return
-
-    def _reload(self):
-        for noncanonical_key, val in self.iteritems(multi=True):
-            key = HEADER_CASE_MAP[noncanonical_key]
-            if key == 'Connection':
-                self._load_connection(val)
-            elif key == 'Transfer-Encoding':
-                self._load_transfer_encoding(val)
-            elif key == 'Content-Length':
-                self._load_content_length(val)
-            elif key == 'Content-Encoding':
-                self._load_content_encoding(val)
+    def _insert(self, k, v):
+        canonical_key = HEADER_CASE_MAP[k]
+        super(HeadersDict, self)._insert(canonical_key, v)
+        node_id = id(self._map[canonical_key][-1])
+        self._node_case_map[node_id] = k
 
     def _remove(self, k):
-        super(HeadersDict, self)._remove(k)
         canonical_key = HEADER_CASE_MAP[k]
-        if canonical_key in self._tracked_keys:
-            self._rebuild()
+        node = self._map[canonical_key][-1]
+        node_id = id(node)
+        self._node_case_map.pop(node_id)
+        super(HeadersDict, self)._remove(k)
 
     def _remove_all(self, k):
         super(HeadersDict, self)._remove_all(k)
@@ -123,3 +72,37 @@ class HeadersDict(OrderedMultiDict):
         if not values:
             super(OrderedMultiDict, self).__delitem__(k)
         return v
+
+
+"""
+
+    def _load_connection(self, value):
+        try:
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'close':
+                    self.is_conn_close = True
+                elif v == 'keep-alive':
+                    self.is_conn_keep_alive = True
+        except:
+            self.is_conn_close = False
+            self.is_conn_keep_alive = False
+
+    def _load_transfer_encoding(self, value):
+        try:
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'chunked':
+                    self.is_chunked = True
+        except:
+            self.is_chunked = False
+
+    def _load_content_length(self, value):
+        try:
+            self.content_length = int(value)
+        except:
+            self.content_length = None
+
+    def _load_content_encoding(self, value):
+        pass
+"""
