@@ -215,3 +215,4 @@ FOLDABLE_HEADERS = ['Accept-Charset',
                     'Via',
                     'Warning',
                     'WWW-Authenticate']
+FOLDABLE_HEADER_SET = set(FOLDABLE_HEADERS)

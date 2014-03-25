@@ -1,80 +1,96 @@
 # -*- coding: utf-8 -*-
 
-from dictutils import OrderedMultiDict
-
-try:
-    from compat import make_sentinel
-    _MISSING = make_sentinel(var_name='_MISSING')
-except ImportError:
-    _MISSING = object()
+from hematite.constants import HEADER_CASE_MAP, FOLDABLE_HEADER_SET
+from hematite.compat.dictutils import OrderedMultiDict
 
 
 PREV, NEXT, KEY, VALUE, SPREV, SNEXT = range(6)
 
 
+# Connection, Content-Encoding, Transfer-Encoding
+# Additional: +Trailer +Expect +Upgrade
+
+
 class HeadersDict(OrderedMultiDict):
-    """\
-    >>> hd = HeadersDict()
-    >>> hd['a'] = 1
-    >>> hd['b'] = 2
-    >>> hd.add('a', 3)
-    >>> hd['a']
-    3
-    >>> omd
-    OrderedMultiDict([('a', 1), ('b', 2), ('a', 3)])
-    >>> omd.poplast('a')
-    3
-    >>> omd
-    OrderedMultiDict([('a', 1), ('b', 2)])
-    >>> omd.pop('a')
-    1
-    >>> omd
-    OrderedMultiDict([('b', 2)])
-
-    Note that dict()-ifying the OMD results in a dict of keys to
-    _lists_ of values:
-
-    >>> dict(OrderedMultiDict([('a', 1), ('b', 2), ('a', 3)]))
-    {'a': [1, 3], 'b': [2]}
-
-    If you want a flat dictionary, use ``todict()``.
-
-    >>> OrderedMultiDict([('a', 1), ('b', 2), ('a', 3)]).todict()
-    {'a': 3, 'b': 2}
-
-    The implementation could be more optimal, but overall it's far
-    better than other OMDs out there. Mad props to Mark Williams for
-    all his help.
-    """
-    def __init__(self, *args, **kwargs):
-        self.lower_cells = []
-        self.lower_map = OrderedMultiDict()  # lolol
-        super(HeadersDict, self).__init__(*args, **kwargs)
+    _tracked_keys = set(['Connection',
+                         'Content-Encoding',
+                         'Content-Length',
+                         'Transfer-Encoding'])
 
     def _clear_ll(self):
         super(HeadersDict, self)._clear_ll()
-        self.lower_cells = list(self.root)
-        self.lower_map.clear()
+        self.is_conn_close = False
+        self.is_conn_keep_alive = False
+        self.is_chunked = False
+        self.content_length = None
+        self.content_encodings = []
 
-    def _insert(self, k, v):
-        super(HeadersDict, self)._insert(k, v)
-        last_cell = self.root[PREV]
-        self.lower_cells.append(k.lower(), v)
-        self.lower_map._insert(k.lower(), v)
+    def _load_connection(self, value):
+        try:
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'close':
+                    self.is_conn_close = True
+                elif v == 'keep-alive':
+                    self.is_conn_keep_alive = True
+        except:
+            self.is_conn_close = False
+            self.is_conn_keep_alive = False
+
+    def _load_transfer_encoding(self, value):
+        try:
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'chunked':
+                    self.is_chunked = True
+        except:
+            self.is_chunked = False
+
+    def _load_content_length(self, value):
+        try:
+            self.content_length = int(value)
+        except:
+            self.content_length = None
+
+    def _load_content_encoding(self, value):
+        pass
+
+    def _insert(self, key, value):
+        super(HeadersDict, self)._insert(key, value)
+        canonical_key = HEADER_CASE_MAP[key]
+        if canonical_key == 'Connection':
+            self._load_connection(value)
+        elif canonical_key == 'Transfer-Encoding':
+            self._load_transfer_encoding(value)
+        elif canonical_key == 'Content-Length':
+            self._load_content_length(value)
+        elif canonical_key == 'Content-Encoding':
+            self._load_content_encoding(value)
+        return
+
+    def _reload(self):
+        for noncanonical_key, val in self.iteritems(multi=True):
+            key = HEADER_CASE_MAP[noncanonical_key]
+            if key == 'Connection':
+                self._load_connection(val)
+            elif key == 'Transfer-Encoding':
+                self._load_transfer_encoding(val)
+            elif key == 'Content-Length':
+                self._load_content_length(val)
+            elif key == 'Content-Encoding':
+                self._load_content_encoding(val)
 
     def _remove(self, k):
-        values = self._map[k]
-        cell = values.pop()
-        cell[PREV][NEXT], cell[NEXT][PREV] = cell[NEXT], cell[PREV]
-        if not values:
-            del self._map[k]
+        super(HeadersDict, self)._remove(k)
+        canonical_key = HEADER_CASE_MAP[k]
+        if canonical_key in self._tracked_keys:
+            self._rebuild()
 
     def _remove_all(self, k):
-        values = self._map[k]
-        while values:
-            cell = values.pop()
-            cell[PREV][NEXT], cell[NEXT][PREV] = cell[NEXT], cell[PREV]
-        del self._map[k]
+        super(HeadersDict, self)._remove_all(k)
+        canonical_key = HEADER_CASE_MAP[k]
+        if canonical_key in self._tracked_keys:
+            self._rebuild()
 
     def iget(self, k, default=None, multi=False):
         # convenience function
