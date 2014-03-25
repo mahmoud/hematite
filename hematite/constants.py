@@ -2,29 +2,58 @@
 
 from .compat.dictutils import OMD
 
-CAP_MAP = None
+HEADER_CASE_MAP = None
 ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS = None, None, None
+
+MAX_HEADER_CASE_ENTRIES = 2048  # arbitrary bound
 
 
 def _init_headers():
     # called (and del'd) at the very bottom
-    global ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS, CAP_MAP
+    global ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS, HEADER_CASE_MAP
     ALL_HEADERS = (GENERAL_HEADERS + REQUEST_ONLY_HEADERS
                    + RESPONSE_ONLY_HEADERS + ENTITY_HEADERS)
     REQUEST_HEADERS = GENERAL_HEADERS + REQUEST_ONLY_HEADERS + ENTITY_HEADERS
     RESPONSE_HEADERS = GENERAL_HEADERS + RESPONSE_ONLY_HEADERS + ENTITY_HEADERS
-    CAP_MAP = dict([(h.lower(), h) for h in ALL_HEADERS])
+    HEADER_CASE_MAP = HeaderCaseMap(ALL_HEADERS)
     return
 
 
-def http_header_case(text):
-    # TODO: integrate into CAP_MAP default dict for caching?
-    text = text.replace('_', '-').lower()
+class HeaderCaseMap(dict):
+    def __init__(self, start_headers=None, **kwargs):
+        max_size = max(int(kwargs.pop('max_size', MAX_HEADER_CASE_ENTRIES)), 0)
+        self._max_size = max_size
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % kwargs)
+        start = {}
+        if start_headers:
+            start.update(zip(start_headers, start_headers))
+            start.update([(h.lower(), h) for h in start_headers])
+        return super(HeaderCaseMap, self).__init__(start)
+
+    def __missing__(self, key):
+        lower_key = key.lower()
+        ret = self.get(lower_key)
+        if ret is None:
+            # Exceptions to heuristic: ETag, TE, WWW-Authentic, Content-MD5
+            ret = '-'.join([p.capitalize() for p in lower_key.split('-')])
+        if len(self) <= self._max_size:
+            self[key] = ret
+        return ret
+
     try:
-        return CAP_MAP[text]
-    except KeyError:
-        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
-        return '-'.join([p.capitalize() for p in text.split('-')])
+        from collections import defaultdict
+    except ImportError:
+        # no defaultdict means that __missing__ isn't supported in
+        # this version of python, so we define __getitem__
+        # note: this may not be necessary because we're not supporting <2.5
+        def __getitem__(self, key):
+            try:
+                return super(HeaderCaseMap, self).__getitem__(key)
+            except KeyError:
+                return self.__missing__(key)
+    else:
+        del defaultdict
 
 
 GENERAL_HEADERS = ['Cache-Control',

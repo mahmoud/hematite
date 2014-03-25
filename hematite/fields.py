@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
                                 FOLDABLE_HEADERS,
-                                http_header_case)
+                                HEADER_CASE_MAP)
 from hematite.serdes import (quote_header_value,
                              unquote_header_value,
                              http_date_to_bytes,
@@ -165,7 +165,10 @@ class HTTPHeaderField(Field):
         assert name
         assert name == name.lower()
         self.attr_name = name  # used for error messages
-        self.http_name = kw.pop('http_name', http_header_case(name))
+        http_name = kw.pop('http_name', None)
+        if http_name is None:
+            http_name = HEADER_CASE_MAP[name.replace('_', '-')]
+        self.http_name = http_name
         self.native_type = kw.pop('native_type', unicode)
 
         default_from_bytes = (getattr(self.native_type, 'from_bytes', None)

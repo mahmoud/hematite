@@ -5,7 +5,7 @@ import time
 import string
 from datetime import datetime, timedelta
 
-from hematite.constants import CAP_MAP
+from hematite.constants import HEADER_CASE_MAP
 from hematite.raw.headers import Headers
 
 
@@ -18,7 +18,7 @@ def _init_headers(self):
     hf_map = self._header_field_map
     for hname, hval in self._raw_headers.items(multi=True):
         try:
-            norm_hname = CAP_MAP[hname.lower()]
+            norm_hname = HEADER_CASE_MAP[hname]
             field = hf_map[norm_hname]
         except KeyError:
             # preserves insertion order and duplicates
