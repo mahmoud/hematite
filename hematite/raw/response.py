@@ -25,11 +25,35 @@ class RequestURITooLarge(ResponseException, core.OverlongRead):
 
 class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
                   BytestringHelper):
+    _fields = ['status_line', 'headers', 'body']
 
-    def to_io(self, io_obj):
-        self.status_line.to_io(io_obj)
-        self.headers.to_io(io_obj)
-        io_obj.write(b'\r\n')
+    def __init__(self, status_line=None, headers=None, body=None, io_obj=None):
+        if any(status_line, headers, body) and io_obj:
+            raise ValueError('must instantiate with either status_line, '
+                             'headers, body or io_obj, but not both')
+        self.status_line = status_line or h.StatusLine()
+        self.headers = headers or h.Headers()
+        self.body = body
+        self.io_obj = io_obj
+
+        states = {'STATUS_LINE': self.status_line.sendline,
+                  'HEADERS': self.headers.sendline,
+                  'BODY': self.noop}
+        self.state_idx = 0
+
+    def noop(self, *args):
+        return True
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        fvs = ['{0!r}={1!r}'.format(field, getattr(self, field))
+               for field in self._fields]
+        return '<{0}: {1}>'.format(cn, ', '.join(fvs))
+
+    def dump(self, io_obj=None):
+        raise NotImplementedError
+
+    # def load(self, io_obj):
 
     def to_bytes(self):
         io_obj = BytesIO()

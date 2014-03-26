@@ -8,7 +8,7 @@ from hematite.compat import (BytestringHelper,
 from hematite.raw import core
 from hematite.url import URL, _ABS_RE
 from hematite.constants import CODE_REASONS, HEADER_CASE_MAP
-from threading import Lock
+from hematite.raw import messages as m
 
 # TODO: maintain case
 
@@ -93,11 +93,12 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
             bs.append(reason)
         return b' '.join(map(bytes, bs)) + b'\r\n'
 
-    def iterlines(self):
-        yield bytes(self)
+    def to_io(self, io_obj):
+        return io_obj.write(self.to_bytes())
 
     @classmethod
-    def readline(cls, line):
+    def from_io(cls, io_obj):
+        line = start_line(io_obj)
         if not line.strip():
             return
         m = cls.PARSE_LINE.match(line)
@@ -175,32 +176,51 @@ class Headers(BytestringHelper, OMD):
     def __init__(self, *args, **kwargs):
         super(Headers, self).__init__(*args, **kwargs)
         self.bytes_read = 0
-        self.ready = False
-
         # TODO: these could come from kwargs
         self.is_conn_close = None
         self.is_conn_keep_alive = None
         self.is_chunked = None
         self.content_length = None
         self.content_encodings = []  # TODO
+        self._writer = self._make_writer()
+        self._reader = self._make_reader()
+        self.state = next(self._reader)
 
-        self._reader = self._readline()
-        next(self._reader)
+    @property
+    def complete(self):
+        return self.state is m.Complete
 
     def to_bytes(self):
-        return b''.join(self.iterlines())
+        return b''.join(self._make_writer())
 
-    def readline(self, line):
-        return self._reader.send(line)
+    def to_io(self, io_obj):
+        # todo, repeatable?
+        for line in self._writer:
+            io_obj.write(line)
 
-    def _readline(self):
-        if self.ready:
-            yield self.ready
-            return
+    def _make_writer(self):
+        for k, v in self.iteritems(multi=True):
+            yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
+        yield b'\r\n'
 
+    def from_io(self, io_obj):
+        while self.state.type != m.Complete.type:
+            if self.state.type == m.NeedLine.type:
+                line = core.readline(io_obj)
+                next_state = m.HaveLine(value=line)
+            elif self.state.type == m.Complete.type:
+                pass
+            else:
+                assert "Unknown state", self.state
+            self.state = self._reader.send(next_state)
+
+        return self.complete
+
+    def _make_reader(self):
         prev_key = _MISSING
-        while self.bytes_read < core.MAXHEADERBYTES:
-            line = yield self.ready
+        while self.bytes_read < core.MAXHEADERBYTES and not self.complete:
+            t, line = yield m.NeedLine
+            assert t == m.HaveLine.type
 
             if not line:
                 raise InvalidHeaders('Cannot find header termination; '
@@ -233,10 +253,9 @@ class Headers(BytestringHelper, OMD):
             raise InvalidHeaders('Consumed limit of {0} bytes '
                                  'without finding '
                                  ' headers'.format(core.MAXHEADERBYTES))
-        self.ready = True
-
+        # TODO trailers
         while True:
-            yield self.ready
+            yield m.Complete
 
     def iterlines(self):
         for k, v in self.iteritems(multi=True):
@@ -285,11 +304,3 @@ class Headers(BytestringHelper, OMD):
                 self._update_http_attribute(ckey, value)
 
 
-if __name__ == '__main__':
-    h = Headers()
-    print h.readline('Host: google.com\r\n')
-    print h.readline(' other.com\r\n')
-    print h.readline('Other: Something\r\n')
-    print h.readline("\r\n")
-
-    print repr(h.to_bytes())
