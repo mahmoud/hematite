@@ -14,6 +14,7 @@ TEST_URLS = [
     'http://example.com:8080/search?q=123&business=Nothing%20Special',
     'http://hatnote.com:9000?arg=1&arg=2&arg=3',
     'https://xn--bcher-kva.ch',
+    'http://xn--ggbla1c4e.xn--ngbc5azd/',
     'http://tools.ietf.org/html/rfc3986#section-3.4',
     'http://wiki:pedia@hatnote.com',
     'ftp://ftp.rfc-editor.org/in-notes/tar/RFCs0001-0500.tar.gz',
@@ -67,8 +68,15 @@ def test_basic():
 
 
 def test_idna():
-    u1 = URL('http://xn--bcher-kva.ch')
+    u1 = URL('http://bücher.ch')
     assert u1.host == u'bücher.ch'
+    assert u1.to_text(idna=True) == 'http://xn--bcher-kva.ch'
+    assert u1.to_text(idna=False) == u'http://bücher.ch'
+
+    u2 = URL('https://xn--bcher-kva.ch')
+    assert u2.host == u'bücher.ch'
+    assert u2.to_text(idna=True) == 'https://xn--bcher-kva.ch'
+    assert u2.to_text(idna=False) == u'https://bücher.ch'
 
 
 def test_urlparse_equiv(test_url):

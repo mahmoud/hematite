@@ -132,7 +132,10 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     except AttributeError:
         raise ValueError('could not parse url: %r' % url_str)
     if gs['authority']:
-        gs['authority'] = gs['authority'].encode('idna')
+        try:
+            gs['authority'] = gs['authority'].decode('idna')
+        except:
+            pass
     else:
         gs['authority'] = ''
     user, pw, family, host, port = parse_authority(gs['authority'])
@@ -213,17 +216,6 @@ class URL(BytestringHelper):
         return bool(self.scheme)  # RFC2396 3.1
 
     @property
-    def authority(self):
-        ret = []
-        if self.username:
-            ret.append(self.username)
-            if self.password:
-                ret.extend([':', self.password])
-            ret.append('@')
-        ret.append(self.http_request_host)
-        return unicode().join(ret)
-
-    @property
     def http_request_url(self):  # TODO: name
         return ''.join([self.path, self.query_string])
 
@@ -245,7 +237,7 @@ class URL(BytestringHelper):
 
     def __iter__(self):
         s = self
-        return iter((s.scheme, s.authority, s.path,
+        return iter((s.scheme, s.get_authority(), s.path,
                      s.params, s.query_string, s.fragment))
 
     def encode(self, encoding=None):
@@ -254,8 +246,58 @@ class URL(BytestringHelper):
 
     # TODO: normalize?
 
-    def to_text(self):
-        return urlunparse(self)  # TODO
+    def get_authority(self, idna=True):
+        parts = []
+        _add = parts.append
+        if self.username:
+            _add(self.username)
+            if self.password:
+                _add(':')
+                _add(self.password)
+            _add('@')
+        if self.host:
+            if self.family == socket.AF_INET6:
+                _add('[')
+                _add(self.host)
+                _add(']')
+            elif idna:
+                _add(self.host.encode('idna'))
+            else:
+                _add(self.host)
+            if self.port:
+                _add(':')
+                _add(unicode(self.port))
+        return u''.join(parts)
+
+    def to_text(self, idna=True):
+        scheme, path, params = self.scheme, self.path, self.params
+        authority = self.get_authority(idna=idna)
+        query_string, fragment = self.query_string, self.fragment
+
+        parts = []
+        _add = parts.append
+        if scheme:
+            _add(scheme)
+            _add(':')
+        if authority:
+            _add('//')
+            _add(authority)
+        elif (scheme and path[:2] != '//'):
+            _add('//')
+        if path:
+            if path[:1] != '/':
+                _add('/')
+            _add(path)
+        if params:
+            _add(';')
+            _add(params)
+        if query_string:
+            _add('?')
+            _add(query_string)
+        if fragment:
+            _add('#')
+            _add(fragment)
+        return u''.join(parts)
 
     def to_bytes(self):
         return self.encode()
@@ -266,3 +308,32 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
+
+
+def _urlunparse(data):
+    """Put a parsed URL back together again.  This may result in a
+    slightly different, but equivalent URL, if the URL that was parsed
+    originally had redundant delimiters, e.g. a ? with an empty query
+    (the draft states that these are equivalent)."""
+    scheme, netloc, url, params, query, fragment = data
+    if params:
+        url = "%s;%s" % (url, params)
+    return urlunsplit((scheme, netloc, url, query, fragment))
+
+def _urlunsplit(data):
+    """Combine the elements of a tuple as returned by urlsplit() into a
+    complete URL as a string. The data argument can be any five-item iterable.
+    This may result in a slightly different, but equivalent URL, if the URL that
+    was parsed originally had unnecessary delimiters (for example, a ? with an
+    empty query; the RFC states that these are equivalent)."""
+    scheme, netloc, url, query, fragment = data
+    if netloc or (scheme and scheme in uses_netloc and url[:2] != '//'):
+        if url and url[:1] != '/': url = '/' + url
+        url = '//' + (netloc or '') + url
+    if scheme:
+        url = scheme + ':' + url
+    if query:
+        url = url + '?' + query
+    if fragment:
+        url = url + '#' + fragment
+    return url
