@@ -93,9 +93,15 @@ def test_query_params(test_url):
 
 
 def test_iri_query():
-    url = URL(u'http://minerals.rocks.org/?mountain=\N{MOUNTAIN}')
+    url = URL(u'http://minerals.rocks.ore/?mountain=\N{MOUNTAIN}')
     assert url.args['mountain'] == u'\N{MOUNTAIN}'
     assert url.args.encode().endswith('%E2%9B%B0')
+
+
+def test_iri_path():
+    url = URL(u'http://minerals.rocks.ore/mountain/\N{MOUNTAIN}/')
+    assert url.path == u'/mountain/\N{MOUNTAIN}/'
+    assert url.to_bytes().endswith('%E2%9B%B0/')
 
 
 def test_urlparse_obj_input():
@@ -108,6 +114,7 @@ def test_invalid_url():
     #with pytest.raises(ValueError):
     #    URL('this is pretty much the furthest thing from a url')  # TODO
     #    URL('???????????????????')  # TODOx2
+
 
 def test_invalid_port():
     with pytest.raises(ValueError):
