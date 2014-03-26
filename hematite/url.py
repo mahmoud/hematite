@@ -377,6 +377,7 @@ def parse_qsl(qs, keep_blank_values=True, encoding=DEFAULT_ENCODING):
             else:
                 continue
         if value or keep_blank_values:
+            # TODO: really always convert plus signs to spaces?
             key = unquote(key.replace('+', ' '))
             value = unquote(value.replace('+', ' '))
             ret.append((key, value))

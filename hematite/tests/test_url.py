@@ -25,7 +25,8 @@ TEST_URLS = [
     'mailto:me@example.com?to=me@example.com&body=hi%20http://wikipedia.org',
     'news:alt.rec.motorcycle',
     'tel:+1-800-867-5309',
-    'urn:oasis:member:A00024:x']
+    'urn:oasis:member:A00024:x',
+    'magnet:?xt=urn:btih:1a42b9e04e122b97a5254e3df77ab3c4b7da725f&dn=Puppy%20Linux%20precise-5.7.1.iso&tr=udp://tracker.openbittorrent.com:80&tr=udp://tracker.publicbt.com:80&tr=udp://tracker.istole.it:6969&tr=udp://tracker.ccc.de:80&tr=udp://open.demonii.com:1337']
 
 
 UNICODE_URLS = [
