@@ -7,9 +7,7 @@ from compat import (unicode, bytes, urlunparse, quote,
                     parse_qsl, OrderedMultiDict, BytestringHelper)
 
 """
-TODO:
- - support ';' in addition to '&' for url params
-   - http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
+ - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
  - IRI encoding
  - support empty port (e.g., http://gweb.com:/)
@@ -21,6 +19,7 @@ DEFAULT_ENCODING = 'utf-8'
 _UNRESERVED_CHARS = frozenset(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     "0123456789-._~")
+# chars reserved some (but not all places)
 _RESERVED_CHARS = frozenset(":/?#[]@!$&'()*+,;=")
 _ALLOWED_CHARS = _UNRESERVED_CHARS | _RESERVED_CHARS
 
@@ -46,16 +45,35 @@ _URL_RE_STRICT = re.compile(r'^(?:(?P<scheme>[' + _SCHEME_CHARS + ']+):)?'
                             + _ABS_RE)
 
 
-# IRI escaped character ranges (per RFC3987)
-_ESC_RANGES = [(0xA0, 0xD7FF),
-               (0xE000, 0xF8FF),
-               (0xF900, 0xFDCF),
-               (0xFDF0, 0xFFEF),
-               (0xE1000, 0xFFFFD),
-               (0xF0000, 0xFFFFD),
-               (0x100000, 0x10FFFD)]
-_ESC_RANGES.extend([(i, i + 0xFFFD) for i in range(0x10000, 0xE0000, 0x10000)])
-_ESC_RANGES.sort(key=lambda x: x[0])
+def _make_quote_map(allowed_chars):
+    ret = {}
+    for i, c in zip(range(256), str(bytearray(range(256)))):
+        ret[c] = c if c in allowed_chars else '%{0:02X}'.format(i)
+    return ret
+
+
+_PATH_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('?#'))
+_QUERY_ELEMENT_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('#&='))
+
+
+def quote_path(text):
+    try:
+        bytestr = text.encode('utf-8')
+    except UnicodeDecodeError:
+        pass
+    except:
+        raise ValueError('expected text or UTF-8 encoded bytes, not %r' % text)
+    return ''.join([_PATH_QUOTE_MAP[b] for b in bytestr])
+
+
+def quote_query_element(text):
+    try:
+        bytestr = text.encode('utf-8')
+    except UnicodeDecodeError:
+        pass
+    except:
+        raise ValueError('expected text or UTF-8 encoded bytes, not %r' % text)
+    return ''.join([_QUERY_ELEMENT_QUOTE_MAP[b] for b in bytestr])
 
 
 def parse_authority(au_str):  # TODO: namedtuple?
@@ -179,15 +197,13 @@ class QueryArgDict(OrderedMultiDict):
         pairs = parse_qsl(query_string, keep_blank_values=True)
         return cls(pairs)
 
-    def encode(self, encoding=None):
+    def encode(self):
         # note: uses '%20' instead of '+' for spaces, based partially
         # on observed behavior in chromium.
-        encoding = encoding or DEFAULT_ENCODING
-        safe = "!$'()*+,/:;?@[]~"  # unsafe = '#&='
         ret_list = []
         for k, v in self.iteritems(multi=True):
-            key = quote(unicode(k).encode(encoding), safe=safe)
-            val = quote(unicode(v).encode(encoding), safe=safe)
+            key = quote_query_element(unicode(k))
+            val = quote_query_element(unicode(v))
             ret_list.append('='.join((key, val)))
         return '&'.join(ret_list)
 
@@ -233,11 +249,11 @@ class URL(BytestringHelper):
 
     @property
     def query_string(self):
-        return self.args.encode(self.encoding)
+        return self.args.encode()
 
     def __iter__(self):
         s = self
-        return iter((s.scheme, s.get_authority(), s.path,
+        return iter((s.scheme, s.get_authority(idna=True), s.path,
                      s.params, s.query_string, s.fragment))
 
     def encode(self, encoding=None):
@@ -287,7 +303,7 @@ class URL(BytestringHelper):
         if path:
             if path[:1] != '/':
                 _add('/')
-            _add(path)
+            _add(quote_path(path))
         if params:
             _add(';')
             _add(params)

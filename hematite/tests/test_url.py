@@ -92,6 +92,12 @@ def test_query_params(test_url):
     assert test_url.endswith(url_obj.query_string)
 
 
+def test_iri_query():
+    url = URL(u'http://minerals.rocks.org/?mountain=\N{MOUNTAIN}')
+    assert url.args['mountain'] == u'\N{MOUNTAIN}'
+    assert url.args.encode().endswith('%E2%9B%B0')
+
+
 def test_urlparse_obj_input():
     with pytest.raises(TypeError):
         URL(object())
