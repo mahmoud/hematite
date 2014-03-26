@@ -98,8 +98,8 @@ def test_iri_query():
     assert url.args.encode().endswith('%E2%9B%B0')
 
     # fails because urlparse assumes query strings are encoded with latin1
-    #url2 = URL(url.to_bytes())
-    #assert url2.args['mountain'] == u'\N{MOUNTAIN}'
+    url2 = URL(url.to_bytes())
+    assert url2.args['mountain'] == u'\N{MOUNTAIN}'
 
 
 def test_iri_path():

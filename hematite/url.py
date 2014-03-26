@@ -3,8 +3,7 @@
 import re
 import socket
 
-from compat import (unicode, bytes, parse_qsl, OrderedMultiDict,
-                    BytestringHelper)
+from compat import (unicode, bytes, OrderedMultiDict, BytestringHelper)
 
 """
  - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
@@ -36,13 +35,13 @@ _PATH_CHARS = re.escape(''.join(_ALLOWED_CHARS - set('?#')))
 _QUERY_CHARS = re.escape(''.join(_ALLOWED_CHARS - set('#')))
 _FRAG_CHARS = re.escape(''.join(_ALLOWED_CHARS))
 
-_ABS_RE = (r'(?P<path>[' + _PATH_CHARS + ']*)'
-           r'(\?(?P<query>[' + _QUERY_CHARS + ']*))?'
-           r'(#(?P<fragment>[' + _FRAG_CHARS + '])*)?')
+_ABS_PATH_RE = (r'(?P<path>[' + _PATH_CHARS + ']*)'
+                r'(\?(?P<query>[' + _QUERY_CHARS + ']*))?'
+                r'(#(?P<fragment>[' + _FRAG_CHARS + '])*)?')
 
 _URL_RE_STRICT = re.compile(r'^(?:(?P<scheme>[' + _SCHEME_CHARS + ']+):)?'
                             r'(//(?P<authority>[' + _AUTH_CHARS + ']*))?'
-                            + _ABS_RE)
+                            + _ABS_PATH_RE)
 
 
 def _make_quote_map(allowed_chars):
@@ -326,3 +325,59 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
+
+
+_hexdig = '0123456789ABCDEFabcdef'
+_hextochr = dict((a + b, chr(int(a + b, 16)))
+                 for a in _hexdig for b in _hexdig)
+_asciire = re.compile('([\x00-\x7f]+)')
+
+
+def unquote(s, encoding=DEFAULT_ENCODING):
+    """unquote('abc%20def') -> 'abc def'."""
+    if isinstance(s, unicode):
+        if '%' not in s:
+            return s
+        bits = _asciire.split(s)
+        res = [bits[0]]
+        append = res.append
+        for i in range(1, len(bits), 2):
+            if '%' in bits[i]:
+                append(unquote(str(bits[i])).decode(encoding))
+            else:
+                append(bits[i])
+            append(bits[i + 1])
+        return u''.join(res)
+
+    bits = s.split('%')
+    if len(bits) == 1:
+        return s
+    res = [bits[0]]
+    append = res.append
+    for item in bits[1:]:
+        try:
+            append(_hextochr[item[:2]])
+            append(item[2:])
+        except KeyError:
+            append('%')
+            append(item)
+    return ''.join(res)
+
+
+def parse_qsl(qs, keep_blank_values=True, encoding=DEFAULT_ENCODING):
+    pairs = [s2 for s1 in qs.split('&') for s2 in s1.split(';')]
+    ret = []
+    for pair in pairs:
+        if not pair:
+            continue
+        key, _, value = pair.partition('=')
+        if not value:
+            if keep_blank_values:
+                value = ''
+            else:
+                continue
+        if value or keep_blank_values:
+            key = unquote(key.replace('+', ' '))
+            value = unquote(value.replace('+', ' '))
+            ret.append((key, value))
+    return ret
