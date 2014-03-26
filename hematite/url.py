@@ -3,8 +3,8 @@
 import re
 import socket
 
-from compat import (unicode, bytes, urlunparse, quote,
-                    parse_qsl, OrderedMultiDict, BytestringHelper)
+from compat import (unicode, bytes, parse_qsl, OrderedMultiDict,
+                    BytestringHelper)
 
 """
  - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
@@ -56,7 +56,7 @@ _PATH_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('?#'))
 _QUERY_ELEMENT_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('#&='))
 
 
-def quote_path(text):
+def encode_path(text):
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
@@ -66,7 +66,7 @@ def quote_path(text):
     return ''.join([_PATH_QUOTE_MAP[b] for b in bytestr])
 
 
-def quote_query_element(text):
+def encode_query_element(text):
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
@@ -202,8 +202,8 @@ class QueryArgDict(OrderedMultiDict):
         # on observed behavior in chromium.
         ret_list = []
         for k, v in self.iteritems(multi=True):
-            key = quote_query_element(unicode(k))
-            val = quote_query_element(unicode(v))
+            key = encode_query_element(unicode(k))
+            val = encode_query_element(unicode(v))
             ret_list.append('='.join((key, val)))
         return '&'.join(ret_list)
 
@@ -303,7 +303,7 @@ class URL(BytestringHelper):
         if path:
             if path[:1] != '/':
                 _add('/')
-            _add(quote_path(path))
+            _add(encode_path(path))
         if params:
             _add(';')
             _add(params)
