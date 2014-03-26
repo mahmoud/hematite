@@ -15,8 +15,8 @@ def ideal_async():
             'http://en.wikipedia.org/wiki/Tea']
 
     client = Client()
-    reqs = [client.get(u, async=True) for u in urls]
-    async.join(reqs, timeout=30.0)
+    resps = [client.get(u, async=True) for u in urls]
+    async.join(resps, timeout=30.0)
 
-    for req in reqs:
-        print req.response
+    for resp in resps:
+        print resp.get_data()

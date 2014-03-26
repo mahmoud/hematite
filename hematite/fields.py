@@ -1,20 +1,30 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from hematite.constants import (REQUEST_HEADERS,
                                 RESPONSE_HEADERS,
-                                http_header_case)
-from hematite.serdes import (http_date_to_bytes,
+                                FOLDABLE_HEADERS,
+                                HEADER_CASE_MAP)
+from hematite.serdes import (quote_header_value,
+                             unquote_header_value,
+                             http_date_to_bytes,
                              http_date_from_bytes,
+                             range_spec_to_bytes,
+                             range_spec_from_bytes,
                              list_header_to_bytes,
                              list_header_from_bytes,
+                             retry_after_to_bytes,
+                             retry_after_from_bytes,
                              items_header_to_bytes,
                              items_header_from_bytes,
                              accept_header_to_bytes,
                              accept_header_from_bytes,
                              default_header_to_bytes,
-                             default_header_from_bytes)
+                             default_header_from_bytes,
+                             content_header_from_bytes,
+                             content_range_spec_from_bytes,
+                             content_range_spec_to_bytes)
 from hematite.url import URL, parse_hostinfo, QueryArgDict
 
 ALL_FIELDS = None
@@ -31,10 +41,112 @@ def _init_field_lists():
                        if f.http_name in RESPONSE_HEADERS]
     HTTP_REQUEST_FIELDS = [f for f in ALL_FIELDS
                            if f.http_name in REQUEST_HEADERS]
-    URL_REQUEST_FIELDS = [url_field, url_scheme_field, url_path_field,
-                          url_hostname_field, url_port_field,
-                          url_args_field, url_query_string_field]
+    _url_request_field_types = [f for f in global_vals if isinstance(f, type)
+                                and issubclass(f, BaseURLField)]
+    URL_REQUEST_FIELDS = [f() for f in _url_request_field_types]
     REQUEST_FIELDS = HTTP_REQUEST_FIELDS + URL_REQUEST_FIELDS
+
+
+class HeaderValueWrapper(object):
+    # TODO: how to indicate whether header value should be included
+    # - __nonzero__ can collide with int-typed headers where 0 is valid
+    # - a blank to_bytes() output might work, but is a bit confusing
+    pass
+
+
+class ETag(HeaderValueWrapper):
+    def __init__(self, tag, is_weak=None):
+        self.tag = tag
+        self.is_weak = is_weak or False
+
+    def to_bytes(self):
+        if self.tag == '*':
+            return '*'  # can't have a weak star
+        ret = quote_header_value(self.tag, allow_token=False)
+        if self.is_weak:
+            ret = 'W/' + ret
+        return ret
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        tag = bytestr.strip()
+        first_two = tag[:2]
+        if first_two == 'W/' or first_two == 'w/':
+            is_weak = True
+            tag = tag[2:]
+        else:
+            is_weak = False
+        tag = unquote_header_value(tag)
+        return cls(tag=tag, is_weak=is_weak)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, is_weak=%r)' % (cn, self.tag, self.is_weak)
+
+
+class ETagSet(HeaderValueWrapper):
+    """
+    TODO: all the matching logic
+    """
+    def __init__(self, etags=None):
+        etags = list(etags or [])
+        self.etags = etags
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        etags = []
+        raw_tags = bytestr.split(',')
+        for raw_tag in raw_tags:
+            etags.append(ETag.from_bytes(raw_tag))
+            # TODO except on ValueError, drop invalid etags
+        return cls(etags=etags)
+
+    def to_bytes(self):
+        return ', '.join([etag.to_bytes() for etag in self.etags])
+
+    def __len__(self):
+        return len(self.etags)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self.etags)
+
+
+class Range(HeaderValueWrapper):
+    def __init__(self, ranges=None, unit=None):
+        self.ranges = ranges or []
+        self.unit = unit or 'bytes'
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        unit, ranges = range_spec_from_bytes(bytestr)
+        return cls(unit=unit, ranges=ranges)
+
+    def to_bytes(self):
+        return range_spec_to_bytes((self.unit, self.ranges))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(ranges=%r, unit=%r)' % (cn, self.ranges, self.unit)
+
+
+class ContentRange(HeaderValueWrapper):
+    def __init__(self, begin=None, end=None, total=None, unit=None):
+        self.begin, self.end, self.total, self.unit = begin, end, total, unit
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        unit, begin, end, total = content_range_spec_from_bytes(bytestr)
+        return cls(begin=begin, end=end, total=total, unit=unit)
+
+    def to_bytes(self):
+        return content_range_spec_to_bytes((self.unit, self.begin,
+                                            self.end, self.total))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ('%s(begin=%r, end=%r, total=%r, unit=%r)'
+                % (cn, self.begin, self.end, self.total, self.unit))
 
 
 class Field(object):
@@ -53,19 +165,23 @@ class HTTPHeaderField(Field):
         assert name
         assert name == name.lower()
         self.attr_name = name  # used for error messages
-        self.http_name = kw.pop('http_name', http_header_case(name))
-        try:
-            self.__set__ = kw.pop('set_value').__get__(self, type(self))
-        except KeyError:
-            pass
-        except TypeError:
-            raise TypeError('expected unbound function for set_value')
+        http_name = kw.pop('http_name', None)
+        if http_name is None:
+            http_name = HEADER_CASE_MAP[name.replace('_', '-')]
+        self.http_name = http_name
         self.native_type = kw.pop('native_type', unicode)
 
-        self.from_bytes = kw.pop('from_bytes', default_header_from_bytes)
-        self.to_bytes = kw.pop('to_bytes', default_header_to_bytes)
+        default_from_bytes = (getattr(self.native_type, 'from_bytes', None)
+                              or default_header_from_bytes)
+        default_to_bytes = (getattr(self.native_type, 'to_bytes', None)
+                            or default_header_to_bytes)
+
+        self.from_bytes = kw.pop('from_bytes', default_from_bytes)
+        self.to_bytes = kw.pop('to_bytes', default_to_bytes)
         if kw:
             raise TypeError('unexpected keyword arguments: %r' % kw)
+        self.is_foldable = self.http_name in FOLDABLE_HEADERS
+
         # TODO: documentation field
         # TODO: validate
 
@@ -105,6 +221,8 @@ last_modified = HTTPHeaderField('last_modified',
                                 to_bytes=http_date_to_bytes,
                                 native_type=datetime)
 
+etag = HTTPHeaderField('etag', native_type=ETag)
+
 
 def expires_from_bytes(bytestr):
     """
@@ -122,53 +240,226 @@ expires = HTTPHeaderField('expires',
                           to_bytes=http_date_to_bytes,
                           native_type=datetime)
 
+
+class ContentType(HeaderValueWrapper):
+    def __init__(self, media_type, charset=None, params=None):
+        self.media_type = media_type
+        self.charset = charset
+        self.params = dict(params) if params else {}
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        # TODO: order
+        media_type, items = content_header_from_bytes(bytestr)
+        params = dict(items)
+        charset = params.pop('charset', None)
+        return cls(media_type=media_type, charset=charset, params=params)
+
+    def to_bytes(self):
+        # TODO: quote parameter values
+        parts = [self.media_type]
+        if self.charset:
+            parts.append('charset=' + self.charset)
+        if self.params:
+            parts.extend(['%s=%s' % (k, v) for k, v in self.params.items()])
+        return '; '.join(parts)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self.params:
+            return ('%s(%r, charset=%r, params=%r)'
+                    % (cn, self.media_type, self.charset, self.params))
+        return '%s(%r, charset=%r)' % (cn, self.media_type, self.charset)
+
+
+content_type = HTTPHeaderField('content_type', native_type=ContentType)
+
+
+class ContentDisposition(HeaderValueWrapper):
+    def __init__(self,
+                 disp_type,
+                 filename=None,
+                 filename_ext=None,
+                 params=None):
+        self.disp_type = disp_type
+        self.filename = filename
+        self.filename_ext = filename_ext
+        self.params = dict(params) if params else {}
+
+    @classmethod
+    def from_bytes(cls, bytestr):
+        # TODO: RFC5987 decoding and saving of ext charsets where applicable
+        disp_type, params = content_header_from_bytes(bytestr)
+        filename, filename_ext, ext_params = None, None, []
+        for item in params:
+            if item[0].lower() == 'filename':
+                filename = item[1]
+            elif item[0].lower() == 'filename*':
+                filename_ext = item[1]
+            else:
+                ext_params.append(item)
+        return cls(disp_type=disp_type,
+                   filename=filename,
+                   filename_ext=filename_ext,
+                   params=ext_params)
+
+    def to_bytes(self):
+        # TODO: quote parameter values
+        parts = [self.disp_type]
+        if self.filename is not None:
+            parts.append('filename=' + self.filename)
+        if self.filename_ext is not None:
+            parts.append('filename*=' + self.filename_ext)
+        if self.params:
+            parts.extend(['%s=%s' % (k, v) for k, v in self.params.items()])
+        return '; '.join(parts)
+
+    def get_filename(self, coerce_ext=True):
+        """TODO: convenience method that automatically bridges the
+        presence of filename/filename_ext"""
+
+    @property
+    def is_inline(self):
+        return self.disp_type.lower() == 'inline'
+
+    @property
+    def is_attachment(self):
+        return self.disp_type.lower() == 'attachment'
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self.params:
+            return ('%s(%r, filename=%r, filename_ext=%r, params=%r)'
+                    % (cn, self.disp_type, self.filename,
+                       self.filename_ext, self.params))
+        return ('%s(%r, filename=%r, filename_ext=%r)'
+                % (cn, self.disp_type, self.filename, self.filename_ext))
+
+
+content_disposition = HTTPHeaderField('content_disposition',
+                                      native_type=ContentDisposition)
+content_encoding = HTTPHeaderField('content_encoding',
+                                   from_bytes=list_header_from_bytes,
+                                   to_bytes=list_header_to_bytes,
+                                   native_type=list)
 content_language = HTTPHeaderField('content_language',
                                    from_bytes=list_header_from_bytes,
                                    to_bytes=list_header_to_bytes,
                                    native_type=list)
+
+# TODO: too simplistic with this one?
+content_length = HTTPHeaderField('content_length',
+                                 from_bytes=int,
+                                 to_bytes=bytes,
+                                 native_type=int)
+content_md5 = HTTPHeaderField('content_md5')
+content_location = HTTPHeaderField('content_location',
+                                   native_type=URL)
+
+content_range = HTTPHeaderField('content_range',
+                                native_type=ContentRange)
+
+range_field = HTTPHeaderField('range',
+                              native_type=Range)
+
+
+if_match = HTTPHeaderField('if_match', native_type=ETagSet)
+if_none_match = HTTPHeaderField('if_none_match', native_type=ETagSet)
 
 if_modified_since = HTTPHeaderField('if_modified_since',
                                     from_bytes=http_date_from_bytes,
                                     to_bytes=http_date_to_bytes,
                                     native_type=datetime)
 
-
 if_unmodified_since = HTTPHeaderField('if_unmodified_since',
                                       from_bytes=http_date_from_bytes,
                                       to_bytes=http_date_to_bytes,
                                       native_type=datetime)
-
 
 www_authenticate = HTTPHeaderField('www_authenticate',
                                    from_bytes=items_header_from_bytes,
                                    to_bytes=items_header_to_bytes,
                                    native_type=list)
 
-
 cache_control = HTTPHeaderField('cache_control',
                                 from_bytes=items_header_from_bytes,
                                 to_bytes=items_header_to_bytes,
                                 native_type=list)
-
-user_agent = HTTPHeaderField('user_agent')
-connection = HTTPHeaderField('connection')
 
 accept = HTTPHeaderField('accept',
                          from_bytes=accept_header_from_bytes,
                          to_bytes=accept_header_to_bytes,
                          native_type=list)
 
-
 accept_language = HTTPHeaderField('accept_language',
                                   from_bytes=accept_header_from_bytes,
                                   to_bytes=accept_header_to_bytes,
                                   native_type=list)
 
-
 accept_encoding = HTTPHeaderField('accept_encoding',
                                   from_bytes=accept_header_from_bytes,
                                   to_bytes=accept_header_to_bytes,
                                   native_type=list)
+
+accept_charset = HTTPHeaderField('accept_charset',
+                                 from_bytes=accept_header_from_bytes,
+                                 to_bytes=accept_header_to_bytes,
+                                 native_type=list)
+
+# TODO: accept_ranges could be implemented as a simpler field/flag,
+# because really it's either 'bytes', 'none', or unset.
+accept_ranges = HTTPHeaderField('accept_ranges',
+                                from_bytes=list_header_from_bytes,
+                                to_bytes=list_header_to_bytes,
+                                native_type=list)
+
+# TODO: referer or referrer?
+referer = HTTPHeaderField('referer',
+                          native_type=URL)
+
+
+class HostHeaderField(HTTPHeaderField):
+    def __init__(self):
+        super(HostHeaderField, self).__init__(name='host')
+
+    def __set__(self, obj, value):
+        super(HostHeaderField, self).__set__(obj, value)
+        cur_val = obj.headers.get('Host')
+        url = obj._url
+
+        if not cur_val:
+            family, host, port = None, '', ''
+        else:
+            family, host, port = parse_hostinfo(cur_val)
+        url.family, url.host, url.port = family, host, port
+        return
+
+
+host = HostHeaderField()
+
+transfer_encoding = HTTPHeaderField('transfer_encoding')
+retry_after = HTTPHeaderField('retry_after',
+                              from_bytes=retry_after_from_bytes,
+                              to_bytes=retry_after_to_bytes,
+                              native_type=(datetime, timedelta))
+
+from_field = HTTPHeaderField('_from', http_name='From')
+server_field = HTTPHeaderField('server')
+user_agent = HTTPHeaderField('user_agent')
+connection = HTTPHeaderField('connection')
+trailer = HTTPHeaderField('trailer',
+                          from_bytes=list_header_from_bytes,
+                          to_bytes=list_header_to_bytes,
+                          native_type=list)
+vary = HTTPHeaderField('vary',
+                       from_bytes=list_header_from_bytes,
+                       to_bytes=list_header_to_bytes,
+                       native_type=list)
+allow = HTTPHeaderField('allow',
+                        from_bytes=list_header_from_bytes,
+                        to_bytes=list_header_to_bytes,
+                        native_type=list)
+location = HTTPHeaderField('location', native_type=URL)
 
 
 """
@@ -202,7 +493,11 @@ note: wz request obj has 71 public attributes (not starting with '_')
 """
 
 
-class URLField(Field):
+class BaseURLField(Field):
+    pass
+
+
+class URLField(BaseURLField):
     attr_name = 'url'
 
     def __get__(self, obj, objtype=None):
@@ -216,31 +511,13 @@ class URLField(Field):
         else:
             url_obj = URL(value)
         if not url_obj.path:
-            # TODO: is modifying the url like this kosher?
+            # A bit concerned about this, but Chrome does add a slash
+            # to the end of many URLs, client-side
             url_obj.path = '/'
         obj._url = url_obj
 
 
-url_field = URLField()
-
-
-def _set_host_value(self, obj, value):
-    self._default_set_value(obj, value)
-    cur_val = obj.headers.get('Host')
-    url = obj._url
-
-    if not cur_val:
-        family, host, port = None, '', ''
-    else:
-        family, host, port = parse_hostinfo(cur_val)
-        url.family, url.host, url.port = family, host, port
-
-
-host = HTTPHeaderField('host',
-                       set_value=_set_host_value)
-
-
-class URLPathField(Field):
+class URLPathField(BaseURLField):
     attr_name = 'path'
 
     def __get__(self, obj, objtype=None):
@@ -255,10 +532,7 @@ class URLPathField(Field):
         obj._url.path = value  # TODO: type checking/parsing?
 
 
-url_path_field = URLPathField()
-
-
-class URLHostnameField(Field):
+class URLHostnameField(BaseURLField):
     attr_name = 'hostname'
 
     def __get__(self, obj, objtype=None):
@@ -272,10 +546,7 @@ class URLHostnameField(Field):
         obj._url.host = value
 
 
-url_hostname_field = URLHostnameField()
-
-
-class URLPortField(Field):
+class URLPortField(BaseURLField):
     attr_name = 'port'
 
     def __get__(self, obj, objtype=None):
@@ -291,10 +562,7 @@ class URLPortField(Field):
         obj._url.port = value
 
 
-url_port_field = URLPortField()
-
-
-class URLArgsField(Field):
+class URLArgsField(BaseURLField):
     attr_name = 'args'
 
     def __get__(self, obj, objtype=None):
@@ -312,10 +580,7 @@ class URLArgsField(Field):
         return
 
 
-url_args_field = URLArgsField()
-
-
-class URLQueryStringField(Field):
+class URLQueryStringField(BaseURLField):
     attr_name = 'query_string'
 
     def __get__(self, obj, objtype=None):
@@ -332,10 +597,7 @@ class URLQueryStringField(Field):
             obj._url.args = QueryArgDict.from_string(value)
 
 
-url_query_string_field = URLQueryStringField()
-
-
-class URLSchemeField(Field):
+class URLSchemeField(BaseURLField):
     attr_name = 'scheme'
 
     def __get__(self, obj, objtype=None):
@@ -350,9 +612,6 @@ class URLSchemeField(Field):
             raise TypeError('expected unicode, not %r' % type(value))
         else:
             obj._url.scheme = value
-
-
-url_scheme_field = URLSchemeField()
 
 
 _init_field_lists()

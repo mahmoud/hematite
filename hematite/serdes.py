@@ -5,7 +5,7 @@ import time
 import string
 from datetime import datetime, timedelta
 
-from hematite.constants import CAP_MAP
+from hematite.constants import HEADER_CASE_MAP
 from hematite.raw.headers import Headers
 
 
@@ -17,14 +17,20 @@ def _init_headers(self):
     # plenty of ways to arrange this
     hf_map = self._header_field_map
     for hname, hval in self._raw_headers.items(multi=True):
-        # TODO: folding
         try:
-            norm_hname = CAP_MAP[hname.lower()]
+            norm_hname = HEADER_CASE_MAP[hname]
             field = hf_map[norm_hname]
         except KeyError:
             # preserves insertion order and duplicates
             self.headers.add(hname, default_header_from_bytes(hval))
         else:
+            if field.is_foldable:
+                if norm_hname in self.headers:
+                    continue
+                # TODO: this won't catch e.g., Cache-Control + CACHE-CONTROL
+                # in the same preamble/envelope
+                val_list = self._raw_headers.getlist(hname)
+                hval = ','.join(val_list)
             field.__set__(self, hval)
 
 
@@ -220,6 +226,111 @@ def http_date_to_bytes(date_val=None, sep=' '):
             (_dayname[wd], day, sep, _monthname[month], sep, year, hh, mm, ss))
 
 
+def range_spec_from_bytes(bytestr):
+    # TODO: is bytes=500 valid? or does it have to be bytes=500-500
+    unit, _, range_str = bytestr.partition('=')
+    unit = unit.strip().lower()
+    if not unit:
+        return None
+    last_end, range_list = 0, []
+
+    for rng in range_str.split(','):
+        rng = rng.strip()
+        if '-' not in rng:
+            raise ValueError('invalid byte range specifier: %r' % bytestr)
+        if rng[:1] == '-':
+            if last_end < 0:
+                raise ValueError('invalid byte range specifier: %r' % bytestr)
+            begin, end, last_end = int(rng), None, -1
+        else:
+            begin, _, end = rng.partition('-')
+            begin = int(begin)
+            if end:
+                end = int(end)
+                if begin > end:
+                    raise ValueError('invalid byte range specifier: %r'
+                                     % bytestr)
+            else:
+                end = None
+            last_end = end
+        range_list.append((begin, end))
+    return (unit, range_list)
+
+
+def range_spec_to_bytes(val):
+    if not val:
+        return ''
+    unit, ranges = val
+    ret = str(unit) + '='
+    range_parts = []
+    for begin, end in ranges:
+        cur = str(begin)
+        if begin >= 0:
+            cur += '-'
+        if end is not None:
+            cur += str(end)
+        range_parts.append(cur)
+    ret += ','.join(range_parts)
+    return ret
+
+
+def content_range_spec_from_bytes(bytestr):
+    stripped = bytestr.strip()
+    if not stripped:
+        return None
+    try:
+        unit, resp_range_spec = stripped.split(None, 1)
+    except TypeError:
+        raise ValueError('invalid content range spec: %r' % bytestr)
+    resp_range, _, total_length = resp_range_spec.partition('/')
+    try:
+        total_length = int(total_length)
+    except ValueError:
+        if total_length == '*':
+            pass  # TODO: total_length = None ?
+        else:
+            raise ValueError('invalid content range spec: %r (expected int'
+                             ' or "*" for total_length)' % bytestr)
+    begin, _, end = resp_range.partition('-')
+    try:
+        begin, end = int(begin), int(end)
+    except ValueError:
+        raise ValueError('invalid content range spec: %r (invalid range)'
+                         % bytestr)
+    return unit, begin, end, total_length
+
+
+def content_range_spec_to_bytes(val):
+    unit, begin, end, total_length = val
+    parts = [unit, ' ']
+    if begin is None:
+        parts.append('*')
+    else:
+        parts.extend([str(begin), '-', str(end)])
+    parts.extend(['/', str(total_length)])
+    return ''.join(parts)
+
+
+def retry_after_from_bytes(bytestr):
+    try:
+        seconds = int(bytestr)
+        val = timedelta(seconds=seconds)
+    except ValueError:
+        try:
+            val = http_date_from_bytes(bytestr)
+        except:
+            raise ValueError('expected HTTP-date or delta-seconds for'
+                             ' Retry-After, not %r' % bytestr)
+    return val
+
+
+def retry_after_to_bytes(val):
+    if isinstance(val, timedelta):
+        return bytes(int(round(total_seconds(val))))
+    else:
+        return http_date_to_bytes(val)
+
+
 def _list_header_from_bytes(bytestr, sep=None):
     """Parse lists as described by RFC 2068 Section 2.
 
@@ -231,6 +342,7 @@ def _list_header_from_bytes(bytestr, sep=None):
 
     (based on urllib2 from the stdlib)
     """
+    bytestr = bytestr.strip()
     res, part, sep = [], '', sep or ','
 
     escape = quote = False
@@ -386,68 +498,19 @@ _timezones = {'UT':0, 'UTC':0, 'GMT':0, 'Z':0,
               }
 
 
-def _test_accept():
-    _accept_tests = ['',
-                     ' ',
-                     'audio/*; q=0.2 , audio/basic',  # Accept
-                     'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                     'iso-8859-5, unicode-1-1;q=0.8',  # Accept-Charset
-                     '*',  # Accept-Encoding
-                     'compress, gzip',
-                     'compress;q=0.5, gzip;q=1.0',
-                     'gzip;q=1.0, identity; q=0.5, *;q=0',
-                     'da, en-gb;q=0.8, en;q=0.7',  # Accept-Language
-                     'bytes',  # Accept-Ranges  # TODO
-                     'none']
-    for t in _accept_tests:
-        print
-        print accept_header_from_bytes(t)
+def total_seconds(td):
+    """\
+    A pure-Python implementation of Python 2.7's timedelta.total_seconds().
 
+    Accepts a timedelta object, returns number of total seconds.
 
-def _test_items_header():
-    _items_tests = ['',
-                    ' ',
-                    'Basic realm="myRealm"',  # WWW-Authenticate
-                    'private, community="UCI"']  # Cache control
-    for t in _items_tests:
-        print items_header_from_bytes(t)
+    >>> td = datetime.timedelta(days=4, seconds=33)
+    >>> total_seconds(td)
+    345633.0
 
-    print items_header_to_bytes([('Basic realm', 'myRealm')])
-    return
-
-
-def _test_list_header():
-    print list_header_from_bytes('mi, en')  # Content-Language
-    print list_header_from_bytes('')  # TODO: Allow, Vary, Pragma
-    return
-
-
-def _test_http_date():
-    # date examples from 3.3.1 with seconds imcrementing
-    print http_date_from_bytes('Sun, 06 Nov 1994 08:49:37 GMT')
-    print http_date_from_bytes('Sunday, 06-Nov-94 08:49:38 GMT')
-    print http_date_from_bytes('Sun Nov  6 08:49:39 1994')
-
-
-def _test_content_header():
-    _rough_content_type = ('message/external-body; access-type=URL;'
-                           ' URL*0="ftp://";'
-                           ' URL*1="cs.utk.edu/pub/moore/bulk-mailer/bulk-mailer.tar"')
-    _content_tests = ['',
-                      ' ',
-                      'text/plain',
-                      'text/html; charset=ISO-8859-4',
-                      _rough_content_type]
-    for t in _content_tests:
-        print content_header_from_bytes(t)
-
-
-if __name__ == '__main__':
-    def _main():
-        _test_accept()
-        _test_items_header()
-        _test_list_header()
-        _test_http_date()
-        _test_content_header()
-
-    _main()
+    (from boltons)
+    """
+    a_milli = 1000000.0
+    td_ds = td.seconds + (td.days * 86400)  # 24 * 60 * 60
+    td_micro = td.microseconds + (td_ds * a_milli)
+    return td_micro / a_milli

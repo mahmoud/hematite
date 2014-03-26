@@ -3,8 +3,8 @@
 import re
 import socket
 
-from compat import (unicode, bytes, urlparse, urlunparse,
-                    quote, parse_qsl, OrderedMultiDict, BytestringHelper)
+from compat import (unicode, bytes, urlunparse, quote,
+                    parse_qsl, OrderedMultiDict, BytestringHelper)
 
 """
 TODO:
@@ -87,8 +87,9 @@ def parse_hostinfo(au_str):
         if port_str and ']' not in port_str:
             try:
                 port = int(port_str)
-            except TypeError:
-                raise
+            except ValueError:
+                raise ValueError('invalid authority in URL %r expected int'
+                                 ' for port, not %r)' % (au_str, port_str))
         else:
             host, port = au_str, None
         if host and '[' == host[0] and ']' == host[-1]:
@@ -96,7 +97,7 @@ def parse_hostinfo(au_str):
             try:
                 socket.inet_pton(socket.AF_INET6, host)
             except socket.error:
-                raise
+                raise ValueError('invalid IPv6 host: %r' % host)
             else:
                 family = socket.AF_INET6
                 return family, host, port
@@ -208,6 +209,10 @@ class URL(BytestringHelper):
         self.args = QueryArgDict.from_string(self.query)
 
     @property
+    def is_absolute(self):
+        return bool(self.scheme)  # RFC2396 3.1
+
+    @property
     def authority(self):
         ret = []
         if self.username:
@@ -255,14 +260,9 @@ class URL(BytestringHelper):
     def to_bytes(self):
         return self.encode()
 
+    @classmethod
+    def from_bytes(cls, bytestr):
+        return cls(bytestr)
+
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
-
-
-def url2parseresult(url_str):
-    from urlparse import ParseResult  # TODO: temporary, for testing
-    pd = parse_url(url_str)
-    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
-                         '', pd['query'], pd['fragment'])
-    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
-    return parsed

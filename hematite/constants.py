@@ -2,29 +2,58 @@
 
 from .compat.dictutils import OMD
 
-CAP_MAP = None
+HEADER_CASE_MAP = None
 ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS = None, None, None
+
+MAX_HEADER_CASE_ENTRIES = 2048  # arbitrary bound
 
 
 def _init_headers():
     # called (and del'd) at the very bottom
-    global ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS, CAP_MAP
+    global ALL_HEADERS, REQUEST_HEADERS, RESPONSE_HEADERS, HEADER_CASE_MAP
     ALL_HEADERS = (GENERAL_HEADERS + REQUEST_ONLY_HEADERS
                    + RESPONSE_ONLY_HEADERS + ENTITY_HEADERS)
     REQUEST_HEADERS = GENERAL_HEADERS + REQUEST_ONLY_HEADERS + ENTITY_HEADERS
     RESPONSE_HEADERS = GENERAL_HEADERS + RESPONSE_ONLY_HEADERS + ENTITY_HEADERS
-    CAP_MAP = dict([(h.lower(), h) for h in ALL_HEADERS])
+    HEADER_CASE_MAP = HeaderCaseMap(ALL_HEADERS)
     return
 
 
-def http_header_case(text):
-    # TODO: integrate into CAP_MAP default dict for caching?
-    text = text.replace('_', '-').lower()
+class HeaderCaseMap(dict):
+    def __init__(self, start_headers=None, **kwargs):
+        max_size = max(int(kwargs.pop('max_size', MAX_HEADER_CASE_ENTRIES)), 0)
+        self._max_size = max_size
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % kwargs)
+        start = {}
+        if start_headers:
+            start.update(zip(start_headers, start_headers))
+            start.update([(h.lower(), h) for h in start_headers])
+        return super(HeaderCaseMap, self).__init__(start)
+
+    def __missing__(self, key):
+        lower_key = key.lower()
+        ret = self.get(lower_key)
+        if ret is None:
+            # Exceptions to heuristic: ETag, TE, WWW-Authentic, Content-MD5
+            ret = '-'.join([p.capitalize() for p in lower_key.split('-')])
+        if len(self) <= self._max_size:
+            self[key] = ret
+        return ret
+
     try:
-        return CAP_MAP[text]
-    except KeyError:
-        # Exceptions: ETag, TE, WWW-Authenticate, Content-MD5
-        return '-'.join([p.capitalize() for p in text.split('-')])
+        from collections import defaultdict
+    except ImportError:
+        # no defaultdict means that __missing__ isn't supported in
+        # this version of python, so we define __getitem__
+        # note: this may not be necessary because we're not supporting <2.5
+        def __getitem__(self, key):
+            try:
+                return super(HeaderCaseMap, self).__getitem__(key)
+            except KeyError:
+                return self.__missing__(key)
+    else:
+        del defaultdict
 
 
 GENERAL_HEADERS = ['Cache-Control',
@@ -70,6 +99,7 @@ RESPONSE_ONLY_HEADERS = ['Accept-Ranges',
                          'WWW-Authenticate']
 
 ENTITY_HEADERS = ['Allow',
+                  'Content-Disposition',  # RFC6266
                   'Content-Encoding',
                   'Content-Language',
                   'Content-Length',
@@ -92,44 +122,97 @@ HOP_BY_HOP_HEADERS = ['Connection',
 _init_headers()
 del _init_headers
 
-CODE_REASONS = OMD({100: 'Continue',
-                    101: 'Switching Protocols',
-                    200: 'OK',
-                    201: 'Created',
-                    202: 'Accepted',
-                    203: 'Non-Authoritative Information',
-                    204: 'No Content',
-                    205: 'Reset Content',
-                    206: 'Partial Content',
-                    300: 'Multiple Choices',
-                    301: 'Moved Permanently',
-                    302: 'Found',
-                    303: 'See Other',
-                    304: 'Not Modified',
-                    305: 'Use Proxy',
-                    307: 'Temporary Redirect',
-                    400: 'Bad Request',
-                    401: 'Unauthorized',
-                    402: 'Payment Required',
-                    403: 'Forbidden',
-                    404: 'Not Found',
-                    405: 'Method Not Allowed',
-                    406: 'Not Acceptable',
-                    407: 'Proxy Authentication Required',
-                    408: 'Request Time-out',
-                    409: 'Conflict',
-                    410: 'Gone',
-                    411: 'Length Required',
-                    412: 'Precondition Failed',
-                    413: 'Request Entity Too Large',
-                    414: 'Request-URI Too Large',
-                    415: 'Unsupported Media Type',
-                    416: 'Requested range not satisfiable',
-                    417: 'Expectation Failed',
-                    500: 'Internal Server Error',
-                    501: 'Not Implemented',
-                    502: 'Bad Gateway',
-                    503: 'Service Unavailable',
-                    504: 'Gateway Time-out',
-                    505: 'HTTP Version not supported'})
+CODE_REASONS = OMD([(100, 'Continue'),
+                    (101, 'Switching Protocols'),
+                    (102, 'Processing'),  # RFC2518
+                    (200, 'OK'),
+                    (201, 'Created'),
+                    (202, 'Accepted'),
+                    (203, 'Non-Authoritative Information'),
+                    (204, 'No Content'),
+                    (205, 'Reset Content'),
+                    (206, 'Partial Content'),
+                    (300, 'Multiple Choices'),
+                    (301, 'Moved Permanently'),
+                    (302, 'Found'),
+                    (303, 'See Other'),
+                    (304, 'Not Modified'),
+                    (305, 'Use Proxy'),
+                    (307, 'Temporary Redirect'),
+                    (400, 'Bad Request'),
+                    (401, 'Unauthorized'),
+                    (402, 'Payment Required'),
+                    (403, 'Forbidden'),
+                    (404, 'Not Found'),
+                    (405, 'Method Not Allowed'),
+                    (406, 'Not Acceptable'),
+                    (407, 'Proxy Authentication Required'),
+                    (408, 'Request Time-out'),
+                    (409, 'Conflict'),
+                    (410, 'Gone'),
+                    (411, 'Length Required'),
+                    (412, 'Precondition Failed'),
+                    (413, 'Request Entity Too Large'),
+                    (414, 'Request-URI Too Large'),
+                    (415, 'Unsupported Media Type'),
+                    (416, 'Requested range not satisfiable'),
+                    (417, 'Expectation Failed'),
+                    (418, "I'm a teapot"),  # RFC2324
+                    (422, 'Unprocessable Entity'),  # RFC4918
+                    (423, 'Locked'),  # RFC4918
+                    (424, 'Failed Dependency'),  # RFC4918
+                    (426, 'Upgrade Required'),  # RFC2817
+                    (428, 'Precondition Required'),  # RFC6585
+                    (429, 'Too Many Requests'),  # RFC6585
+                    (431, 'Request Header Fields Too Large'),  # RFC6585
+                    (500, 'Internal Server Error'),
+                    (501, 'Not Implemented'),
+                    (502, 'Bad Gateway'),
+                    (503, 'Service Unavailable'),
+                    (504, 'Gateway Time-out'),
+                    (505, 'HTTP Version not supported'),
+                    (507, 'Insufficient Storage'),  # RFC4918
+                    (508, 'Loop Detected'),  # RFC5842
+                    (510, 'Not Extended'),  # RFC2774
+                    (511, 'Network Authentication Required')  # RFC6585
+                    ])
+
 REASON_CODES = CODE_REASONS.inverted()
+
+
+# Headers are foldable if they contain comma-separated values ("1#")
+# relevant:
+"""
+RFC2616 4.2:
+Multiple message-header fields with the same field-name MAY be
+present in a message if and only if the entire field-value for that
+header field is defined as a comma-separated list [i.e., #(values)].
+It MUST be possible to combine the multiple header fields into one
+"field-name: field-value" pair, without changing the semantics of the
+message, by appending each subsequent field-value to the first, each
+separated by a comma. The order in which header fields with the same
+field-name are received is therefore significant to the
+interpretation of the combined field value, and thus a proxy MUST NOT
+change the order of these field values when a message is forwarded.
+"""
+FOLDABLE_HEADERS = ['Accept-Charset',
+                    'Accept-Encoding',
+                    'Accept-Language',
+                    'Accept-Ranges',
+                    'Cache-Control',
+                    'Connection',
+                    'Content-Encoding',
+                    'Content-Language',
+                    'Expect',
+                    'If-Match',
+                    'If-None-Match',
+                    'Pragma',
+                    'Proxy-Authenticate',
+                    'Trailer',
+                    'Transfer-Encoding',
+                    'Upgrade',
+                    'Vary',
+                    'Via',
+                    'Warning',
+                    'WWW-Authenticate']
+FOLDABLE_HEADER_SET = set(FOLDABLE_HEADERS)

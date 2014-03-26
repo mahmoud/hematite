@@ -57,7 +57,13 @@ class Response(object):
             self._load_data()
         if as_bytes:
             return self._data
-        return self._data  # TODO: return self._data.decode(self.charset)
+        try:
+            charset = self.content_type.charset
+            return self._data.decode(charset)
+        except:
+            # TODO: what to do here?
+            pass
+        return self._data
 
     @classmethod
     def from_raw_response(cls, raw_resp):

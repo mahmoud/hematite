@@ -4,6 +4,11 @@
 
 - Get off of namedtuple as base class for parser components?
 
+## Issues
+
+- coverage/pytest-cov not seeing globals as covered (e.g., function
+  defs or global regexes)
+
 ## Features
 
 - status_code, version, and method fields (reason field?)
@@ -23,3 +28,86 @@
   - Profile (user-agent, browser stuff)
 - File upload
 - Chardet
+
+
+# Field thoughts
+
+Things fields have:
+
+* name
+* attr_name
+* duplicate behavior (fold or overwrite)
+* from_* methods
+* to_bytes method
+* documentation
+* validation
+
+Question: Which of these are actually more a characteristic of the ValueWrapper (native_type)?
+
+Should "complex" field attributes (i.e., ones with
+HeaderValueWrappers, e.g., resp.range) start out with a blank version
+of the object, or should they be set to None? Usage will probably
+tell; if there's a lot of if checking and/or annoying imports, we can
+address it.
+
+## HeaderValueWrappers
+
+- CacheControl
+- ContentType
+- ContentDisposition
+- Cookie
+- ETagSet
+- UserAgent
+- WWWAuthenticate
+- Warning
+(more)
+
+
+# Validation thoughts
+
+- Need at least levels (notice/warning/error).
+- Operate on Request/Response or RawRequest/RawResponse?
+
+* Basic presence
+  * Response.reason should not be blank
+* Status code-specific headers
+  * Location for redirects
+* Unrecognized/unregistered values for certain headers/fields
+  * Accept-Ranges: "bytes" or "none"
+  * Allow: GET, POST, other known HTTP methods
+  * Transfer-Encoding: "chunked"
+  * Accept-Encoding/Content-Encoding: identity, gzip, compress, deflate, *
+  * Warn on unknown status codes?
+* Valid mimetype format for headers using media types
+  * Content-Type
+  * Content-Disposition
+  * Accept
+* Unrecognized charset
+* URLs missing components (e.g, has a scheme, but no host)
+* Length restrictions
+  * Warn on long URLs, long cookies
+
+* Maybe: validation for 1.0-compatibility
+
+
+# Cookie thoughts
+
+- Implement a parser from scratch or use cookielib? (leaning toward the former)
+- Haven't quite figured out yet what charset cookies are encoded in?
+  Specifiable on a per-cookie basis? Latin-1? Or the same as the page?
+- The HTTPHeaderField construct doesn't do great with cookie headers
+  because it's perfectly valid and common to have multiple Cookie/Set-Cookie
+  headers. Gonna need a special field/hook.
+
+
+# Other header thoughts
+
+Some common response headers that may be worthy of official fields at
+some point:
+
+- Content-Security-Policy
+- X-XSS-Protection
+- X-Frame-Options
+- Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
+- P3P
+- X-Powered-By?

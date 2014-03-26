@@ -65,10 +65,9 @@ class OrderedMultiDict(dict):
     all his help.
     """
     def __init__(self, *args, **kwargs):
-        name = self.__class__.__name__
         if len(args) > 1:
             raise TypeError('%s expected at most 1 argument, got %s'
-                            % (name, len(args)))
+                            % (self.__class__.__name__, len(args)))
         super(OrderedMultiDict, self).__init__()
 
         self._clear_ll()
@@ -224,7 +223,7 @@ class OrderedMultiDict(dict):
             if self:
                 k = self.root[PREV][KEY]
             else:
-                raise KeyError()  # TODO
+                raise KeyError('empty %r' % type(self))
         try:
             self._remove(k)
         except KeyError:
@@ -286,7 +285,7 @@ class OrderedMultiDict(dict):
                 curr = curr[NEXT]
 
     def itervalues(self, multi=False):
-        for k, v in self.iteritems(multi):
+        for k, v in self.iteritems(multi=multi):
             yield v
 
     def todict(self, ordered=False):
@@ -304,13 +303,13 @@ class OrderedMultiDict(dict):
         return self.__class__((k, len(super_getitem(k))) for k in self)
 
     def keys(self, multi=False):
-        return list(self.iterkeys(multi))
+        return list(self.iterkeys(multi=multi))
 
     def values(self, multi=False):
-        return list(self.itervalues(multi))
+        return list(self.itervalues(multi=multi))
 
     def items(self, multi=False):
-        return list(self.iteritems(multi))
+        return list(self.iteritems(multi=multi))
 
     def __iter__(self):
         return self.iterkeys()
