@@ -132,7 +132,7 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     except AttributeError:
         raise ValueError('could not parse url: %r' % url_str)
     if gs['authority']:
-        gs['authority'] = gs['authority'].encode('utf-8').decode('idna')
+        gs['authority'] = gs['authority'].encode('idna')
     else:
         gs['authority'] = ''
     user, pw, family, host, port = parse_authority(gs['authority'])

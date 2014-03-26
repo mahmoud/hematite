@@ -1,9 +1,16 @@
+# -*- coding: utf-8 -*-
 
 from hematite import Client
 
 client = Client()
 
-resp = client.get('http://en.wikipedia.org/wiki/Coffee')
+# some unicode URL examples
+#url_bytes = b'http://magyarorsz\xc3\xa1g.icom.museum'
+#url_ref_text = u'http://magyarország.icom.museum'
+#url_encoded = u'xn--magyarorszg-t7a.icom.museum'
+
+url_ref_text = u'http://en.wikipedia.org/wiki/Coffee'
+resp = client.get(url_ref_text)
 resp_data = resp.get_data()
 
 print resp_data[:1024]
