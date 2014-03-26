@@ -89,6 +89,29 @@ address it.
 
 * Maybe: validation for 1.0-compatibility
 
+# State thoughts
+
+A deferred Response has the following states:
+
+- Not started
+- Connecting (DNS resolution, opening socket, SSL handshaking)
+- Sending request (sending headers, possibly waiting for 100, sending body)
+- Waiting
+- Receiving response (receiving headers, receiving body/receiving chunks)
+- Complete
+
+There may be two or three "complete" states, to represent if the
+connection is interupted/terminated (or if the response is cached, but
+that probably doesn't need its own state).
+
+As we add features, there are also some higher-level states to
+consider, such as:
+
+- Following redirects
+- Performing auth roundtrips
+
+Feature: .timings member that records a timestamp for those state transitions.
+
 
 # Cookie thoughts
 
