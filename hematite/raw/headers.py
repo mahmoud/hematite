@@ -7,7 +7,7 @@ from hematite.compat import (BytestringHelper,
 
 from hematite.raw import core
 from hematite.url import URL, _ABS_RE
-from hematite.constants import CODE_REASONS
+from hematite.constants import CODE_REASONS, HEADER_CASE_MAP
 from threading import Lock
 
 # TODO: maintain case
@@ -166,11 +166,24 @@ class Headers(BytestringHelper, OMD):
     ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
                                                          set(core._CRLF)))
                                 + ']')
+    _tracked_keys = frozenset(['Connection',
+                               'Content-Encoding',
+                               'Content-Length',
+                               'Transfer-Encoding'])
+    # TODO: may also want to track Trailer, Expect, Upgrade?
 
     def __init__(self, *args, **kwargs):
         super(Headers, self).__init__(*args, **kwargs)
         self.bytes_read = 0
         self.ready = False
+
+        # TODO: these could come from kwargs
+        self.is_conn_close = None
+        self.is_conn_keep_alive = None
+        self.is_chunked = None
+        self.content_length = None
+        self.content_encodings = []  # TODO
+
         self._reader = self._readline()
         next(self._reader)
 
@@ -203,16 +216,19 @@ class Headers(BytestringHelper, OMD):
                     raise InvalidHeaders('Cannot begin with a continuation',
                                          line)
                 last_value = self.poplast(prev_key)
-                self.add(prev_key, last_value + line.rstrip())
-                continue
+                key, value = prev_key, last_value + line.rstrip()
+            else:
+                key, _, value = line.partition(':')
+                key, value = key.strip(), value.strip()
+                if not core.TOKEN.match(key):
+                    raise InvalidHeaders('Invalid field name', key)
 
-            k, _, v = line.partition(':')
-            k, v = k.strip(), v.strip()
-            if not core.TOKEN.match(k):
-                raise InvalidHeaders('Invalid field name', k)
+                ckey = HEADER_CASE_MAP[key]  # canonical key
+                if ckey in self._tracked_keys:
+                    self._update_http_attribute(ckey, value)
+                prev_key = key
 
-            prev_key = k
-            self.add(k, v)
+            self.add(key, value)
         else:
             raise InvalidHeaders('Consumed limit of {0} bytes '
                                  'without finding '
@@ -226,6 +242,47 @@ class Headers(BytestringHelper, OMD):
         for k, v in self.iteritems(multi=True):
             yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
         yield b'\r\n'
+
+    def _update_attribute(self, ckey, value):
+        """
+        Called once an interesting header is parsed to update certain
+        attributes relevant to further processing of the
+        Request/Response.
+
+        NOTE: expects canonical key (see _readline for usage)
+        """
+        if ckey == 'Connection':
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'close':
+                    self.is_conn_close = True
+                elif v == 'keep-alive':
+                    self.is_conn_keep_alive = True
+        elif ckey == 'Transfer-Encoding':
+            for v in value.split(','):
+                v = v.strip().lower()
+                if v == 'chunked':
+                    self.is_chunked = True
+        elif ckey == 'Content-Length':
+            try:
+                self.content_length = int(value)
+            except:
+                self.content_length = None
+        elif ckey == 'Content-Encoding':
+            pass  # TODO
+        return
+
+    def _update_all_attributes(self):
+        """
+        Called to sync attribute values with Headers dict
+        contents. Not used atm, but would ostensibly be useful if
+        headers are constructed manually from values passed into
+        __init__
+        """
+        for key, value in self.iteritems(multi=True):
+            ckey = HEADER_CASE_MAP[key]  # canonical key
+            if ckey in self._tracked_keys:
+                self._update_http_attribute(ckey, value)
 
 
 if __name__ == '__main__':
