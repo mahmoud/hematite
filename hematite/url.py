@@ -165,11 +165,12 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     return gs
 
 
+"""
 def unquote_unreserved(url):
-    """\
+    '''
     Un-escape any percent-escape sequences in a URI that are unreserved
     characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
-    """
+    '''
     parts = url.split('%')
     for i in range(1, len(parts)):
         h = parts[i][0:2]
@@ -186,6 +187,7 @@ def unquote_unreserved(url):
 
 def requote(url):
     return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
+"""
 
 
 class QueryArgDict(OrderedMultiDict):
@@ -324,32 +326,3 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
-
-
-def _urlunparse(data):
-    """Put a parsed URL back together again.  This may result in a
-    slightly different, but equivalent URL, if the URL that was parsed
-    originally had redundant delimiters, e.g. a ? with an empty query
-    (the draft states that these are equivalent)."""
-    scheme, netloc, url, params, query, fragment = data
-    if params:
-        url = "%s;%s" % (url, params)
-    return urlunsplit((scheme, netloc, url, query, fragment))
-
-def _urlunsplit(data):
-    """Combine the elements of a tuple as returned by urlsplit() into a
-    complete URL as a string. The data argument can be any five-item iterable.
-    This may result in a slightly different, but equivalent URL, if the URL that
-    was parsed originally had unnecessary delimiters (for example, a ? with an
-    empty query; the RFC states that these are equivalent)."""
-    scheme, netloc, url, query, fragment = data
-    if netloc or (scheme and scheme in uses_netloc and url[:2] != '//'):
-        if url and url[:1] != '/': url = '/' + url
-        url = '//' + (netloc or '') + url
-    if scheme:
-        url = scheme + ':' + url
-    if query:
-        url = url + '?' + query
-    if fragment:
-        url = url + '#' + fragment
-    return url
