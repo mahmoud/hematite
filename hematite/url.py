@@ -198,7 +198,7 @@ class QueryArgDict(OrderedMultiDict):
         pairs = parse_qsl(query_string, keep_blank_values=True)
         return cls(pairs)
 
-    def encode(self):
+    def to_bytes(self):
         # note: uses '%20' instead of '+' for spaces, based partially
         # on observed behavior in chromium.
         ret_list = []
@@ -217,6 +217,9 @@ class URL(BytestringHelper):
 
     def __init__(self, url_str=None, encoding=None, strict=False):
         encoding = encoding or DEFAULT_ENCODING
+        # TODO: encoded query strings have an encoding behind the
+        # percent-escaping, but otherwise is this member necessary?
+        # if not, be more explicit
         self.encoding = encoding
         url_dict = {}
         if url_str:
@@ -250,18 +253,18 @@ class URL(BytestringHelper):
 
     @property
     def query_string(self):
-        return self.args.encode()
+        return self.args.to_bytes()
 
     def __iter__(self):
         s = self
         return iter((s.scheme, s.get_authority(idna=True), s.path,
                      s.params, s.query_string, s.fragment))
 
-    def encode(self, encoding=None):
-        encoding = encoding or self.encoding
-        return self.to_text().encode(encoding)
-
     # TODO: normalize?
+
+    def get_query_string(self):
+        # TODO: options: as_text,
+        return self.args.to_bytes()
 
     def get_authority(self, idna=True):
         parts = []
@@ -317,7 +320,7 @@ class URL(BytestringHelper):
         return u''.join(parts)
 
     def to_bytes(self):
-        return self.encode()
+        return self.to_text().encode('utf-8')
 
     @classmethod
     def from_bytes(cls, bytestr):

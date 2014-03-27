@@ -96,7 +96,7 @@ def test_query_params(test_url):
 def test_iri_query():
     url = URL(u'http://minerals.rocks.ore/?mountain=\N{MOUNTAIN}')
     assert url.args['mountain'] == u'\N{MOUNTAIN}'
-    assert url.args.encode().endswith('%E2%9B%B0')
+    assert url.args.to_bytes().endswith('%E2%9B%B0')
 
     # fails because urlparse assumes query strings are encoded with latin1
     url2 = URL(url.to_bytes())
