@@ -580,13 +580,14 @@ class URLArgsField(BaseURLField):
         return
 
 
+# TODO: should this field even exist?
 class URLQueryStringField(BaseURLField):
     attr_name = 'query_string'
 
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        return obj._url.query_string
+        return obj._url.get_query_string()
 
     def __set__(self, obj, value):
         if value is None:

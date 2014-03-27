@@ -55,7 +55,9 @@ _PATH_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('?#'))
 _QUERY_ELEMENT_QUOTE_MAP = _make_quote_map(_ALLOWED_CHARS - set('#&='))
 
 
-def encode_path(text):
+def escape_path(text, to_bytes=True):
+    if not to_bytes:
+        return u''.join([_PATH_QUOTE_MAP.get(c, c) for c in text])
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
@@ -65,7 +67,9 @@ def encode_path(text):
     return ''.join([_PATH_QUOTE_MAP[b] for b in bytestr])
 
 
-def encode_query_element(text):
+def escape_query_element(text, to_bytes=True):
+    if not to_bytes:
+        return u''.join([_QUERY_ELEMENT_QUOTE_MAP.get(c, c) for c in text])
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
@@ -203,10 +207,18 @@ class QueryArgDict(OrderedMultiDict):
         # on observed behavior in chromium.
         ret_list = []
         for k, v in self.iteritems(multi=True):
-            key = encode_query_element(unicode(k))
-            val = encode_query_element(unicode(v))
+            key = escape_query_element(unicode(k), to_bytes=True)
+            val = escape_query_element(unicode(v), to_bytes=True)
             ret_list.append('='.join((key, val)))
         return '&'.join(ret_list)
+
+    def to_text(self):
+        ret_list = []
+        for k, v in self.iteritems(multi=True):
+            key = escape_query_element(unicode(k), to_bytes=False)
+            val = escape_query_element(unicode(v), to_bytes=False)
+            ret_list.append(u'='.join((key, val)))
+        return u'&'.join(ret_list)
 
 
 # TODO: naming: 'args', 'query_args', or 'query_params'?
@@ -237,7 +249,7 @@ class URL(BytestringHelper):
 
     @property
     def http_request_url(self):  # TODO: name
-        return ''.join([self.path, self.query_string])
+        return ''.join([self.path, self.get_query_string()])
 
     @property
     def http_request_host(self):  # TODO: name
@@ -251,20 +263,17 @@ class URL(BytestringHelper):
             ret.extend([':', unicode(self.port)])
         return ''.join(ret)
 
-    @property
-    def query_string(self):
-        return self.args.to_bytes()
-
     def __iter__(self):
         s = self
         return iter((s.scheme, s.get_authority(idna=True), s.path,
-                     s.params, s.query_string, s.fragment))
+                     s.params, s.get_query_string(to_bytes=True), s.fragment))
 
     # TODO: normalize?
 
-    def get_query_string(self):
-        # TODO: options: as_text,
-        return self.args.to_bytes()
+    def get_query_string(self, to_bytes=True):
+        if to_bytes:
+            return self.args.to_bytes()
+        return self.args.to_text()
 
     def get_authority(self, idna=True):
         parts = []
@@ -289,10 +298,12 @@ class URL(BytestringHelper):
                 _add(unicode(self.port))
         return u''.join(parts)
 
-    def to_text(self, idna=True):
+    def to_text(self, display=False):
+        full_encode = (not display)
         scheme, path, params = self.scheme, self.path, self.params
-        authority = self.get_authority(idna=idna)
-        query_string, fragment = self.query_string, self.fragment
+        authority = self.get_authority(idna=full_encode)
+        query_string = self.get_query_string(to_bytes=full_encode)
+        fragment = self.fragment
 
         parts = []
         _add = parts.append
@@ -307,7 +318,7 @@ class URL(BytestringHelper):
         if path:
             if path[:1] != '/':
                 _add('/')
-            _add(encode_path(path))
+            _add(escape_path(path, to_bytes=full_encode))
         if params:
             _add(';')
             _add(params)

@@ -71,13 +71,13 @@ def test_basic():
 def test_idna():
     u1 = URL('http://bücher.ch')
     assert u1.host == u'bücher.ch'
-    assert u1.to_text(idna=True) == 'http://xn--bcher-kva.ch'
-    assert u1.to_text(idna=False) == u'http://bücher.ch'
+    assert u1.to_text(display=False) == 'http://xn--bcher-kva.ch'
+    assert u1.to_text(display=True) == u'http://bücher.ch'
 
     u2 = URL('https://xn--bcher-kva.ch')
     assert u2.host == u'bücher.ch'
-    assert u2.to_text(idna=True) == 'https://xn--bcher-kva.ch'
-    assert u2.to_text(idna=False) == u'https://bücher.ch'
+    assert u2.to_text(display=False) == 'https://xn--bcher-kva.ch'
+    assert u2.to_text(display=True) == u'https://bücher.ch'
 
 
 def test_urlparse_equiv(test_url):
@@ -90,13 +90,14 @@ def test_query_params(test_url):
     url_obj = URL(test_url)
     if not url_obj.args:
         return True
-    assert test_url.endswith(url_obj.query_string)
+    assert test_url.endswith(url_obj.get_query_string())
 
 
 def test_iri_query():
     url = URL(u'http://minerals.rocks.ore/?mountain=\N{MOUNTAIN}')
     assert url.args['mountain'] == u'\N{MOUNTAIN}'
     assert url.args.to_bytes().endswith('%E2%9B%B0')
+    assert url.args.to_text().endswith(u'\N{MOUNTAIN}')
 
     # fails because urlparse assumes query strings are encoded with latin1
     url2 = URL(url.to_bytes())
