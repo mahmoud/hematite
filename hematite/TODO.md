@@ -28,7 +28,7 @@
   - Profile (user-agent, browser stuff)
 - File upload
 - Chardet
-
+- Public Suffix recognition
 
 # Field thoughts
 
