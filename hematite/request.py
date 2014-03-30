@@ -10,12 +10,6 @@ from hematite.fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = HTTPVersion(1, 1)
 DEFAULT_SCHEME = 'http'
-DEFAULT_PORT = 80
-
-# headers, url, cookies
-
-#_GENERIC_REQ_HEADERS = list(REQUEST)
-#_GENERIC_REQ_HEADERS.remove('Host')
 
 
 class Request(object):
@@ -75,72 +69,3 @@ class Request(object):
 
     def validate(self):
         pass
-
-    """
-    def to_bytes(self):
-        # TODO: field values are latin-1 or mime-encoded, but
-        # are field names latin-1 or ASCII only?
-        ret = [self.request_line]
-        to_proc = set([h.lower() for h in self.headers])
-        ret.append('Host: ' + self.url.http_request_host)
-        to_proc.discard('host')
-        for n, f in self.get_fields().items():
-            v = getattr(self, f.attr_name)
-            to_proc.discard(f.http_name.lower())
-            if v:
-                ret.append(f.http_name + ': ' + v)
-        for h, v in self.headers.iteritems():
-            if v and h.lower() in to_proc:
-                ret.append(h + ': ' + v)
-        ret.extend(['', ''])
-        return '\r\n'.join(ret).encode('latin-1')
-
-    @property
-    def request_line(self):
-        return ' '.join([self.method,
-                         self.url.http_request_url,
-                         'HTTP/%d.%d' % self.version])
-
-    @property
-    def method(self):
-        return self._method
-
-    @method.setter
-    def method(self, method=None):
-        if method is None:
-            method = DEFAULT_METHOD
-        try:
-            self._method = method.upper()
-        except (AttributeError, TypeError):
-            raise ValueError('http method expected string')
-
-    @property
-    def url(self):
-        return self._url
-
-    @url.setter
-    def url(self, url):
-        if isinstance(url, URL):
-            self._url = url  # TODO
-        else:
-            self._url = URL(url or '')
-    """
-
-
-"""
-- method: methodcaller->upper, default GET
-- http version: float() -> str
-- path
-- host
-- user_agent
-- accept
-  - mime
-  - charset
-  - language
-
-URL: scheme, netloc (host), path, params, query (, fragment?)
-URL+: username, password, hostname, port
-
-NB Blank headers are not sent
-# TODO: incremental parsing/creation of Request
-"""
