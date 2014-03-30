@@ -41,6 +41,25 @@ class Request(object):
     _init_headers = serdes._init_headers
     _get_header_dict = serdes._get_headers
 
+    def get_copy(self):
+        type_self = type(self)
+        # to account for changing init signatures:
+        ret = type_self.__new__(type_self)
+        # covers basic immutable attrs (method, version), and
+        # unanticipated attributes
+        ret.__dict__.update(self.__dict__)
+        # now, to override/actually set a few critical fields
+        # TODO: make a copy of raw headers, too?
+        ret.headers = Headers()
+        for header, value in self.headers.items():  # TODO multi=True?
+            _get_hv_copy = getattr(value, 'get_copy', None)
+            if callable(_get_hv_copy):
+                ret.headers[header] = _get_hv_copy()
+            else:
+                ret.headers[header] = value
+        #ret._url = self._url.get_copy()
+        # TODO ret.cookies = self.cookies
+
     @classmethod
     def from_raw_request(cls, raw_req):
         rl = raw_req.request_line
