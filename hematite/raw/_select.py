@@ -97,16 +97,24 @@ def join(urls):
 
 
 if __name__ == '__main__':
-    import argparse
-    a = argparse.ArgumentParser()
-    a.add_argument('urls', nargs='+')
-    a.add_argument('-p', '--print',
-                   dest='shouldprint',
-                   action='store_true')
+    def _main():
+        import argparse
+        a = argparse.ArgumentParser()
+        a.add_argument('urls', nargs='+')
+        a.add_argument('-p', '--print',
+                       dest='shouldprint',
+                       action='store_true')
 
-    args = a.parse_args()
-    joined = join([URL(u) for u in args.urls])
+        args = a.parse_args()
+        joined = join([URL(u) for u in args.urls])
 
-    if args.shouldprint:
-        for j in joined:
-            print j.to_bytes()
+        if args.shouldprint:
+            for j in joined:
+                print j.to_bytes()
+        return joined
+
+    try:
+        responses = _main()
+        import pdb;pdb.set_trace()
+    except Exception as e:
+        import pdb;pdb.post_mortem()
