@@ -51,9 +51,11 @@ def join(urls):
     readers, writers = [], []
     for url in urls:
         rawreq = e.RequestEnvelope(e.RequestLine('GET',
-                                                 url.to_bytes(),
+                                                 url.path,
                                                  e.HTTPVersion(1, 1)),
-                                   e.Headers([('Accept', 'text/html')]))
+                                   e.Headers([('Host', url.host),
+                                              ('User-Agent', 'test'),
+                                              ('Accept', '*/*')]))
         rawresp = e.ResponseEnvelope()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
