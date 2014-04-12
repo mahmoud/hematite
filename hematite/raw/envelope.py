@@ -93,35 +93,26 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
             bs.append(reason)
         return b' '.join(map(bytes, bs)) + b'\r\n'
 
-    def to_io(self, io_obj):
-        return io_obj.write(self.to_bytes())
-
     @classmethod
-    def from_io(cls, io_obj):
-        line = start_line(io_obj)
-        if not line.strip():
-            return
-        m = cls.PARSE_LINE.match(line)
-        if not m:
+    def from_bytes(cls, line):
+        match = cls.PARSE_LINE.match(line)
+        if not match:
             raise InvalidStatusLine('Could not parse status line', line)
 
-        version = HTTPVersion.from_match(m)
+        version = HTTPVersion.from_match(match)
 
-        raw_status_code = m.group('status_code')
+        raw_status_code = match.group('status_code')
         if not raw_status_code:
             raise InvalidStatusCode('Could not retrieve status code', line)
 
-        status_code = int(m.group('status_code'))
+        status_code = int(match.group('status_code'))
 
-        reason = m.group('reason')
+        reason = match.group('reason')
         if not reason:
             reason = CODE_REASONS.get(status_code)
 
         c = cls(version, status_code, reason)
         return c
-
-    def to_io(self, io_obj):
-        return io_obj.write(self.to_bytes())
 
 
 class RequestLine(namedtuple('RequestLine', 'method url version'),
@@ -135,91 +126,74 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         + core._LINE_END)
 
     def to_bytes(self):
-        return b' '.join(map(bytes, self))
-
-    def iterlines(self):
-        yield bytes(self)
+        return b' '.join(map(bytes, self)) + b'\r\n'
 
     @classmethod
-    def readline(cls, line):
-        if not line.strip():
-            return
-        m = cls.PARSE_LINE.match(line)
-        if not m:
+    def from_bytes(cls, line):
+        match = cls.PARSE_LINE.match(line)
+        if not match:
             raise InvalidRequestLine('Could not parse request line', line)
 
-        method = m.group('method')
+        method = match.group('method')
         if not method:
             raise InvalidMethod('Could not parse method', line)
 
-        raw_url = m.group('url')
+        raw_url = match.group('url')
         if not raw_url:
             raise InvalidURL('Could not parse url', line)
 
         url = URL(raw_url, strict=True)
 
-        version = HTTPVersion.from_match(m)
+        version = HTTPVersion.from_match(match)
 
         return cls(method, url, version)
 
 
-class Headers(BytestringHelper, OMD):
-    ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
-                                                         set(core._CRLF)))
-                                + ']')
-    _tracked_keys = frozenset(['Connection',
-                               'Content-Encoding',
-                               'Content-Length',
-                               'Transfer-Encoding'])
-    # TODO: may also want to track Trailer, Expect, Upgrade?
+class StatefulParse(object):
 
     def __init__(self, *args, **kwargs):
-        super(Headers, self).__init__(*args, **kwargs)
-        self.bytes_read = 0
-        # TODO: these could come from kwargs
-        self.is_conn_close = None
-        self.is_conn_keep_alive = None
-        self.is_chunked = None
-        self.content_length = None
-        self.content_encodings = []  # TODO
-        self._writer = self._make_writer()
-        self._reader = self._make_reader()
-        self.state = next(self._reader)
+        super(StatefulParse, self).__init__(*args, **kwargs)
+        self.state = m.Empty
+        self.reader = self._make_reader()
+        self.state = next(self.reader)
 
     @property
     def complete(self):
         return self.state is m.Complete
 
-    def to_bytes(self):
-        return b''.join(self._make_writer())
 
-    def to_io(self, io_obj):
-        # todo, repeatable?
-        for line in self._writer:
-            io_obj.write(line)
+class Headers(StatefulParse, BytestringHelper, OMD):
+    ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
+                                                         set(core._CRLF)))
+                                + ']')
+    # TODO: may also want to track Trailer, Expect, Upgrade?
+
+    def __init__(self, *args, **kwargs):
+        self.bytes_read = 0
+        super(Headers, self).__init__(*args, **kwargs)
+
+    def to_bytes(self):
+        return b''.join(l for _, l in self._make_writer())
+
+    @classmethod
+    def from_bytes(cls, bstr):
+        instance = cls()
+        for line in bstr.splitlines(True):
+            instance.reader.send(m.HaveLine(line))
+        if not instance.complete:
+            raise InvalidHeaders('Missing header termination')
+        return instance
 
     def _make_writer(self):
         for k, v in self.iteritems(multi=True):
-            yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
-        yield b'\r\n'
-
-    def from_io(self, io_obj):
-        while self.state.type != m.Complete.type:
-            if self.state.type == m.NeedLine.type:
-                line = core.readline(io_obj)
-                next_state = m.HaveLine(value=line)
-            elif self.state.type == m.Complete.type:
-                pass
-            else:
-                assert "Unknown state", self.state
-            self.state = self._reader.send(next_state)
-
-        return self.complete
+            yield m.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
+        yield m.HaveLine(b'\r\n')
 
     def _make_reader(self):
         prev_key = _MISSING
         while self.bytes_read < core.MAXHEADERBYTES and not self.complete:
-            t, line = yield m.NeedLine
+            self.state = m.NeedLine
+            t, line = yield self.state
             assert t == m.HaveLine.type
 
             if not line:
@@ -243,9 +217,6 @@ class Headers(BytestringHelper, OMD):
                 if not core.TOKEN.match(key):
                     raise InvalidHeaders('Invalid field name', key)
 
-                ckey = HEADER_CASE_MAP[key]  # canonical key
-                if ckey in self._tracked_keys:
-                    self._update_http_attribute(ckey, value)
                 prev_key = key
 
             self.add(key, value)
@@ -254,53 +225,96 @@ class Headers(BytestringHelper, OMD):
                                  'without finding '
                                  ' headers'.format(core.MAXHEADERBYTES))
         # TODO trailers
+        self.state = m.Complete
         while True:
-            yield m.Complete
-
-    def iterlines(self):
-        for k, v in self.iteritems(multi=True):
-            yield b': '.join([bytes(k), bytes(v)]) + b'\r\n'
-        yield b'\r\n'
-
-    def _update_attribute(self, ckey, value):
-        """
-        Called once an interesting header is parsed to update certain
-        attributes relevant to further processing of the
-        Request/Response.
-
-        NOTE: expects canonical key (see _readline for usage)
-        """
-        if ckey == 'Connection':
-            for v in value.split(','):
-                v = v.strip().lower()
-                if v == 'close':
-                    self.is_conn_close = True
-                elif v == 'keep-alive':
-                    self.is_conn_keep_alive = True
-        elif ckey == 'Transfer-Encoding':
-            for v in value.split(','):
-                v = v.strip().lower()
-                if v == 'chunked':
-                    self.is_chunked = True
-        elif ckey == 'Content-Length':
-            try:
-                self.content_length = int(value)
-            except:
-                self.content_length = None
-        elif ckey == 'Content-Encoding':
-            pass  # TODO
-        return
-
-    def _update_all_attributes(self):
-        """
-        Called to sync attribute values with Headers dict
-        contents. Not used atm, but would ostensibly be useful if
-        headers are constructed manually from values passed into
-        __init__
-        """
-        for key, value in self.iteritems(multi=True):
-            ckey = HEADER_CASE_MAP[key]  # canonical key
-            if ckey in self._tracked_keys:
-                self._update_http_attribute(ckey, value)
+            yield self.state
 
 
+class RequestEnvelope(StatefulParse, BytestringHelper):
+
+    def __init__(self, request_line=None, headers=None):
+        super(RequestEnvelope, self).__init__()
+        self.request_line = request_line
+        self.headers = headers or Headers()
+        self.reader = self._make_reader()
+        self.state = next(self.reader)
+        if request_line and headers:
+            self.state = m.Complete
+
+    def to_bytes(self):
+        return self.request_line.to_bytes() + self.headers.to_bytes()
+
+    @classmethod
+    def from_bytes(cls, bstr):
+        instance = cls()
+        for line in bstr.splitlines(True):
+            instance.reader.send(m.HaveLine(line))
+        return instance
+
+    def _make_writer(self):
+        yield m.HaveLine(bytes(self.request_line) + '\r\n')
+        for next_state in self.headers._make_writer():
+            yield next_state
+
+    def _make_reader(self):
+        line = ''
+        while not line.strip():
+            t, line = yield m.NeedLine
+            assert t == m.HaveLine.type
+        self.request_line = RequestLine.from_bytes(line)
+
+        self.state = self.headers.state
+        while not self.headers.complete:
+            next_state = yield self.state
+            self.state = self.headers.reader.send(next_state)
+
+        self.state = m.Complete
+        while True:
+            yield self.state
+
+
+class ResponseEnvelope(StatefulParse, BytestringHelper):
+
+    def __init__(self, status_line=None, headers=None):
+        super(ResponseEnvelope, self).__init__()
+        self.status_line = status_line
+        self.headers = headers or Headers()
+        self.reader = self._make_reader()
+        self.state = next(self.reader)
+        if headers and status_line:
+            self.state = m.Complete
+
+    def to_bytes(self):
+        return self.status_line.to_bytes() + self.headers.to_bytes()
+
+    @classmethod
+    def from_bytes(cls, bstr):
+        instance = cls()
+        for line in bstr.splitlines(True):
+            instance.reader.send(m.HaveLine(line))
+        return instance
+
+    def _make_writer(self):
+        yield m.HaveLine(bytes(self.status_line) + '\r\n')
+        for next_state in self.headers._make_writer():
+            yield next_state
+
+    def _make_reader(self):
+        line = ''
+        while not line.strip():
+            t, line = yield m.NeedLine
+            assert t == m.HaveLine.type
+        self.status_line = StatusLine.from_bytes(line)
+
+        self.state = self.headers.state
+        while not self.headers.complete:
+            next_state = yield self.state
+            self.state = self.headers.reader.send(next_state)
+
+        self.state = m.Complete
+        while True:
+            yield self.state
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '<{0}: {1!s} {2!r}>'.format(cn, self.status_line, self.headers)

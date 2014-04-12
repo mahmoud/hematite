@@ -266,3 +266,12 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
+
+    def __eq__(self, other):
+        for attr in self._attrs:
+            if not getattr(self, attr) == getattr(other, attr):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other

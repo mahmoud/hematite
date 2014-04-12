@@ -55,12 +55,7 @@ class NonblockingSocketIO(compat.SocketIO):
                 raise eagain()
 
 
-def iopair_from_socket(sock, buffersize=None):
-    sock_timeout = sock.gettimeout()
-    if sock_timeout is not None and sock_timeout == 0:
-        writer = NonblockingSocketIO(sock, "rwb")
-        reader = NonblockingBufferedReader(writer)
-    else:
-        writer = compat.SocketIO(sock, "rwb")
-        reader = io.BufferedReader(writer)
+def iopair_from_socket(sock):
+    writer = NonblockingSocketIO(sock, "rwb")
+    reader = NonblockingBufferedReader(writer)
     return reader, writer
