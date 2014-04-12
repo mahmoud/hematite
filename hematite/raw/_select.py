@@ -8,7 +8,7 @@ from hematite.socket_io import iopair_from_socket
 from hematite.raw import core, messages as m, envelope as e
 
 
-class ManagedSocket(object):
+class RequestResponsePair(object):
 
     def __init__(self, sock, input, output):
         self.sock = sock
@@ -24,7 +24,7 @@ class ManagedSocket(object):
     def complete(self):
         return self.state is m.Complete
 
-    def write(self):
+    def write_request(self):
         if not self.writer.empty:
             self.writer.write(None)
 
@@ -35,7 +35,7 @@ class ManagedSocket(object):
         self.writer.write(next_bit.value)
         return False
 
-    def read(self):
+    def read_response(self):
         while self.state.type != m.Complete.type:
             if self.state.type == m.NeedLine.type:
                 line = core.readline(self.reader)
@@ -45,6 +45,7 @@ class ManagedSocket(object):
             self.state = self.output.reader.send(next_state)
 
         return self.complete
+
 
 
 def join(urls):
@@ -66,7 +67,7 @@ def join(urls):
             if exc[0] != errno.EINPROGRESS:
                 raise
 
-        writers.append(ManagedSocket(sock, rawreq, rawresp))
+        writers.append(RequestResponsePair(sock, rawreq, rawresp))
     finished = []
 
     while readers or writers:
@@ -75,18 +76,20 @@ def join(urls):
 
         for writer in write_ready:
             try:
-                if writer.write():
+                if writer.write_request():
                     writers.remove(writer)
                     next_readers.append(writer)
-            except io.BlockingIOError as exc:
+            except io.BlockingIOError:
+                print 'blocking write'
                 pass
 
         for reader in read_ready:
             try:
-                if reader.read():
+                if reader.read_response():
                     readers.remove(reader)
                     finished.append(reader.output)
             except io.BlockingIOError:
+                print 'blocking read'
                 pass
 
         readers.extend(next_readers)

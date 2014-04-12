@@ -252,7 +252,7 @@ class RequestEnvelope(StatefulParse, BytestringHelper):
         return instance
 
     def _make_writer(self):
-        yield m.HaveLine(bytes(self.request_line) + '\r\n')
+        yield m.HaveLine(bytes(self.request_line))
         for next_state in self.headers._make_writer():
             yield next_state
 
@@ -295,7 +295,7 @@ class ResponseEnvelope(StatefulParse, BytestringHelper):
         return instance
 
     def _make_writer(self):
-        yield m.HaveLine(bytes(self.status_line) + '\r\n')
+        yield m.HaveLine(bytes(self.status_line))
         for next_state in self.headers._make_writer():
             yield next_state
 
