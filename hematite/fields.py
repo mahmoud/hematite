@@ -178,6 +178,13 @@ class HTTPHeaderField(Field):
 
         self.from_bytes = kw.pop('from_bytes', default_from_bytes)
         self.to_bytes = kw.pop('to_bytes', default_to_bytes)
+
+        from_list = getattr(self.native_type, 'from_list', None)
+        self.from_list = from_list if callable(from_list) else None
+
+        from_tuple = getattr(self.native_type, 'from_tuple', None)
+        self.from_tuple = from_tuple if callable(from_tuple) else None
+
         if kw:
             raise TypeError('unexpected keyword arguments: %r' % kw)
         self.is_foldable = self.http_name in FOLDABLE_HEADERS
