@@ -1,3 +1,4 @@
+import time
 import errno
 import io
 import socket
@@ -87,6 +88,8 @@ class RequestResponsePair(object):
         while not self.complete:
             if self.state.type == m.NeedData.type:
                 data = self.reader.read(amt or self.state.amount)
+                if data is None:
+                    raise io.BlockingIOError(None, None)
                 self.body_bits.append(data)
                 next_state = m.HaveData(value=data)
             else:
@@ -101,7 +104,7 @@ def join(urls):
     readers, writers = [], []
     for url in urls:
         rawreq = e.RequestEnvelope(e.RequestLine('GET',
-                                                 url.path,
+                                                 url.path or '/',
                                                  e.HTTPVersion(1, 1)),
                                    e.Headers([('Host', url.host),
                                               ('User-Agent', 'test'),
@@ -145,6 +148,7 @@ def join(urls):
                         reader.prep_response_body()
                         read_body(reader)
             except io.BlockingIOError:
+                print 'blocking read', time.time()
                 pass
 
         readers.extend(next_readers)
@@ -165,11 +169,11 @@ if __name__ == '__main__':
 
         if args.shouldprint:
             for j in joined:
-                print j.to_bytes()
+                print j[0].to_bytes(),
+                print ''.join(j[1]),
         return joined
 
     try:
         responses = _main()
-        import pdb; pdb.set_trace()
     except Exception as e:
         import pdb;pdb.post_mortem()

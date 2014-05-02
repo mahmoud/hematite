@@ -34,7 +34,9 @@ class Body(object):
 
         self.read_amt = 0
         self.closed = False
-        if not any([self.content_length, self.connection_close, self.chunked]):
+        if all(field is None for field in [self.content_length,
+                                           self.connection_close,
+                                           self.chunked]):
             # TODO: check for multipart/byteranges
             raise BodyReadException("Can't read lengthless body")
         self.state = m.Empty
@@ -55,7 +57,8 @@ class IdentityEncodedBody(Body):
         return self.state.type == m.Complete.type
 
     def _make_reader(self):
-        to_read = self.content_length or self.DEFAULT_AMT
+        to_read = (self.DEFAULT_AMT if self.content_length is None
+                   else self.content_length)
 
         while not self.complete:
             t, read = yield m.NeedData(amount=to_read)
