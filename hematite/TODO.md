@@ -111,3 +111,12 @@ some point:
 - Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
 - P3P
 - X-Powered-By?
+
+
+# Event thoughts
+
+- Connected (alt: failed, reused)
+- Request sent
+- Response first byte received
+- Headers complete
+- Content complete
