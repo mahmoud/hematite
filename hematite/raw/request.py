@@ -16,7 +16,7 @@ class RawRequest(namedtuple('RawRequest', 'request_line, headers, body'),
         if self.headers:
             parts.append(self.headers.to_bytes())
         parts.append('')
-        return '\r\n'.join(parts)
+        return ''.join(parts)
 
     @classmethod
     def from_bytes(cls, bytestr):

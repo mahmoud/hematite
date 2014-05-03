@@ -269,7 +269,7 @@ class URL(BytestringHelper):
 
     def __eq__(self, other):
         for attr in self._attrs:
-            if not getattr(self, attr) == getattr(other, attr):
+            if not getattr(self, attr) == getattr(other, attr, None):
                 return False
         return True
 
