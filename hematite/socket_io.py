@@ -2,6 +2,7 @@
 import os
 import io
 import errno
+import socket
 from threading import Lock
 
 import hematite.compat as compat
@@ -42,6 +43,7 @@ class NonblockingSocketIO(compat.SocketIO):
         super(NonblockingSocketIO, self).__init__(*args, **kwargs)
         self.write_backlog = ''
 
+    # TODO: better name (seems verby almost like flush)
     @property
     def empty(self):
         return not self.write_backlog
@@ -55,6 +57,20 @@ class NonblockingSocketIO(compat.SocketIO):
             self.write_backlog = data[written:]
             if self.write_backlog:
                 raise eagain()
+
+
+def readline(io_obj, sock):
+    # pulled from the old _select.py
+    try:
+        return core.readline(io_obj)
+    except core.EndOfStream:
+        try:
+            if not sock.recv(1, socket.MSG_PEEK):
+                raise
+        except socket.error as e:
+            if e.errno != errno.EAGAIN:
+                raise
+        raise io.BlockingIOError(None, None)
 
 
 def iopair_from_socket(sock):

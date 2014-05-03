@@ -1,25 +1,13 @@
+
+import io
 import time
 import errno
-import io
 import socket
 import select
 
 from hematite.url import URL
-from hematite.socket_io import iopair_from_socket
-from hematite.raw import core, messages as m, envelope as e, body as b
-
-
-def readline(io_obj, sock):
-    try:
-        return core.readline(io_obj)
-    except core.EndOfStream:
-        try:
-            if not sock.recv(1, socket.MSG_PEEK):
-                raise
-        except socket.error as e:
-            if e.errno != errno.EAGAIN:
-                raise
-        raise io.BlockingIOError(None, None)
+from hematite.socket_io import iopair_from_socket, readline
+from hematite.raw import messages as m, envelope as e, body as b
 
 
 class ConnectionError(Exception):
@@ -147,6 +135,9 @@ class RequestResponsePair(object):
         assert self.complete, 'Unknown state {0}'.format(self.state)
         return self.complete
 
+
+# TODO: need to differentiate between timeout for a single select and
+# timeout for a given Cycle
 
 def join(urls, timeout=10, retries=1):
     writers = [RequestResponsePair.connect(url) for url in urls]

@@ -4,10 +4,15 @@
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
+from hematite.socket_io import iopair_from_socket, readline
 
+# capital M stands out more, less likely to have a conflict
+from hematite.raw import messages as M
 from hematite.raw.body import ChunkEncodedBody
 from hematite.raw.response import RawResponse
+from hematite.raw.envelope import ResponseEnvelope
 from hematite.raw.envelope import StatusLine, Headers, HTTPVersion
+
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -109,6 +114,8 @@ class _State(object):
 
 
 class ClientResponse(Response):
+    # TODO: are we going to need want_read/want_write for SSL?
+
     def __init__(self, client, request=None):
         self.client = client
         self.request = request
@@ -116,6 +123,15 @@ class ClientResponse(Response):
         self.state = _State.NotStarted
         self.socket = None
         self.timings = {}
+
+        self.raw_response = ResponseEnvelope()
+        self._resp_body = None
+        self._resp_body_parts = []
+
+        self._writer_iter = self.raw_request._make_writer()
+        # TODO: request body/total bytes uploaded counters
+        # TODO: response body/total bytes downloaded counters
+        # (for calculating progress)
 
     def process(self):
         if self.request is None:
@@ -126,6 +142,53 @@ class ClientResponse(Response):
             self.state += 1
         elif state is _State.Connect:
             self.socket = self.client.get_socket(request, self.addrinfo)
+            self._reader, self._writer = iopair_from_socket(self.socket)
             self.state += 1
         elif state is _State.SendRequestHeaders:
             pass
+
+        # TODO: return socket
+
+    def fileno(self):
+        if self.socket:
+            return self.socket.fileno()
+        return -1  # or raise an exception?
+
+    def write_request_headers(self):
+        if not self.writer.empty:
+            self.writer.write(None)
+
+        next_bit = next(self._writer_iter, M.Empty)
+        if next_bit is M.Empty:
+            self.state = self.output_envelope.state
+            return True
+        self.writer.write(next_bit.value)
+        return False
+
+    def read_response_headers(self):
+        while not self.complete:
+            if self.state.type == M.NeedLine.type:
+                line = readline(self.reader, self.sock)
+                next_state = M.HaveLine(value=line)
+            else:
+                raise RuntimeError('Unknown state {0}'.format(self.state))
+            self.state = self.output_envelope.reader.send(next_state)
+        assert self.complete, "Unknown state {0}".format(self.state)
+        return self.complete
+
+
+class Joinable(object):
+    "just a sketch of an interface"
+
+    # TODO: attribute/property?
+    def want_read(self):
+        pass
+
+    def want_write(self):
+        pass
+
+    def do_read(self):
+        pass
+
+    def do_write(self):
+        pass
