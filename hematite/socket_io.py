@@ -1,9 +1,11 @@
+
+import os
+import io
 import errno
+from threading import Lock
+
 import hematite.compat as compat
 import hematite.raw.core as core
-import os
-import threading
-import io
 
 
 def eagain(characters_written=0):
@@ -14,7 +16,7 @@ def eagain(characters_written=0):
 
 
 class NonblockingBufferedReader(io.BufferedReader):
-    linebuffer_lock = threading.Lock()
+    linebuffer_lock = Lock()
 
     def __init__(self, *args, **kwargs):
         super(NonblockingBufferedReader, self).__init__(*args, **kwargs)
@@ -34,7 +36,7 @@ class NonblockingBufferedReader(io.BufferedReader):
 
 
 class NonblockingSocketIO(compat.SocketIO):
-    backlog_lock = threading.Lock()
+    backlog_lock = Lock()
 
     def __init__(self, *args, **kwargs):
         super(NonblockingSocketIO, self).__init__(*args, **kwargs)

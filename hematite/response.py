@@ -7,7 +7,7 @@ from hematite.constants import CODE_REASONS
 
 from hematite.raw.body import ChunkEncodedBody
 from hematite.raw.response import RawResponse
-from hematite.raw.headers import StatusLine, Headers, HTTPVersion
+from hematite.raw.envelope import StatusLine, Headers, HTTPVersion
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -102,11 +102,30 @@ class Response(object):
         pass
 
 
-class CycleState(object):
+class _State(object):
+    # TODO: ssl_connect?
     (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
-     ReceiveResponseHeaders, ReceiveResponseBody) = range(7)
+     ReceiveResponseHeaders, ReceiveResponseBody, Complete) = range(8)
 
 
 class ClientResponse(Response):
-    def __init__(self, request=None):
-        self.state = ''
+    def __init__(self, client, request=None):
+        self.client = client
+        self.request = request
+        self.raw_request = request.to_request_envelope()
+        self.state = _State.NotStarted
+        self.socket = None
+        self.timings = {}
+
+    def process(self):
+        if self.request is None:
+            raise ValueError('request not set')
+        state, request = self.state, self.request
+        if state is _State.NotStarted:
+            self.addrinfo = self.client.get_addrinfo(request)
+            self.state += 1
+        elif state is _State.Connect:
+            self.socket = self.client.get_socket(request, self.addrinfo)
+            self.state += 1
+        elif state is _State.SendRequestHeaders:
+            pass

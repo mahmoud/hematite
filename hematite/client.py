@@ -3,7 +3,7 @@
 import errno
 import socket
 
-from hematite.socket_io import bio_from_socket
+from hematite.socket_io import iopair_from_socket
 from hematite.request import Request
 from hematite.response import Response
 
@@ -31,7 +31,8 @@ class Client(object):
         conn = socket.create_connection((hostname, port))
         req_bytes = req.to_bytes()
         conn.sendall(req_bytes)
-        resp = Response.from_io(bio_from_socket(conn, mode='rb'))
+        reader, writer = iopair_from_socket(conn)
+        resp = Response.from_io(reader)
         return resp
 
     def get(self, url, **kw):
@@ -49,7 +50,7 @@ class Client(object):
         # TODO: should one still run getaddrinfo even when a request has an IP
         # minor wtf: socket.getaddrinfo port can be a service name like 'http'
         ret = None
-        url = request.url
+        url = request._url  # the URL object
         host = url.host
         port = url.port or (443 if url.scheme.lower() == 'https' else 80)
 
@@ -59,13 +60,17 @@ class Client(object):
         if url.family is None:
             # assuming TCP ;P
             # big wtf: no kwargs on getaddrinfo
-            addrinfo = socket.getaddrinfo(host,
-                                          port,
-                                          socket.SOCK_STREAM,
-                                          socket.IPPROTO_TCP)
+            addrinfos = socket.getaddrinfo(host,
+                                           port,
+                                           socket.AF_UNSPEC,  # v4/v6
+                                           socket.SOCK_STREAM,
+                                           socket.IPPROTO_TCP)
             # TODO: configurable behavior on multiple returns?
             # TODO: (cont.) set preference for IPv4/v6
-            family, socktype, proto, canonname, sockaddr = addrinfo
+
+            # NOTE: raises exception on unresolvable hostname, so
+            #       addrinfo[0] should never indexerror
+            family, socktype, proto, canonname, sockaddr = addrinfos[0]
             ret = (family, socktype) + sockaddr
         elif url.family is socket.AF_INET:
             ret = (url.family, socket.SOCK_STREAM, host, port)

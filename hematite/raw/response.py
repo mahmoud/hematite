@@ -4,11 +4,11 @@ from io import BytesIO
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper
-from hematite.socket_io import bio_from_socket
+from hematite.socket_io import iopair_from_socket
 from hematite.constants import REASON_CODES
 
 from hematite.raw import core
-from hematite.raw import headers as h
+from hematite.raw import envelope as e
 from hematite.raw import body as b
 
 
@@ -31,8 +31,8 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
         if any(status_line, headers, body) and io_obj:
             raise ValueError('must instantiate with either status_line, '
                              'headers, body or io_obj, but not both')
-        self.status_line = status_line or h.StatusLine()
-        self.headers = headers or h.Headers()
+        self.status_line = status_line or e.StatusLine()
+        self.headers = headers or e.Headers()
         self.body = body
         self.io_obj = io_obj
 
@@ -62,8 +62,8 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
 
     @classmethod
     def from_io(cls, io_obj):
-        status_line = h.StatusLine.from_io(io_obj)
-        headers = h.Headers.from_io(io_obj)
+        status_line = e.StatusLine.from_io(io_obj)
+        headers = e.Headers.from_io(io_obj)
         bcls = (b.ChunkEncodedBody
                 if cls._is_chunked(headers)
                 else b.IdentityEncodedBody)
@@ -89,15 +89,17 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
 
 def test(addr, host, url):
     c = socket.create_connection(addr)
-    reql = bytes(h.RequestLine('GET',
+    reql = bytes(e.RequestLine('GET',
                                url,
-                               h.HTTPVersion(1, 1)))
-    headers = bytes(h.Headers([('Host', host),
+                               e.HTTPVersion(1, 1)))
+    headers = bytes(e.Headers([('Host', host),
                                ('Accept-Encoding', 'chunked'),
                                ('TE', 'chunked')]))
     req = reql + headers + '\r\n\r\n'
     c.sendall(req)
-    resp = RawResponse.from_io(bio_from_socket(c, mode='rb'))
+    # TODO: likely broken
+    reader, writer = iopair_from_socket(c)
+    resp = RawResponse.from_io(reader)
     if resp.is_chunked:
         body = []
         while True:
@@ -112,4 +114,4 @@ def test(addr, host, url):
 
 
 if __name__ == '__main__':
-    test(('localhost', 8080), host='localhost', url=h.URL('/'))
+    test(('localhost', 8080), host='localhost', url=e.URL('/'))

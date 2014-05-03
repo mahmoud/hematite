@@ -4,7 +4,7 @@ from io import BytesIO
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper
-from hematite.raw.headers import RequestLine, Headers
+from hematite.raw.envelope import RequestLine, Headers
 from hematite.raw.body import Body
 
 
