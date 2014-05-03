@@ -109,8 +109,20 @@ class Response(object):
 
 class _State(object):
     # TODO: ssl_connect?
+
     (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
      ReceiveResponseHeaders, ReceiveResponseBody, Complete) = range(8)
+
+    # Alternate schemes:
+    #
+    # Past tense:
+    # NotStarted, Started, HostResolved, Connected, RequestEnvelopeSent,
+    # RequestSent, ResponseStarted, ResponseEnvelopeComplete, ResponseComplete
+    #
+    # Gerunds:
+    # None, ResolvingHost, Connecting, SendingRequestEnvelope,
+    # SendingRequestContent, Waiting, ReceivingResponse,
+    # ReceivingResponseContent, Complete
 
 
 class ClientResponse(Response):
@@ -133,11 +145,16 @@ class ClientResponse(Response):
         # TODO: response body/total bytes downloaded counters
         # (for calculating progress)
 
+        # TODO: need to set error and Complete state on errors
+        self.error = None
+
     def process(self):
         if self.request is None:
             raise ValueError('request not set')
         state, request = self.state, self.request
         if state is _State.NotStarted:
+            self.state += 1
+        elif state is _State.LookupHost:
             self.addrinfo = self.client.get_addrinfo(request)
             self.state += 1
         elif state is _State.Connect:
@@ -145,7 +162,7 @@ class ClientResponse(Response):
             self._reader, self._writer = iopair_from_socket(self.socket)
             self.state += 1
         elif state is _State.SendRequestHeaders:
-            pass
+            self.state = _State.Complete
 
         # TODO: return socket
 
@@ -153,6 +170,10 @@ class ClientResponse(Response):
         if self.socket:
             return self.socket.fileno()
         return -1  # or raise an exception?
+
+    @property
+    def is_complete(self):
+        return self.state == _State.Complete
 
     def write_request_headers(self):
         if not self.writer.empty:
@@ -191,4 +212,7 @@ class Joinable(object):
         pass
 
     def do_write(self):
+        pass
+
+    def is_complete(self):
         pass

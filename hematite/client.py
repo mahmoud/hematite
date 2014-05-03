@@ -94,7 +94,7 @@ class Client(object):
         # TODO: set nonblocking here?
 
         try:
-            conn_res = ret.connect_ex(*sockaddr)
+            conn_res = ret.connect_ex(sockaddr)
         except socket.error as se:
             conn_res = se.args[0]
 
