@@ -102,5 +102,11 @@ class Response(object):
         pass
 
 
-if __name__ == '__main__':
-    main()
+class CycleState(object):
+    (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
+     ReceiveResponseHeaders, ReceiveResponseBody) = range(7)
+
+
+class ClientResponse(Response):
+    def __init__(self, request=None):
+        self.state = ''
