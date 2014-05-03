@@ -28,7 +28,7 @@ class RawResponse(namedtuple('RawResponse', 'status_line headers body'),
     _fields = ['status_line', 'headers', 'body']
 
     def __init__(self, status_line=None, headers=None, body=None, io_obj=None):
-        if any(status_line, headers, body) and io_obj:
+        if any([status_line, headers, body]) and io_obj:
             raise ValueError('must instantiate with either status_line, '
                              'headers, body or io_obj, but not both')
         self.status_line = status_line or e.StatusLine()
