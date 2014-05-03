@@ -29,37 +29,30 @@ class ConnectionError(Exception):
 class RequestResponsePair(object):
 
     @classmethod
-    def connect(cls, urls):
-        if not isinstance(urls, list) or isinstance(urls, tuple):
-            urls = [urls]
+    def connect(cls, url):
+        rawreq = e.RequestEnvelope(e.RequestLine('GET',
+                                                 url.path or '/',
+                                                 e.HTTPVersion(1, 1)),
+                                   e.Headers([('Host', url.host),
+                                              ('User-Agent', 'test'),
+                                              ('Accept', '*/*')]))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(0)
+        try:
+            result = sock.connect_ex((url.host, url.port or 80))
+        except socket.error as exc:
+            result = exc.args[0]
 
-        instances = []
-        for url in urls:
-            rawreq = e.RequestEnvelope(e.RequestLine('GET',
-                                                     url.path or '/',
-                                                     e.HTTPVersion(1, 1)),
-                                       e.Headers([('Host', url.host),
-                                                  ('User-Agent', 'test'),
-                                                  ('Accept', '*/*')]))
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setblocking(0)
-            try:
-                result = sock.connect_ex((url.host, url.port or 80))
-            except socket.error as exc:
-                result = exc.args[0]
+        if result:
+            if result not in (errno.EISCONN, errno.EWOULDBLOCK,
+                              errno.EINPROGRESS, errno.EALREADY):
+                socket.error('Unknown', result)
 
-            if result:
-                if result not in (errno.EISCONN, errno.EWOULDBLOCK,
-                                  errno.EINPROGRESS, errno.EALREADY):
-                    socket.error('Unknown', result)
+        err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if err:
+            raise socket.error('Unknown', err)
 
-            err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-            if err:
-                raise socket.error('Unknown', err)
-
-            instances.append(cls(url, sock, rawreq))
-
-        return instances
+        return cls(url, sock, rawreq)
 
     def __init__(self, url, sock, input_envelope):
         self.retries = 0
@@ -155,8 +148,8 @@ class RequestResponsePair(object):
         return self.complete
 
 
-def join(urls, timeout=1, retries=1):
-    writers = RequestResponsePair.connect(urls)
+def join(urls, timeout=10, retries=1):
+    writers = [RequestResponsePair.connect(url) for url in urls]
     readers, finished = [], []
 
     def read_body(reader):
