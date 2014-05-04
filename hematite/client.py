@@ -86,13 +86,13 @@ class Client(object):
 
     # TODO: maybe split out addrinfo into relevant fields
     # TODO: make request optional?
-    def get_socket(self, request, addrinfo):
+    def get_socket(self, request, addrinfo, nonblocking):
         # yikes
         family, socktype, sockaddr = addrinfo[0], addrinfo[1], addrinfo[2:]
 
         ret = socket.socket(family, socktype)
-        # TODO: set nonblocking here?
-
+        if nonblocking:
+            ret.setblocking(0)
         try:
             conn_res = ret.connect_ex(sockaddr)
         except socket.error as se:
