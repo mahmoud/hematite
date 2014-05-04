@@ -6,21 +6,26 @@ from hematite.client import Client
 from hematite.request import Request
 from hematite.response import ClientResponse
 
+# NOTE: hatnote.com returns the funniest response when the request
+# line is omitted (encountered due to socket_io.py bug)
+
 
 def main():
     client = Client()
-    #req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
-    req = Request('GET', 'http://hatnote.com/')
+    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
+    #req = Request('GET', 'http://hatnote.com/')
     resp = ClientResponse(client=client, request=req)
     resp2 = ClientResponse(client=client, request=req)
+    resp.nonblocking = True
+    resp2.nonblocking = True
     # TODO: where to control automatic fetching of content and
     # following of redirects? join arg, ClientResponse attr, Client
     # default (internally falling back on ClientProfile)
-    join([resp, resp2], timeout=5.0)
+    join([resp], timeout=5.0)
 
     # true for wikipedia:
     # assert resp.raw_response.headers != resp2.raw_response.headers
-    assert resp.get_data() == resp2.get_data()
+    #assert resp.get_data() == resp2.get_data()
     import pdb;pdb.set_trace()
 
 
@@ -67,3 +72,27 @@ def join(reqs, timeout=5.0, raise_exc=True,
 
 if __name__ == '__main__':
     main()
+
+
+class Joinable(object):
+    "just a sketch of an interface"
+
+    def fileno():
+        pass  # None if not selectable
+
+    # TODO: attribute/property?
+    def want_read(self):
+        pass
+
+    def want_write(self):
+        pass
+
+    def do_read(self):
+        pass
+
+    def do_write(self):
+        pass
+
+    def is_complete(self):
+        # can this be implicit from not wanting read or write?
+        pass

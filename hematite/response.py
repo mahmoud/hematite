@@ -137,7 +137,7 @@ class ClientResponse(Response):
         self.socket = None
         self.timings = {}
 
-        self.blocking = True
+        self.nonblocking = False
         self.autoload_body = True
         self.timeout = None
 
@@ -156,53 +156,6 @@ class ClientResponse(Response):
         if not self._resp_body:
             return None
         return self._resp_body.get_data()
-
-    def process(self):
-        # TODO: currently this only advances at most one state at a
-        # time, but we'll fix that soon enough
-        if self.request is None:
-            raise ValueError('request not set')
-        state, request = self.state, self.request
-        if state is _State.NotStarted:
-            self.state += 1
-        elif state is _State.LookupHost:
-            self.addrinfo = self.client.get_addrinfo(request)
-            self.state += 1
-        elif state is _State.Connect:
-            # how to nonblocking connect?
-            self.socket = self.client.get_socket(request, self.addrinfo)
-            self._reader, self._writer = iopair_from_socket(self.socket)
-            self.state += 1
-        elif state is _State.SendRequestHeaders:
-            try:
-                if self.write_request_headers():
-                    self.state += 1
-            except BlockingIOError:
-                pass
-        elif state is _State.SendRequestBody:
-            self.state += 1
-            # TODO
-        elif state is _State.ReceiveResponseHeaders:
-            try:
-                if self.read_response_headers():
-                    self.state += 1
-            except BlockingIOError:
-                pass
-        elif state is _State.ReceiveResponseBody:
-            if not self._resp_body:
-                self._resp_body = ClientResponseBody(self.raw_response.headers,
-                                                     self._reader)
-            if self.autoload_body:
-                if self._resp_body.read_body():
-                    self.state += 1
-            else:
-                self.state += 1
-        else:
-            self.state = _State.Complete
-
-        # TODO: return socket
-        # TODO: how to resolve socket returns with as-yet-unfetched body
-        # (terminology: lazily-fetched?)
 
     def fileno(self):
         if self.socket:
@@ -240,7 +193,9 @@ class ClientResponse(Response):
                 self.addrinfo = self.client.get_addrinfo(request)
                 self.state += 1
             elif state is _State.Connect:
-                self.socket = self.client.get_socket(request, self.addrinfo)
+                self.socket = self.client.get_socket(request,
+                                                     self.addrinfo,
+                                                     self.nonblocking)
                 self._reader, self._writer = iopair_from_socket(self.socket)
                 self.state += 1
             elif state is _State.SendRequestHeaders:
@@ -276,6 +231,9 @@ class ClientResponse(Response):
         except BlockingIOError:
             return False
         return self.want_read
+        # TODO: return socket
+        # TODO: how to resolve socket returns with as-yet-unfetched body
+        # (terminology: lazily-fetched?)
 
     def write_request_headers(self):
         if not self._writer.empty:
@@ -376,25 +334,6 @@ class ClientResponseBody(object):
         return body.complete
 
 
-class Joinable(object):
-    "just a sketch of an interface"
-
-    # TODO: attribute/property?
-    def want_read(self):
-        pass
-
-    def want_write(self):
-        pass
-
-    def do_read(self):
-        pass
-
-    def do_write(self):
-        pass
-
-    def is_complete(self):
-        # can this be implicit from not wanting read or write?
-        pass
 
 
 # Thought: It's prudent to raise exceptions with unencoded
