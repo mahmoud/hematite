@@ -9,7 +9,7 @@ from hematite.socket_io import iopair_from_socket, readline
 
 # capital M stands out more, less likely to have a conflict
 from hematite.raw import messages as M
-from hematite.raw.body import ChunkEncodedBody
+from hematite.raw.body import Body, IdentityEncodedBody, ChunkEncodedBody
 from hematite.raw.response import RawResponse
 from hematite.raw.envelope import ResponseEnvelope
 from hematite.raw.envelope import StatusLine, Headers, HTTPVersion
@@ -179,10 +179,26 @@ class ClientResponse(Response):
                     self.state += 1
             except BlockingIOError:
                 pass
+        elif state is _State.ReceiveResponseBody:
+            if not self._resp_body:
+                self._prep_response_body()
+            if self.fetch_body:
+                pass
         else:
             self.state = _State.Complete
 
         # TODO: return socket
+        # TODO: how to resolve socket returns with as-yet-unfetched body
+        # (terminology: lazily-fetched?)
+
+    def _prep_response_body(self):
+        headers = self.raw_response.headers
+        is_chunked = Body(headers).chunked  # TODO
+        if is_chunked:
+            self._resp_body = ChunkEncodedBody(headers)
+            self._read_response_body = self._read_response_body_chunk
+        else:
+            self._resp_body = IdentityEncodedBody(headers)
 
     def fileno(self):
         if self.socket:
@@ -196,7 +212,12 @@ class ClientResponse(Response):
     @property
     def want_read(self):
         state = self.state
-        return state > _State.SendRequestBody and state < _State.Complete
+        if state <= _State.SendRequestBody:
+            return False
+        elif state == _State.Complete:
+            return False
+        # TODO: what if body fetching is deferred
+        return True
 
     @property
     def want_write(self):
@@ -219,17 +240,16 @@ class ClientResponse(Response):
         return False
 
     def read_response_headers(self):
-        raw_resp_state = self.raw_response.state
         while not self.raw_response.state == M.Complete:
-            if type(raw_resp_state) == type(M.NeedLine):
+            if type(self.raw_response.state) is type(M.NeedLine):
                 # TODO: polish up the messages paradigm
                 line = readline(self._reader, self.socket)
                 next_state = M.HaveLine(value=line)
             else:
-                raise RuntimeError('Unknown state {0}'.format(raw_resp_state))
+                raise RuntimeError('Unknown state %r'
+                                   % self.raw_response.state)
             self.raw_response.state = self.raw_response.reader.send(next_state)
-        #assert self.is_complete, "Unknown state {0}".format(raw_resp_state)
-        return True  # p sure this is fine right?
+        return True  # TODO: pretty sure this is fine right?
 
 
 class Joinable(object):

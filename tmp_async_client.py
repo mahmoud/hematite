@@ -7,18 +7,19 @@ from hematite.request import Request
 from hematite.response import ClientResponse
 
 
-MAX_STATE = 7  # obvs tmp
-
-
 def main():
     client = Client()
     req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
     resp = ClientResponse(client=client, request=req)
+    # TODO: where to control automatic fetching of content and
+    # following of redirects? join arg, ClientResponse attr, Client
+    # default (internally falling back on ClientProfile)
     join([resp])
     import pdb;pdb.set_trace()
 
 
-def join(reqs, timeout=5.0, raise_exc=True):
+def join(reqs, timeout=5.0, raise_exc=True,
+         follow_redirects=None, select_timeout=0.05):
     ret = list(reqs)
     cutoff_time = time.time() + timeout
 
@@ -29,7 +30,8 @@ def join(reqs, timeout=5.0, raise_exc=True):
 
         if not (readers or writers or not_connected):
             break
-        if not time.time() < cutoff_time:
+        if time.time() > cutoff_time:
+            # TODO: is time.time monotonic?
             break
         for r in not_connected:
             r.process()
