@@ -83,12 +83,3 @@ class IncompleteRead(ReadException):
 
 class EndOfStream(ReadException):
     pass
-
-
-def readline(io_obj):
-    line = io_obj.readline(MAXLINE)
-    if not line:
-        raise EndOfStream
-    elif len(line) == MAXLINE and not LINE_END.match(line):
-        raise OverlongRead
-    return line

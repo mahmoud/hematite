@@ -1,22 +1,23 @@
 
 import os
-import io
 import errno
 import socket
 from threading import Lock
+from io import BlockingIOError, BufferedReader
 
 import hematite.compat as compat
 import hematite.raw.core as core
+from hematite.raw.core import MAXLINE, LINE_END, EndOfStream, OverlongRead
 
 
 def eagain(characters_written=0):
-    err = io.BlockingIOError(errno.EAGAIN,
-                             os.strerror(errno.EAGAIN))
+    err = BlockingIOError(errno.EAGAIN,
+                          os.strerror(errno.EAGAIN))
     err.characters_written = characters_written
     return err
 
 
-class NonblockingBufferedReader(io.BufferedReader):
+class NonblockingBufferedReader(BufferedReader):
     linebuffer_lock = Lock()
 
     def __init__(self, *args, **kwargs):
@@ -59,18 +60,21 @@ class NonblockingSocketIO(compat.SocketIO):
                 raise eagain()
 
 
-def readline(io_obj, sock):
-    # pulled from the old _select.py
-    try:
-        return core.readline(io_obj)
-    except core.EndOfStream:
+def readline(io_obj):
+    # pulled from the old _select.py, merged with core.readline, which
+    # was only used here.
+    line = io_obj.readline(MAXLINE)
+    if not line:
         try:
-            if not sock.recv(1, socket.MSG_PEEK):
-                raise
+            if not io_obj._sock.recv(1, socket.MSG_PEEK):
+                raise EndOfStream
         except socket.error as e:
-            if e.errno != errno.EAGAIN:
-                raise
-        raise io.BlockingIOError(None, None)
+            if e.errno == errno.EAGAIN:
+                raise BlockingIOError(None, None)
+            raise
+    elif len(line) == MAXLINE and not LINE_END.match(line):
+        raise OverlongRead
+    return line
 
 
 def iopair_from_socket(sock):
