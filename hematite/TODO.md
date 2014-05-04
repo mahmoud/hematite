@@ -120,3 +120,11 @@ some point:
 - Response first byte received
 - Headers complete
 - Content complete
+
+
+# Topics
+
+- Why shouldn't Body know about the reader/stream?
+- The state of the Client isn't determined only by the parser -> The Joinable interface
+- The definition of Complete also changes when lazily fetching bodies
+- Nonblocking connects
