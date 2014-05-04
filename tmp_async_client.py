@@ -9,8 +9,8 @@ from hematite.response import ClientResponse
 
 def main():
     client = Client()
-    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
-    #req = Request('GET', 'http://hatnote.com/')
+    #req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
+    req = Request('GET', 'http://hatnote.com/')
     resp = ClientResponse(client=client, request=req)
     resp2 = ClientResponse(client=client, request=req)
     # TODO: where to control automatic fetching of content and
@@ -18,7 +18,8 @@ def main():
     # default (internally falling back on ClientProfile)
     join([resp, resp2], timeout=5.0)
 
-    assert resp.raw_response.headers != resp2.raw_response.headers
+    # true for wikipedia:
+    # assert resp.raw_response.headers != resp2.raw_response.headers
     assert resp.get_data() == resp2.get_data()
     import pdb;pdb.set_trace()
 
@@ -27,26 +28,40 @@ def join(reqs, timeout=5.0, raise_exc=True,
          follow_redirects=None, select_timeout=0.05):
     ret = list(reqs)
     cutoff_time = time.time() + timeout
-    _st = select_timeout
-    while True:
-        not_connected = [r for r in reqs if r.socket is None]
-        readers = [r for r in reqs if r.fileno() and r.want_read]
-        writers = [r for r in reqs if r.fileno() and r.want_write]
 
-        if not (readers or writers or not_connected):
+    while True:
+        readers = [r for r in reqs if r.want_read]
+        writers = [r for r in reqs if r.want_write]
+
+        # forced writers are e.g., resolving/connecting, don't have sockets yet
+        forced_writers = [r for r in writers if r.fileno() is None]
+        selectable_writers = [r for r in writers if r.fileno() is not None]
+
+        if not (readers or writers):
             break
         if time.time() > cutoff_time:
             # TODO: is time.time monotonic?
             break
-        for r in not_connected:
-            r.process()
-        if not (readers or writers):
-            continue
-        read_ready, write_ready, _ = select.select(readers, writers, [], _st)
+
+        if readers or selectable_writers:
+            read_ready, write_ready, _ = select.select(readers,
+                                                       selectable_writers,
+                                                       [],
+                                                       select_timeout)
+            write_ready.extend(forced_writers)
+        else:
+            read_ready = []
+            write_ready = forced_writers
         for wr in write_ready:
-            wr.do_write()
+            while True:
+                _keep_writing = wr.do_write()
+                if not _keep_writing:
+                    break
         for rr in read_ready:
-            rr.do_read()
+            while True:
+                _keep_reading = rr.do_read()
+                if not _keep_reading:
+                    break
     return ret
 
 

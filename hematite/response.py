@@ -214,6 +214,10 @@ class ClientResponse(Response):
         return self.state == _State.Complete
 
     @property
+    def want_write(self):
+        return self.state <= _State.SendRequestBody
+
+    @property
     def want_read(self):
         state = self.state
         if state <= _State.SendRequestBody:
@@ -223,15 +227,55 @@ class ClientResponse(Response):
         # TODO: what if body fetching is deferred
         return True
 
-    @property
-    def want_write(self):
-        return self.state <= _State.SendRequestBody
+    def do_write(self):
+        if self.request is None:
+            raise ValueError('request not set')
+        state, request = self.state, self.request
+
+        # TODO: BlockingIOErrors for DNS/connect?
+        try:
+            if state is _State.NotStarted:
+                self.state += 1
+            elif state is _State.LookupHost:
+                self.addrinfo = self.client.get_addrinfo(request)
+                self.state += 1
+            elif state is _State.Connect:
+                self.socket = self.client.get_socket(request, self.addrinfo)
+                self._reader, self._writer = iopair_from_socket(self.socket)
+                self.state += 1
+            elif state is _State.SendRequestHeaders:
+                if self.write_request_headers():
+                    self.state += 1
+            elif state is _State.SendRequestBody:
+                self.state += 1
+                # TODO
+            else:
+                raise RuntimeError('not in a writable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_write
 
     def do_read(self):
-        self.process()
-
-    def do_write(self):
-        self.process()
+        state = self.state
+        try:
+            if state is _State.ReceiveResponseHeaders:
+                if self.read_response_headers():
+                    self.state += 1
+            elif state is _State.ReceiveResponseBody:
+                if not self._resp_body:
+                    headers = self.raw_response.headers
+                    self._resp_body = ClientResponseBody(headers,
+                                                         self._reader)
+                if self.autoload_body:
+                    if self._resp_body.read_body():
+                        self.state += 1
+                else:
+                    self.state += 1
+            else:
+                raise RuntimeError('not in a readable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_read
 
     def write_request_headers(self):
         if not self._writer.empty:
@@ -315,19 +359,21 @@ class ClientResponseBody(object):
         return body.complete
 
     def _read_response_body_ident(self, amt=None):
-        while not self.complete:
-            if self.state.type == M.NeedData.type:
-                data = self.reader.read(self.state.amount)
+        body = self._body
+        reader = self.reader
+        while not body.complete:
+            if body.state.type == M.NeedData.type:
+                data = reader.read(body.state.amount)
                 if data is None:
                     raise BlockingIOError(None, None)
                 self._parts.append(data)
                 next_state = M.HaveData(value=data)
             else:
-                raise RuntimeError('Unknown state {0}'.format(self.state))
-            self.state = self.output_body.reader.send(next_state)
+                raise RuntimeError('Unknown state {0}'.format(body.state))
+            body.state = body.reader.send(next_state)
 
-        assert self.complete, 'Unknown state {0}'.format(self.state)
-        return self.complete
+        assert body.complete, 'Unknown state {0}'.format(body.state)
+        return body.complete
 
 
 class Joinable(object):
