@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from io import BlockingIOError
 
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
@@ -149,6 +150,8 @@ class ClientResponse(Response):
         self.error = None
 
     def process(self):
+        # TODO: currently this only advances at most one state at a
+        # time, but we'll fix that soon enough
         if self.request is None:
             raise ValueError('request not set')
         state, request = self.state, self.request
@@ -158,10 +161,25 @@ class ClientResponse(Response):
             self.addrinfo = self.client.get_addrinfo(request)
             self.state += 1
         elif state is _State.Connect:
+            # how to nonblocking connect?
             self.socket = self.client.get_socket(request, self.addrinfo)
             self._reader, self._writer = iopair_from_socket(self.socket)
             self.state += 1
         elif state is _State.SendRequestHeaders:
+            try:
+                if self.write_request_headers():
+                    self.state += 1
+            except BlockingIOError:
+                pass
+        elif state is _State.SendRequestBody:
+            self.state += 1
+        elif state is _State.ReceiveResponseHeaders:
+            try:
+                if self.read_response_headers():
+                    self.state += 1
+            except BlockingIOError:
+                pass
+        else:
             self.state = _State.Complete
 
         # TODO: return socket
@@ -169,33 +187,49 @@ class ClientResponse(Response):
     def fileno(self):
         if self.socket:
             return self.socket.fileno()
-        return -1  # or raise an exception?
+        return None  # or raise an exception?
 
     @property
     def is_complete(self):
         return self.state == _State.Complete
 
+    @property
+    def want_read(self):
+        state = self.state
+        return state > _State.SendRequestBody and state < _State.Complete
+
+    @property
+    def want_write(self):
+        return self.state <= _State.SendRequestBody
+
+    def do_read(self):
+        self.process()
+
+    def do_write(self):
+        self.process()
+
     def write_request_headers(self):
-        if not self.writer.empty:
-            self.writer.write(None)
+        if not self._writer.empty:
+            self._writer.write(None)
 
         next_bit = next(self._writer_iter, M.Empty)
         if next_bit is M.Empty:
-            self.state = self.output_envelope.state
             return True
-        self.writer.write(next_bit.value)
+        self._writer.write(next_bit.value)
         return False
 
     def read_response_headers(self):
-        while not self.complete:
-            if self.state.type == M.NeedLine.type:
-                line = readline(self.reader, self.sock)
+        raw_resp_state = self.raw_response.state
+        while not self.raw_response.state == M.Complete:
+            if type(raw_resp_state) == type(M.NeedLine):
+                # TODO: polish up the messages paradigm
+                line = readline(self._reader, self.socket)
                 next_state = M.HaveLine(value=line)
             else:
-                raise RuntimeError('Unknown state {0}'.format(self.state))
-            self.state = self.output_envelope.reader.send(next_state)
-        assert self.complete, "Unknown state {0}".format(self.state)
-        return self.complete
+                raise RuntimeError('Unknown state {0}'.format(raw_resp_state))
+            self.raw_response.state = self.raw_response.reader.send(next_state)
+        #assert self.is_complete, "Unknown state {0}".format(raw_resp_state)
+        return True  # p sure this is fine right?
 
 
 class Joinable(object):
@@ -215,4 +249,11 @@ class Joinable(object):
         pass
 
     def is_complete(self):
+        # can this be implicit from not wanting read or write?
         pass
+
+
+# Thought: It's prudent to raise exceptions with unencoded
+# text. Knowing that exception messages will end up in consoles,
+# logfiles, and on crazy wires to crazy places, it's safest to raise
+# exceptions with ASCII bytestring messages where possible.

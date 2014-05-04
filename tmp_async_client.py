@@ -1,5 +1,6 @@
 
 import time
+import select
 
 from hematite.client import Client
 from hematite.request import Request
@@ -18,14 +19,30 @@ def main():
 
 
 def join(reqs, timeout=5.0, raise_exc=True):
-    ret = reqs
-    to_proc = list(reqs)
+    ret = list(reqs)
     cutoff_time = time.time() + timeout
-    while to_proc and time.time() < cutoff_time:
-        for req in to_proc:
-            req.process()
-        to_proc = [r for r in to_proc if not r.is_complete]
-        import pdb;pdb.set_trace()
+
+    while True:
+        not_connected = [r for r in reqs if r.socket is None]
+        readers = [r for r in reqs if r.fileno() and r.want_read]
+        writers = [r for r in reqs if r.fileno() and r.want_write]
+
+        if not (readers or writers or not_connected):
+            break
+        if not time.time() < cutoff_time:
+            break
+        for r in not_connected:
+            r.process()
+        if readers or writers:
+            read_ready, write_ready, _ = select.select(readers,
+                                                       writers,
+                                                       [],
+                                                       timeout)
+            for wr in write_ready:
+                wr.do_write()
+            for rr in read_ready:
+                rr.do_read()
+    import pdb;pdb.set_trace()
     return ret
 
 
