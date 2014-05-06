@@ -54,28 +54,10 @@ class NonblockingSocketIO(compat.SocketIO):
             data = data or self.write_backlog
             written = super(NonblockingSocketIO, self).write(data)
             if written is None:
-                self.write_backlog = data
                 raise eagain()
             self.write_backlog = data[written:]
             if self.write_backlog:
                 raise eagain()
-
-
-def readline(io_obj):
-    # pulled from the old _select.py, merged with core.readline, which
-    # was only used here.
-    line = io_obj.readline(MAXLINE)
-    if not line:
-        try:
-            if not io_obj._sock.recv(1, socket.MSG_PEEK):
-                raise EndOfStream
-        except socket.error as e:
-            if e.errno == errno.EAGAIN:
-                raise BlockingIOError(None, None)
-            raise
-    elif len(line) == MAXLINE and not LINE_END.match(line):
-        raise OverlongRead
-    return line
 
 
 def iopair_from_socket(sock):

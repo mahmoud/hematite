@@ -47,6 +47,56 @@ class InvalidHeaders(HTTPParseException):
     pass
 
 
+class ParseError(core.HTTPException):
+    pass
+
+
+class Parser(object):
+
+    def __init__(self, *args, **kwargs):
+        super(Parser, self).__init__(*args, **kwargs)
+        self.token = m.Empty
+        self.error = None
+
+    def _next_state(self, message):
+        raise ParseError('Unknown token {0}'.format(self.token))
+
+    def _line_received(self, message):
+        raise NotImplementedError
+
+    def _send_line(self, message):
+        raise NotImplementedError
+
+    def _data_received(self, message):
+        raise NotImplementedError
+
+    def _send_data(self, message):
+        raise NotImplementedError
+
+    def _peek_received(self, message):
+        raise NotImplementedError
+
+    @property
+    def completed(self):
+        return self.token is m.Empty
+
+    def feed(self, message):
+        if self.token is m.Empty:
+            self.token = m.NeedLine
+            self._next_state = self._line_received
+        elif self.token is m.Complete:
+            return self.token
+        return self._next_state(message)
+
+    def emit(self, message):
+        if self.token is m.Empty:
+            self._next_state = self._send_line
+        elif self.token is m.Complete:
+            return self.token
+
+        return self._next_state(message)
+
+
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
     PARSE_VERSION = re.compile('HTTP/'
                                '(?P<http_major_version>\d+)'
@@ -149,85 +199,103 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         return cls(method, url, version)
 
 
-class StatefulParse(object):
+class Headers(OMD):
+    pass
 
-    def __init__(self, *args, **kwargs):
-        super(StatefulParse, self).__init__(*args, **kwargs)
-        self.state = m.Empty
-        self.reader = self._make_reader()
-        self.state = next(self.reader)
+
+class HeadersParser(Parser):
+    ISCONTINUATION = re.compile('^['
+                                + re.escape(''.join(set(core._LWS) -
+                                                    set(core._CRLF)))
+                                + ']')
+
+    def __init__(self, headers, *args, **kwargs):
+        super(HeadersParser, self).__init__(*args, **kwargs)
+
+        self._prev_key = _MISSING
+        self.bytes_read = 0
+
+        self.headers = headers
+
+    def _next_state(self, *args, **kwargs):
+        raise InvalidHeaders('Unparseable state {0}'.format(self.state))
 
     @property
-    def complete(self):
-        return self.state is m.Complete
+    def completed(self):
+        return self.expected_token is m.Complete
 
+    def _line_received(self, message):
+        t, line = message
+        assert t == m.HaveLine.type
 
-class Headers(StatefulParse, BytestringHelper, OMD):
-    ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
-                                                         set(core._CRLF)))
-                                + ']')
-    # TODO: may also want to track Trailer, Expect, Upgrade?
+        if not line:
+            self.error = InvalidHeaders('Cannot find header termination; '
+                                        'connection closed')
+            raise self.error
 
-    def __init__(self, *args, **kwargs):
-        self.bytes_read = 0
-        super(Headers, self).__init__(*args, **kwargs)
+        if core.LINE_END.match(line):
+            self.expected_token = m.Complete
+            return self.expected_token
 
-    def to_bytes(self):
-        return b''.join(l for _, l in self._make_writer())
+        new_bytes_read = self.bytes_read + len(line)
+        if new_bytes_read > core.MAXHEADERBYTES:
+            self.error = InvalidHeaders('Consumed limit of {0} bytes '
+                                        'without finding '
+                                        ' headers'.format(core.MAXHEADERBYTES))
+            raise self.error
 
-    @classmethod
-    def from_bytes(cls, bstr):
-        instance = cls()
-        for line in bstr.splitlines(True):
-            instance.reader.send(m.HaveLine(line))
-        if not instance.complete:
-            raise InvalidHeaders('Missing header termination')
-        return instance
+        self.bytes_read = new_bytes_read
 
-    def _make_writer(self):
-        for k, v in self.iteritems(multi=True):
-            yield m.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
-        yield m.HaveLine(b'\r\n')
-
-    def _make_reader(self):
-        prev_key = _MISSING
-        while self.bytes_read < core.MAXHEADERBYTES and not self.complete:
-            self.state = m.NeedLine
-            t, line = yield self.state
-            assert t == m.HaveLine.type
-
-            if not line:
-                raise InvalidHeaders('Cannot find header termination; '
-                                     'connection closed')
-
-            if core.LINE_END.match(line):
-                break
-
-            self.bytes_read += len(line)
-
-            if self.ISCONTINUATION.match(line):
-                if prev_key is _MISSING:
-                    raise InvalidHeaders('Cannot begin with a continuation',
-                                         line)
-                last_value = self.poplast(prev_key)
-                key, value = prev_key, last_value + line.rstrip()
-            else:
-                key, _, value = line.partition(':')
-                key, value = key.strip(), value.strip()
-                if not core.TOKEN.match(key):
-                    raise InvalidHeaders('Invalid field name', key)
-
-                prev_key = key
-
-            self.add(key, value)
+        if self.ISCONTINUATION.match(line):
+            if self._prev_key is _MISSING:
+                raise InvalidHeaders('Cannot begin with a continuation',
+                                     line)
+            last_value = self.headers.poplast(self._prev_key)
+            key, value = self._prev_key, last_value + line.rstrip()
         else:
-            raise InvalidHeaders('Consumed limit of {0} bytes '
-                                 'without finding '
-                                 ' headers'.format(core.MAXHEADERBYTES))
-        # TODO trailers
-        self.state = m.Complete
-        while True:
-            yield self.state
+            key, _, value = line.partition(':')
+            key, value = key.strip(), value.strip()
+            if not core.TOKEN.match(key):
+                raise InvalidHeaders('Invalid field name', key)
+
+            self._prev_key = key
+
+        self.headers.add(key, value)
+
+        self.expected_token = m.NeedLine
+        return self.expected_token
+
+    def _send_line(self, message):
+        t, _ = message
+        assert t == m.NeedLine.type
+
+        if self.token is m.Empty:
+            self._write_cursor = self.headers.iteritems(multi=True)
+
+        k, v = next(self._write_cursor, (_MISSING, None))
+        if k is _MISSING:
+            self.token = m.Complete
+            return m.HaveLine(b'\r\n')
+
+        self.token = m.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
+        return self.token
+
+    def feed(self, message):
+        if self.token is m.Empty:
+            self.token = m.NeedLine
+            self._next_state = self._line_received
+        elif self.token is m.Complete:
+            return self.token
+        return self._next_state(message)
+
+    def emit(self, message):
+        if self.token is m.Empty:
+            self._next_state = self._send_line
+        if self.token is m.Complete:
+            return self.token
+
+        return self._next_state(message)
+
 
 
 class RequestEnvelope(StatefulParse, BytestringHelper):
@@ -238,11 +306,15 @@ class RequestEnvelope(StatefulParse, BytestringHelper):
         self.headers = headers or Headers()
         self.reader = self._make_reader()
         self.state = next(self.reader)
+
         if request_line and headers:
             self.state = m.Complete
 
     def to_bytes(self):
         return self.request_line.to_bytes() + self.headers.to_bytes()
+
+    def __iter__(self):
+        return self._make_writer()
 
     @classmethod
     def from_bytes(cls, bstr):
