@@ -16,35 +16,42 @@ _MISSING = make_sentinel()
 
 
 class HTTPParseException(core.HTTPException):
-    pass
+    """Raised when an error occurs while parsing an HTTP message"""
 
 
 class InvalidStatusLine(HTTPParseException):
-    pass
+    """Raised when a response begins with an invalid status line.
+    (RFC2616 6.1)"""
 
 
 class InvalidVersion(InvalidStatusLine):
-    pass
+    """Raised when either a request or response provides an invalid HTTP
+    version.  (RFC2616 3.1)"""
 
 
 class InvalidStatusCode(InvalidStatusLine):
-    pass
+    """Raised when a response provides an invalid status code (RFC2616
+    6.1.1)"""
 
 
 class InvalidRequestLine(HTTPParseException):
-    pass
+    """Raised when a request begins with an invalid request line (RFC2616
+    5.1)"""
 
 
 class InvalidMethod(InvalidRequestLine):
-    pass
+    """Raised when a request line contains invalid method (RFC2616
+    5.1.1)"""
 
 
-class InvalidURL(InvalidRequestLine):
-    pass
+class InvalidURI(InvalidRequestLine):
+    """Raised when a request specifies an invalid URI (RFC2616 5.1.2;
+    RFC2616 3.2)"""
 
 
 class InvalidHeaders(HTTPParseException):
-    pass
+    """Raised when a request or response contains invalid headers (RFC2616
+    4.2)"""
 
 
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
