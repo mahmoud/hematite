@@ -7,8 +7,8 @@ from hematite.compat import (BytestringHelper,
 
 from hematite.raw import core
 from hematite.url import URL, _ABS_RE
-from hematite.constants import CODE_REASONS, HEADER_CASE_MAP
-from hematite.raw import messages as m
+from hematite.constants import CODE_REASONS
+from hematite.raw import messages as M
 
 # TODO: maintain case
 
@@ -55,6 +55,16 @@ class InvalidHeaders(HTTPParseException):
 
 
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
+    """Represents an HTTP version (RFC2616 3.1).
+
+    This is a :class:`~collections.namedtuple`, so versions can be
+    naturally compared:
+
+    >>> HTTPVersion(major=1, minor=1) > HTTPVersion(1, 0) > HTTPVersion(0, 9)
+    True
+
+    """
+
     PARSE_VERSION = re.compile('HTTP/'
                                '(?P<http_major_version>\d+)'
                                '\.'
@@ -64,35 +74,66 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
         return b'HTTP/' + b'.'.join(map(bytes, self))
 
     @classmethod
-    def from_match(cls, m):
-        major = m.group('http_major_version')
-        minor = m.group('http_minor_version')
+    def from_match(cls, match):
+        """Create an :class:`HTTPVersion` from a :class:`re.match` object.
+
+        This is intended for use within other parsers.  You probably
+        want :meth:`HTTPVersion.from_bytes` instead
+        """
+        if not match:
+            raise InvalidVersion('Missing version string')
+        major = match.group('http_major_version')
+        minor = match.group('http_minor_version')
 
         if not (major or minor):
-            InvalidVersion('Unparseable version', m.string)
-            cls.invalid(m.string)
+            InvalidVersion('Unparseable version', match.string)
+            cls.invalid(match.string)
 
         return cls(int(major), int(minor))
 
     @classmethod
     def from_bytes(cls, string):
+        """Create an :class:`HTTPVersion` from a byte string.  Raises an
+        :exc:`InvalidVersion` exception on errors.
+
+        >>> HTTPVersion.from_bytes('HTTP/2.0')
+        HTTPVersion(major=2, minor=0)
+        """
         return cls.from_match(cls.PARSE_VERSION.search(string))
 
 
 class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
                  BytestringHelper):
-    # section 6.1
-    PARSE_LINE = re.compile(
+    """
+    Represents an HTTP Status-Line (RFC2616 6.1).
+    """
+
+    PARSE_STATUS_LINE = re.compile(
         '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?'
         + core.START_LINE_SEP.pattern +
         '(?P<status_code>\d{3})?' +
-        '(:?' + core.START_LINE_SEP.pattern +
+        '(?:' + core.START_LINE_SEP.pattern +
         # 6.1: No CR or LF is allowed except in the final CRLF
         # sequence.
-        '(?P<reason>[^' + re.escape(core._TEXT_EXCLUDE) + '\r\n]*?))?'
-        + core._LINE_END)
+        '(?P<reason>[^' + re.escape(core._TEXT_EXCLUDE) + '\r\n]+?))?'
+        + core.LINE_END.pattern)
 
     def to_bytes(self):
+        r"""Return a byte string representing this status line.  If
+        :attribute:`StatusLine.reason` is `None`, this will attempt to
+        provide one from the standard status code to reason mapping:
+
+        >>> StatusLine(HTTPVersion(1, 1), status_code=200,
+        ...            reason=None).to_bytes()
+        'HTTP/1.1 200 OK\r\n'
+
+        If :attribute:`StatusLine.reason` is otherwise false, the
+        reason is completely omitted:
+
+        >>> StatusLine(HTTPVersion(1, 1), status_code=200,
+        ...            reason='').to_bytes()
+        'HTTP/1.1 200\r\n'
+        """
         version, status_code, reason = self
         if reason is None:
             reason = CODE_REASONS.get(status_code)
@@ -102,16 +143,21 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         return b' '.join(map(bytes, bs)) + b'\r\n'
 
     @classmethod
-    def from_bytes(cls, line):
-        match = cls.PARSE_LINE.match(line)
-        if not match:
-            raise InvalidStatusLine('Could not parse status line', line)
+    def from_match(cls, match):
+        """Create a :class:`StatusLine` from a :class:`re.match` object.
 
-        version = HTTPVersion.frommatch(match)
+        This is intended for use within other parsers.  You probably
+        want :meth:`StatusLine.from_bytes` instead.
+        """
+        version = HTTPVersion.from_match(match)
+
+        if not match:
+            raise InvalidStatusLine('Missing status line')
 
         raw_status_code = match.group('status_code')
         if not raw_status_code:
-            raise InvalidStatusCode('Could not retrieve status code', line)
+            raise InvalidStatusCode('Could not retrieve status code',
+                                    match.string)
 
         status_code = int(match.group('status_code'))
 
@@ -119,36 +165,66 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         if not reason:
             reason = CODE_REASONS.get(status_code)
 
-        c = cls(version, status_code, reason)
-        return c
+        return cls(version, status_code, reason)
+
+    @classmethod
+    def from_bytes(cls, line):
+        r"""Create a :class:`StatusLine` from a byte string. Raises
+        :exc:`InvalidStatusCode` on missing/unparseable status codes
+        and :exc:`InvalidStatusLine` on other errors.  Note that a
+        missing reason is allowed!
+
+        >>> StatusLine.from_bytes('HTTP/2.0 200 OK\r\n')
+        ... # doctest: +NORMALIZE_WHITESPACE
+        StatusLine(version=HTTPVersion(major=2, minor=0),
+                   status_code=200, reason='OK')
+        """
+        match = cls.PARSE_STATUS_LINE.match(line)
+        if not match:
+            raise InvalidStatusLine('Could not parse status line', line)
+        return cls.from_match(match)
 
 
 class RequestLine(namedtuple('RequestLine', 'method url version'),
                   BytestringHelper):
-    PARSE_LINE = re.compile(
+    """
+    Represents an HTTP Request-Line (RFC2616 5.1)
+    """
+
+    PARSE_REQUEST_LINE = re.compile(
         '(?P<method>' + core.TOKEN.pattern + ')?'
         + core.START_LINE_SEP.pattern +
         '(?P<url>' + _ABS_RE + ')?'
         + core.START_LINE_SEP.pattern +
-        '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?'
-        + core._LINE_END)
+        '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?')
 
     def to_bytes(self):
-        return b' '.join(map(bytes, self)) + b'\r\n'
+        """Return a byte string representing this request line without the
+        trailing carriage return and line feed:
+
+        >>> RequestLine(method='GET',
+        ...             url=URL(u'/'),
+        ...             version=HTTPVersion(1, 1)).to_bytes()
+        'GET / HTTP/1.1'
+        """
+        return b' '.join(map(bytes, self))
 
     @classmethod
-    def from_bytes(cls, line):
-        match = cls.PARSE_LINE.match(line)
+    def from_match(cls, match):
+        """Create a :class:`RequestLine` from a :class:`re.match` object.
+
+        This is intended for use within other parsers.  You probably
+        want :meth:`RequestLine.from_bytes` instead. """
         if not match:
-            raise InvalidRequestLine('Could not parse request line', line)
+            raise InvalidRequestLine('Missing status line')
 
         method = match.group('method')
         if not method:
-            raise InvalidMethod('Could not parse method', line)
+            raise InvalidMethod('Could not parse method', match.string)
 
         raw_url = match.group('url')
         if not raw_url:
-            raise InvalidURI('Could not parse url', line)
+            raise InvalidURI('Could not parse URI', match.string)
 
         url = URL(raw_url, strict=True)
 
@@ -156,18 +232,42 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
 
         return cls(method, url, version)
 
+    @classmethod
+    def from_bytes(cls, line):
+        r"""Create a :class:`RequestLine` from a byte string.  The trailing
+        carriage return and new line are *not* considered.
+
+        >>> RequestLine.from_bytes('GET /index.html?q=something HTTP/1.0')
+        ... # doctest: +NORMALIZE_WHITESPACE
+        RequestLine(method='GET', url=URL(u'/index.html?q=something'),
+                    version=HTTPVersion(major=1, minor=0))
+
+        If the method is missing, this raises :exc:`InvalidMethod` exception;
+
+        If a URI is missing, it raises an :exc:`InvalidURI` exception;
+
+        If the version is missing, it raises :exc:`InvalidVersion`;
+
+        ...and on any other error this method raises an
+        :exc:`InvalidRequestLine`.
+        """
+        match = cls.PARSE_REQUEST_LINE.match(line)
+        if not match:
+            raise InvalidRequestLine('Could not parse request line', line)
+        return cls.from_match(match)
+
 
 class StatefulParse(object):
 
     def __init__(self, *args, **kwargs):
         super(StatefulParse, self).__init__(*args, **kwargs)
-        self.state = m.Empty
+        self.state = M.Empty
         self.reader = self._make_reader()
         self.state = next(self.reader)
 
     @property
     def complete(self):
-        return self.state is m.Complete
+        return self.state is M.Complete
 
 
 class Headers(BytestringHelper):
@@ -187,22 +287,22 @@ class Headers(BytestringHelper):
     def from_bytes(cls, bstr):
         instance = cls()
         for line in bstr.splitlines(True):
-            instance.reader.send(m.HaveLine(line))
+            instance.reader.send(M.HaveLine(line))
         if not instance.complete:
             raise InvalidHeaders('Missing header termination')
         return instance
 
     def _make_writer(self):
         for k, v in self.iteritems(multi=True):
-            yield m.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
-        yield m.HaveLine(b'\r\n')
+            yield M.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
+        yield M.HaveLine(b'\r\n')
 
     def _make_reader(self):
         prev_key = _MISSING
         while self.bytes_read < core.MAXHEADERBYTES and not self.complete:
-            self.state = m.NeedLine
+            self.state = M.NeedLine
             t, line = yield self.state
-            assert t == m.HaveLine.type
+            assert t == M.HaveLine.type
 
             if not line:
                 raise InvalidHeaders('Cannot find header termination; '
@@ -233,7 +333,7 @@ class Headers(BytestringHelper):
                                  'without finding '
                                  ' headers'.format(core.MAXHEADERBYTES))
         # TODO trailers
-        self.state = m.Complete
+        self.state = M.Complete
         while True:
             yield self.state
 
@@ -247,7 +347,7 @@ class RequestEnvelope(StatefulParse, BytestringHelper):
         self.reader = self._make_reader()
         self.state = next(self.reader)
         if request_line and headers:
-            self.state = m.Complete
+            self.state = M.Complete
 
     def to_bytes(self):
         return self.request_line.to_bytes() + self.headers.to_bytes()
@@ -256,19 +356,19 @@ class RequestEnvelope(StatefulParse, BytestringHelper):
     def from_bytes(cls, bstr):
         instance = cls()
         for line in bstr.splitlines(True):
-            instance.reader.send(m.HaveLine(line))
+            instance.reader.send(M.HaveLine(line))
         return instance
 
     def _make_writer(self):
-        yield m.HaveLine(bytes(self.request_line))
+        yield M.HaveLine(bytes(self.request_line))
         for next_state in self.headers._make_writer():
             yield next_state
 
     def _make_reader(self):
         line = ''
         while not line.strip():
-            t, line = yield m.NeedLine
-            assert t == m.HaveLine.type
+            t, line = yield M.NeedLine
+            assert t == M.HaveLine.type
         self.request_line = RequestLine.from_bytes(line)
 
         self.state = self.headers.state
@@ -276,7 +376,7 @@ class RequestEnvelope(StatefulParse, BytestringHelper):
             next_state = yield self.state
             self.state = self.headers.reader.send(next_state)
 
-        self.state = m.Complete
+        self.state = M.Complete
         while True:
             yield self.state
 
@@ -290,7 +390,7 @@ class ResponseEnvelope(StatefulParse, BytestringHelper):
         self.reader = self._make_reader()
         self.state = next(self.reader)
         if headers and status_line:
-            self.state = m.Complete
+            self.state = M.Complete
 
     def to_bytes(self):
         return self.status_line.to_bytes() + self.headers.to_bytes()
@@ -299,19 +399,19 @@ class ResponseEnvelope(StatefulParse, BytestringHelper):
     def from_bytes(cls, bstr):
         instance = cls()
         for line in bstr.splitlines(True):
-            instance.reader.send(m.HaveLine(line))
+            instance.reader.send(M.HaveLine(line))
         return instance
 
     def _make_writer(self):
-        yield m.HaveLine(bytes(self.status_line))
+        yield M.HaveLine(bytes(self.status_line))
         for next_state in self.headers._make_writer():
             yield next_state
 
     def _make_reader(self):
         line = ''
         while not line.strip():
-            t, line = yield m.NeedLine
-            assert t == m.HaveLine.type
+            t, line = yield M.NeedLine
+            assert t == M.HaveLine.type
         self.status_line = StatusLine.from_bytes(line)
 
         self.state = self.headers.state
@@ -319,7 +419,7 @@ class ResponseEnvelope(StatefulParse, BytestringHelper):
             next_state = yield self.state
             self.state = self.headers.reader.send(next_state)
 
-        self.state = m.Complete
+        self.state = M.Complete
         while True:
             yield self.state
 
