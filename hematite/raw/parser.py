@@ -86,8 +86,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
         minor = match.group('http_minor_version')
 
         if not (major or minor):
-            InvalidVersion('Unparseable version', match.string)
-            cls.invalid(match.string)
+            raise InvalidVersion('Unparseable version', match.string)
 
         return cls(int(major), int(minor))
 
@@ -108,15 +107,14 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
     Represents an HTTP Status-Line (RFC2616 6.1).
     """
 
-    PARSE_STATUS_LINE = re.compile(
-        '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?'
-        + core.START_LINE_SEP.pattern +
-        '(?P<status_code>\d{3})?' +
-        '(?:' + core.START_LINE_SEP.pattern +
+    PARSE_STATUS_LINE = re.compile(''.join([
+        '(?:', HTTPVersion.PARSE_VERSION.pattern, ')?',
+        '(?:', core.START_LINE_SEP.pattern, ')?',
+        '(?P<status_code>\d{3})?',
+        '(?:', core.START_LINE_SEP.pattern,
         # 6.1: No CR or LF is allowed except in the final CRLF
         # sequence.
-        '(?P<reason>[^' + re.escape(core._TEXT_EXCLUDE) + '\r\n]+?))?'
-        + core.LINE_END.pattern)
+        '(?P<reason>[^', re.escape(core._TEXT_EXCLUDE), '\r\n]+))?']))
 
     def to_bytes(self):
         r"""Return a byte string representing this status line.  If
@@ -169,12 +167,14 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
 
     @classmethod
     def from_bytes(cls, line):
-        r"""Create a :class:`StatusLine` from a byte string. Raises
-        :exc:`InvalidStatusCode` on missing/unparseable status codes
-        and :exc:`InvalidStatusLine` on other errors.  Note that a
-        missing reason is allowed!
+        r"""Create a :class:`StatusLine` from a byte string.  The trailing
+        carriage return and newline are *not* matched.
 
-        >>> StatusLine.from_bytes('HTTP/2.0 200 OK\r\n')
+        Raises :exc:`InvalidStatusCode` on missing/unparseable status
+        codes and :exc:`InvalidStatusLine` on other errors.  Note that
+        a missing reason is allowed!
+
+        >>> StatusLine.from_bytes('HTTP/2.0 200 OK')
         ... # doctest: +NORMALIZE_WHITESPACE
         StatusLine(version=HTTPVersion(major=2, minor=0),
                    status_code=200, reason='OK')
@@ -191,12 +191,12 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
     Represents an HTTP Request-Line (RFC2616 5.1)
     """
 
-    PARSE_REQUEST_LINE = re.compile(
-        '(?P<method>' + core.TOKEN.pattern + ')?'
-        + core.START_LINE_SEP.pattern +
-        '(?P<url>' + _ABS_RE + ')?'
-        + core.START_LINE_SEP.pattern +
-        '(?:' + HTTPVersion.PARSE_VERSION.pattern + ')?')
+    PARSE_REQUEST_LINE = re.compile(''.join([
+        '(?P<method>', core.TOKEN.pattern, ')?',
+        '(?:', core.START_LINE_SEP.pattern, ')?',
+        '(?P<url>' + _ABS_RE + ')?',
+        '(?:', core.START_LINE_SEP.pattern, ')?',
+        '(?:', HTTPVersion.PARSE_VERSION.pattern, ')?']))
 
     def to_bytes(self):
         """Return a byte string representing this request line without the
@@ -235,7 +235,7 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
     @classmethod
     def from_bytes(cls, line):
         r"""Create a :class:`RequestLine` from a byte string.  The trailing
-        carriage return and new line are *not* considered.
+        carriage return and new line are *not* matched.
 
         >>> RequestLine.from_bytes('GET /index.html?q=something HTTP/1.0')
         ... # doctest: +NORMALIZE_WHITESPACE

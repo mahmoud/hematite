@@ -77,7 +77,7 @@ def test_StatusLine_froms(input, expected):
     'input,expected',
     [('HTTP/1.1  OK\r\n', P.InvalidStatusCode),
 
-     # ('HTTP/Wrong 200 OK\r\n', P.InvalidVersion),
+     ('HTTP/Wrong 200 OK\r\n', P.InvalidVersion),
 
      ('Completely unparseable\r\n', P.InvalidStatusLine)])
 def test_StatusLine_froms_raises(input, expected):
@@ -152,7 +152,7 @@ def test_RequestLine_froms(input, expected):
 
 @pytest.mark.parametrize('input,expected',
                          [(' / HTTP/1.1', P.InvalidMethod),
-                          # ('GET ` HTTP/1.1', P.InvalidURI),
+                          ('GET ` HTTP/1.1', P.InvalidURI),
                           ('!!CompletelyWrong!!', P.InvalidRequestLine)])
 def test_RequestLine_froms_raises(input, expected):
     """RequestLine.froms_* should fail to parse invalid request lines."""
