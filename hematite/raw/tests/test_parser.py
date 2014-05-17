@@ -1,6 +1,9 @@
 import pytest
 
-from .. import parser as P
+from hematite.url import URL
+from hematite.raw import parser as P
+from hematite.raw import messages as M
+from itertools import izip
 
 
 @pytest.mark.parametrize('input,expected',
@@ -131,16 +134,16 @@ def test_StatusLine_round_trip():
 @pytest.mark.parametrize(
     'input,expected',
     [('GET / HTTP/1.1',
-      P.RequestLine('GET', P.URL('/'), P.HTTPVersion(1, 1))),
+      P.RequestLine('GET', URL('/'), P.HTTPVersion(1, 1))),
 
      ('POST http://www.site.com/something?q=abcd HTTP/1.0',
       P.RequestLine(method='POST',
-                    url=P.URL(u'http://www.site.com/something?q=abcd'),
+                    url=URL(u'http://www.site.com/something?q=abcd'),
                     version=P.HTTPVersion(major=1, minor=0))),
 
      ('OPTIONS */* HTTP/1.1',
       P.RequestLine(method='OPTIONS',
-                    url=P.URL(u'*/*'),
+                    url=URL(u'*/*'),
                     version=P.HTTPVersion(major=1, minor=1)))])
 def test_RequestLine_froms(input, expected):
     """RequestLine.from_* should parse valid request lines."""
@@ -168,17 +171,17 @@ def test_RequestLine_froms_raises(input, expected):
 @pytest.mark.parametrize(
     'input,expected',
     [(P.RequestLine(method='GET',
-                    url=P.URL(u'/'),
+                    url=URL(u'/'),
                     version=P.HTTPVersion(major=1, minor=1)),
       'GET / HTTP/1.1'),
 
      (P.RequestLine(method='POST',
-                    url=P.URL(u'http://www.site.com/something?q=abcd'),
+                    url=URL(u'http://www.site.com/something?q=abcd'),
                     version=P.HTTPVersion(major=1, minor=0)),
       'POST http://www.site.com/something?q=abcd HTTP/1.0'),
 
      (P.RequestLine(method='OPTIONS',
-                    url=P.URL(u'*/*'),
+                    url=URL(u'*/*'),
                     version=P.HTTPVersion(major=1, minor=1)),
       'OPTIONS */* HTTP/1.1')])
 def test_RequestLine(input, expected):
@@ -191,7 +194,59 @@ def test_RequestLine(input, expected):
 def test_RequestLine_round_trip():
     """RequestLine.from_* should parse the output of RequestLine.to_bytes"""
 
-    expected = P.RequestLine(method='OPTIONS', url=P.URL(u'*/*'),
+    expected = P.RequestLine(method='OPTIONS', url=URL(u'*/*'),
                              version=P.HTTPVersion(1, 1))
 
     assert P.RequestLine.from_bytes(expected.to_bytes()) == expected
+
+
+def test_HeadersParser_reader_writer():
+    parser = P.HeadersParser()
+    repr(parser)
+
+    assert parser.writer is None
+    assert parser.reader is None
+    assert parser.state is M.Empty
+
+    parser.begin_reading()
+    assert parser.writer is None
+
+    with pytest.raises(P.ConflictingStateError):
+        parser.begin_writing()
+
+    lines = ['Host: www.org.com\n',
+             'Content-Encoding: chunked,\r\n',
+             '  irrelevant\n',
+             'Accept: text/plain\r\n',
+             'Accept: text/html\n']
+
+    expected_lines = ['Host: www.org.com\r\n',
+                      'Content-Encoding: chunked,  irrelevant\r\n',
+                      'Accept: text/plain\r\n',
+                      'Accept: text/html\r\n',
+                      '\r\n']
+
+    for line in lines:
+        state = parser.reader.send(M.HaveLine(line))
+        assert state is M.NeedLine
+        assert parser.state is state
+
+    state = parser.reader.send(M.HaveLine('\n'))
+    assert state is M.Complete
+    assert parser.state is state
+    assert parser.complete
+
+    parser.begin_writing()
+    assert parser.reader is None
+    assert parser.state is M.Empty
+
+    with pytest.raises(P.ConflictingStateError):
+        parser.begin_reading()
+
+    for message, expected in izip(parser.writer, expected_lines):
+        t, actual = message
+        assert t == M.HaveLine.type
+        assert parser.state is message
+        assert actual == expected
+
+    assert parser.complete

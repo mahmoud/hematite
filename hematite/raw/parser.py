@@ -1,10 +1,8 @@
 import re
 from collections import namedtuple
 
-from hematite.compat import (BytestringHelper,
-                             OrderedMultiDict as OMD,
-                             make_sentinel)
-
+from hematite.compat import BytestringHelper, make_sentinel
+from hematite.raw import datastructures
 from hematite.raw import core
 from hematite.url import URL, _ABS_RE
 from hematite.constants import CODE_REASONS
@@ -257,31 +255,70 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         return cls.from_match(match)
 
 
-class StatefulParse(object):
+class ConflictingStateError(Exception):
+    """Raised when a :class:`Parser` has begun writing and a send on its
+    reader is attempted or vice versa."""
+
+
+class Parser(object):
+    _fields = ()
 
     def __init__(self, *args, **kwargs):
-        super(StatefulParse, self).__init__(*args, **kwargs)
+        super(Parser, self).__init__(*args, **kwargs)
+
         self.state = M.Empty
+
+        self.reader = None
+        self.writer = None
+
+        self.bytes_written = 0
+        self.bytes_read = 0
+
+    def begin_reading(self):
+        if self.writer and not self.complete:
+            cn = self.__class__.__name__
+            raise ConflictingStateError("{0} instance can't read "
+                                        'while writing'.format(cn))
+        self.writer = None
         self.reader = self._make_reader()
         self.state = next(self.reader)
+
+    def begin_writing(self):
+        if self.reader and not self.complete:
+            cn = self.__class__.__name__
+            raise ConflictingStateError("{0} instance can't write "
+                                        'while reading'.format(cn))
+        self.reader = None
+        self.writer = self._make_writer()
+        self.state = M.Empty
 
     @property
     def complete(self):
         return self.state is M.Complete
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        fields = ('state',) + self._fields
+        fields_and_values = ['{0}={1!r}'.format(field, getattr(self, field))
+                             for field in fields]
+        return '<{0} {1}>'.format(cn, ', '.join(fields_and_values))
 
-class Headers(BytestringHelper):
+
+class HeadersParser(Parser, BytestringHelper):
     ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
                                                          set(core._CRLF)))
                                 + ']')
     # TODO: may also want to track Trailer, Expect, Upgrade?
+    _fields = ('headers',)
 
-    def __init__(self, *args, **kwargs):
-        self.bytes_read = 0
-        super(Headers, self).__init__(*args, **kwargs)
+    def __init__(self, headers=None, *args, **kwargs):
+        super(HeadersParser, self).__init__(*args, **kwargs)
+        if headers is None:
+            headers = datastructures.Headers()
+        self.headers = headers
 
     def to_bytes(self):
-        return b''.join(l for _, l in self._make_writer())
+        return b''.join(l for _, l in self._make_writer(once=False))
 
     @classmethod
     def from_bytes(cls, bstr):
@@ -292,10 +329,25 @@ class Headers(BytestringHelper):
             raise InvalidHeaders('Missing header termination')
         return instance
 
-    def _make_writer(self):
-        for k, v in self.iteritems(multi=True):
-            yield M.HaveLine(b': '.join([bytes(k), bytes(v)]) + b'\r\n')
-        yield M.HaveLine(b'\r\n')
+    def _make_writer(self, once=True):
+        for k, v in self.headers.iteritems(multi=True):
+            line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
+
+            state = M.HaveLine(line)
+            if once:
+                self.state = state
+                self.bytes_written += len(line)
+            yield state
+
+        state = M.HaveLine(b'\r\n')
+        if once:
+            self.state = state
+            self.bytes_written += 2
+        yield state
+
+        if once:
+            self.state = M.Complete
+        yield M.Complete
 
     def _make_reader(self):
         prev_key = _MISSING
@@ -317,7 +369,7 @@ class Headers(BytestringHelper):
                 if prev_key is _MISSING:
                     raise InvalidHeaders('Cannot begin with a continuation',
                                          line)
-                last_value = self.poplast(prev_key)
+                last_value = self.headers.poplast(prev_key)
                 key, value = prev_key, last_value + line.rstrip()
             else:
                 key, _, value = line.partition(':')
@@ -327,7 +379,7 @@ class Headers(BytestringHelper):
 
                 prev_key = key
 
-            self.add(key, value)
+            self.headers.add(key, value)
         else:
             raise InvalidHeaders('Consumed limit of {0} bytes '
                                  'without finding '
@@ -336,93 +388,3 @@ class Headers(BytestringHelper):
         self.state = M.Complete
         while True:
             yield self.state
-
-
-class RequestEnvelope(StatefulParse, BytestringHelper):
-
-    def __init__(self, request_line=None, headers=None):
-        super(RequestEnvelope, self).__init__()
-        self.request_line = request_line
-        self.headers = headers or Headers()
-        self.reader = self._make_reader()
-        self.state = next(self.reader)
-        if request_line and headers:
-            self.state = M.Complete
-
-    def to_bytes(self):
-        return self.request_line.to_bytes() + self.headers.to_bytes()
-
-    @classmethod
-    def from_bytes(cls, bstr):
-        instance = cls()
-        for line in bstr.splitlines(True):
-            instance.reader.send(M.HaveLine(line))
-        return instance
-
-    def _make_writer(self):
-        yield M.HaveLine(bytes(self.request_line))
-        for next_state in self.headers._make_writer():
-            yield next_state
-
-    def _make_reader(self):
-        line = ''
-        while not line.strip():
-            t, line = yield M.NeedLine
-            assert t == M.HaveLine.type
-        self.request_line = RequestLine.from_bytes(line)
-
-        self.state = self.headers.state
-        while not self.headers.complete:
-            next_state = yield self.state
-            self.state = self.headers.reader.send(next_state)
-
-        self.state = M.Complete
-        while True:
-            yield self.state
-
-
-class ResponseEnvelope(StatefulParse, BytestringHelper):
-
-    def __init__(self, status_line=None, headers=None):
-        super(ResponseEnvelope, self).__init__()
-        self.status_line = status_line
-        self.headers = headers or Headers()
-        self.reader = self._make_reader()
-        self.state = next(self.reader)
-        if headers and status_line:
-            self.state = M.Complete
-
-    def to_bytes(self):
-        return self.status_line.to_bytes() + self.headers.to_bytes()
-
-    @classmethod
-    def from_bytes(cls, bstr):
-        instance = cls()
-        for line in bstr.splitlines(True):
-            instance.reader.send(M.HaveLine(line))
-        return instance
-
-    def _make_writer(self):
-        yield M.HaveLine(bytes(self.status_line))
-        for next_state in self.headers._make_writer():
-            yield next_state
-
-    def _make_reader(self):
-        line = ''
-        while not line.strip():
-            t, line = yield M.NeedLine
-            assert t == M.HaveLine.type
-        self.status_line = StatusLine.from_bytes(line)
-
-        self.state = self.headers.state
-        while not self.headers.complete:
-            next_state = yield self.state
-            self.state = self.headers.reader.send(next_state)
-
-        self.state = M.Complete
-        while True:
-            yield self.state
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '<{0}: {1!s} {2!r}>'.format(cn, self.status_line, self.headers)
