@@ -201,6 +201,18 @@ def test_RequestLine_round_trip():
 
 
 def test_HeadersParser_reader_writer():
+    lines = ['Host: www.org.com\n',
+             'Content-Encoding: chunked,\r\n',
+             '  irrelevant\n',
+             'Accept: text/plain\r\n',
+             'Accept: text/html\n']
+
+    expected_lines = ['Host: www.org.com\r\n',
+                      'Content-Encoding: chunked,  irrelevant\r\n',
+                      'Accept: text/plain\r\n',
+                      'Accept: text/html\r\n',
+                      '\r\n']
+
     parser = P.HeadersParser()
     repr(parser)
 
@@ -213,18 +225,6 @@ def test_HeadersParser_reader_writer():
 
     with pytest.raises(P.ConflictingStateError):
         parser.begin_writing()
-
-    lines = ['Host: www.org.com\n',
-             'Content-Encoding: chunked,\r\n',
-             '  irrelevant\n',
-             'Accept: text/plain\r\n',
-             'Accept: text/html\n']
-
-    expected_lines = ['Host: www.org.com\r\n',
-                      'Content-Encoding: chunked,  irrelevant\r\n',
-                      'Accept: text/plain\r\n',
-                      'Accept: text/html\r\n',
-                      '\r\n']
 
     for line in lines:
         state = parser.reader.send(M.HaveLine(line))
