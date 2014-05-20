@@ -2,6 +2,7 @@ import pytest
 
 from hematite.url import URL
 from hematite.raw import parser as P
+from hematite.raw import datastructures as D
 from hematite.raw import messages as M
 from itertools import izip
 
@@ -200,53 +201,97 @@ def test_RequestLine_round_trip():
     assert P.RequestLine.from_bytes(expected.to_bytes()) == expected
 
 
-def test_HeadersParser_reader_writer():
-    lines = ['Host: www.org.com\n',
-             'Content-Encoding: chunked,\r\n',
-             '  irrelevant\n',
-             'Accept: text/plain\r\n',
-             'Accept: text/html\n']
+def test_Reader():
+    """Readers should enforce the contract for protocol readers."""
 
-    expected_lines = ['Host: www.org.com\r\n',
-                      'Content-Encoding: chunked,  irrelevant\r\n',
-                      'Accept: text/plain\r\n',
-                      'Accept: text/html\r\n',
-                      '\r\n']
+    class BrokenReader(P.Reader):
+        pass
 
-    parser = P.HeadersParser()
-    repr(parser)
+    with pytest.raises(TypeError):
+        BrokenReader()
 
-    assert parser.writer is None
-    assert parser.reader is None
-    assert parser.state is M.Empty
+    class SomeReader(P.Reader):
 
-    parser.begin_reading()
-    assert parser.writer is None
+        def _make_reader(self):
+            thing = None
+            while True:
+                self.state = thing
+                thing = yield thing
 
-    with pytest.raises(P.ConflictingStateError):
-        parser.begin_writing()
+    reader = SomeReader()
+    assert reader.send('ok') == 'ok'
+    assert reader.state == 'ok'
 
-    for line in lines:
-        state = parser.reader.send(M.HaveLine(line))
+
+def test_Writer():
+    """Writers should enforce the protocol writer's contract."""
+
+    class BrokenWriter(P.Writer):
+        pass
+
+    with pytest.raises(TypeError):
+        BrokenWriter()
+
+    class SomeWriter(P.Writer):
+
+        def _make_writer(self):
+            while True:
+                self.state = 'ok'
+                yield self.state
+
+    writer = SomeWriter()
+    writer_iter = iter(writer)
+    assert next(writer_iter) == 'ok'
+    assert writer.state == 'ok'
+
+
+_HEADER_LINES = ['Host: www.org.com\n',
+                 'Content-Encoding: chunked,\r\n',
+                 '  irrelevant\n',
+                 'Accept: text/plain\r\n',
+                 'Accept: text/html\n']
+
+_HEADER_PARSED = D.Headers([('Host', 'www.org.com'),
+                            ('Content-Encoding', 'chunked,  irrelevant'),
+                            ('Accept', 'text/plain'),
+                            ('Accept', 'text/html')])
+
+_HEADER_EXPECTED_LINES = ['Host: www.org.com\r\n',
+                          'Content-Encoding: chunked,  irrelevant\r\n',
+                          'Accept: text/plain\r\n',
+                          'Accept: text/html\r\n',
+                          '\r\n']
+
+
+def test_HeadersReader():
+    reader = P.HeadersReader()
+    repr(reader)
+
+    assert reader.state is M.NeedLine
+
+    for line in _HEADER_LINES:
+        state = reader.send(M.HaveLine(line))
         assert state is M.NeedLine
-        assert parser.state is state
+        assert reader.state is state
 
-    state = parser.reader.send(M.HaveLine('\n'))
+    state = reader.send(M.HaveLine('\n'))
     assert state is M.Complete
-    assert parser.state is state
-    assert parser.complete
+    assert reader.state is state
+    assert reader.complete
 
-    parser.begin_writing()
-    assert parser.reader is None
-    assert parser.state is M.Empty
+    assert reader.headers == _HEADER_PARSED
 
-    with pytest.raises(P.ConflictingStateError):
-        parser.begin_reading()
 
-    for message, expected in izip(parser.writer, expected_lines):
+def test_HeadersWriter():
+    writer = P.HeadersWriter(headers=_HEADER_PARSED)
+    repr(writer)
+    assert writer.to_bytes()
+
+
+    for message, expected in izip(iter(writer), _HEADER_EXPECTED_LINES):
         t, actual = message
         assert t == M.HaveLine.type
-        assert parser.state is message
+        assert writer.state is message
         assert actual == expected
 
-    assert parser.complete
+    assert writer.complete

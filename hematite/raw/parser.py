@@ -1,4 +1,5 @@
 import re
+from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
 from hematite.compat import BytestringHelper, make_sentinel
@@ -50,6 +51,18 @@ class InvalidURI(InvalidRequestLine):
 class InvalidHeaders(HTTPParseException):
     """Raised when a request or response contains invalid headers (RFC2616
     4.2)"""
+
+
+class BodyReadException(core.HTTPException):
+    """Raised when an error occurs while reading a body"""
+
+
+class IncompleteBody(BodyReadException):
+    """Raised when a Content-Length defined body cannot be completely read."""
+
+
+class InvalidChunk(BodyReadException):
+    """Raised when a parse error occurs while consuming a chunk"""
 
 
 class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
@@ -255,42 +268,9 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         return cls.from_match(match)
 
 
-class ConflictingStateError(Exception):
-    """Raised when a :class:`Parser` has begun writing and a send on its
-    reader is attempted or vice versa."""
-
-
-class Parser(object):
-    _fields = ()
-
-    def __init__(self, *args, **kwargs):
-        super(Parser, self).__init__(*args, **kwargs)
-
-        self.state = M.Empty
-
-        self.reader = None
-        self.writer = None
-
-        self.bytes_written = 0
-        self.bytes_read = 0
-
-    def begin_reading(self):
-        if self.writer and not self.complete:
-            cn = self.__class__.__name__
-            raise ConflictingStateError("{0} instance can't read "
-                                        'while writing'.format(cn))
-        self.writer = None
-        self.reader = self._make_reader()
-        self.state = next(self.reader)
-
-    def begin_writing(self):
-        if self.reader and not self.complete:
-            cn = self.__class__.__name__
-            raise ConflictingStateError("{0} instance can't write "
-                                        'while reading'.format(cn))
-        self.reader = None
-        self.writer = self._make_writer()
-        self.state = M.Empty
+class _ProtocolElement(object):
+    _fields = ('state',)
+    state = M.Empty
 
     @property
     def complete(self):
@@ -298,27 +278,70 @@ class Parser(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        fields = ('state',) + self._fields
+        fields = self._fields
         fields_and_values = ['{0}={1!r}'.format(field, getattr(self, field))
                              for field in fields]
         return '<{0} {1}>'.format(cn, ', '.join(fields_and_values))
 
 
-class HeadersParser(Parser, BytestringHelper):
+class Reader(_ProtocolElement):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, *args, **kwargs):
+        super(Reader, self).__init__(*args, **kwargs)
+
+        self.bytes_read = 0
+
+        self.reader = self._make_reader()
+        self.state = next(self.reader)
+
+    def send(self, message):
+        # maybe just require reader.reader?
+        return self.reader.send(message)
+
+    @abstractmethod
+    def _make_reader(self):
+        """Called to create the parsing coroutine fed by :attribute:`send`"""
+        pass
+
+
+class Writer(_ProtocolElement):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, *args, **kwargs):
+        super(Writer, self).__init__(*args, **kwargs)
+
+        self.bytes_written = 0
+
+        self.writer = self._make_writer()
+        self.state = M.Empty
+
+    def __iter__(self):
+        for result in self.writer:
+            yield result
+
+    def to_bytes(self):
+        return b''.join(l for _, l in self._make_writer(once=False) if
+                        l.type != M.Complete.type)
+
+    @abstractmethod
+    def _make_writer(self, once=True):
+        """Called to create the iterator provided by :attribute:`next()`"""
+        pass
+
+
+class HeadersReader(Reader):
     ISCONTINUATION = re.compile('^[' + re.escape(''.join(set(core._LWS) -
                                                          set(core._CRLF)))
                                 + ']')
     # TODO: may also want to track Trailer, Expect, Upgrade?
-    _fields = ('headers',)
+    _fields = Reader._fields + ('headers',)
 
     def __init__(self, headers=None, *args, **kwargs):
-        super(HeadersParser, self).__init__(*args, **kwargs)
+        super(HeadersReader, self).__init__(*args, **kwargs)
         if headers is None:
             headers = datastructures.Headers()
         self.headers = headers
-
-    def to_bytes(self):
-        return b''.join(l for _, l in self._make_writer(once=False))
 
     @classmethod
     def from_bytes(cls, bstr):
@@ -328,26 +351,6 @@ class HeadersParser(Parser, BytestringHelper):
         if not instance.complete:
             raise InvalidHeaders('Missing header termination')
         return instance
-
-    def _make_writer(self, once=True):
-        for k, v in self.headers.iteritems(multi=True):
-            line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
-
-            state = M.HaveLine(line)
-            if once:
-                self.state = state
-                self.bytes_written += len(line)
-            yield state
-
-        state = M.HaveLine(b'\r\n')
-        if once:
-            self.state = state
-            self.bytes_written += 2
-        yield state
-
-        if once:
-            self.state = M.Complete
-        yield M.Complete
 
     def _make_reader(self):
         prev_key = _MISSING
@@ -388,3 +391,177 @@ class HeadersParser(Parser, BytestringHelper):
         self.state = M.Complete
         while True:
             yield self.state
+
+
+class HeadersWriter(Writer):
+
+    def __init__(self, headers, *args, **kwargs):
+        super(HeadersWriter, self).__init__(*args, **kwargs)
+        self.headers = headers
+
+    def _make_writer(self, once=True):
+        for k, v in self.headers.iteritems(multi=True):
+            line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
+
+            state = M.HaveLine(line)
+            if once:
+                self.state = state
+                self.bytes_written += len(line)
+            yield state
+
+        state = M.HaveLine(b'\r\n')
+        if once:
+            self.state = state
+            self.bytes_written += 2
+        yield state
+
+        if once:
+            self.state = M.Complete
+        yield M.Complete
+
+
+class IdentityEncodedBodyReader(Reader):
+    DEFAULT_AMOUNT = 1024
+
+    def __init__(self, body, content_length=None, *args, **kwargs):
+        self.body = body
+        self.content_length = content_length
+        self.bytes_remaining = None
+
+        super(IdentityEncodedBodyReader, self).__init__(*args, **kwargs)
+
+    def _make_reader(self):
+        self.bytes_remaining = (self.DEFAULT_AMOUNT
+                                if self.content_length is None
+                                else self.content_length)
+
+        while not self.complete:
+            t, read = yield M.NeedData(amount=self.bytes_remaining)
+            assert t == M.HaveData.type
+
+            amount = len(read)
+
+            if not amount:
+                if self.content_length is None or self.bytes_remaining <= 0:
+                    self.state = M.Complete
+                    continue
+                raise IncompleteBody('Could not read remaining {0} '
+                                     'bytes'.format(self.bytes_remaining))
+
+            self.bytes_read += amount
+
+            self.body.data_received(read)
+
+            if self.content_length is not None:
+                self.bytes_remaining = (self.content_length - self.bytes_read)
+
+            if self.bytes_remaining <= 0:
+                self.body.complete(self.bytes_read)
+                self.state = M.Complete
+
+        while True:
+            yield M.Complete
+
+
+class IdentityEncodeBodyWriter(Writer):
+
+    def __init__(self, body, content_length=None, *args, **kwargs):
+        super(IdentityEncodeBodyWriter, self).__init__(*args, **kwargs)
+        self.body = body
+        self.content_length = content_length
+        self.bytes_remaining = None
+
+    def _make_writer(self):
+        for data in self.body.send_data():
+            yield M.HaveData(data)
+
+        if self.content_length is None:
+            yield M.HaveData('')
+
+        self.body.complete(self.bytes_written)
+
+        while True:
+            yield M.Complete
+
+
+class ChunkEncodedBodyReader(Reader):
+    IS_HEX = re.compile('([\dA-Ha-h]+)')
+
+    def __init__(self, body, *args, **kwargs):
+        self.body = body
+        super(ChunkEncodedBodyReader, self).__init__(*args, **kwargs)
+        self.reset()
+
+    def reset(self):
+        self.chunk_length = None
+        self.chunk_read = 0
+        self.chunk_partials = []
+
+    def _make_reader(self):
+        IS_HEX = self.IS_HEX
+
+        while not self.complete:
+            self.state = M.NeedLine
+            t, chunk_header = yield self.state
+            assert t == M.HaveLine.type
+
+            if not chunk_header:
+                raise InvalidChunk('Could not read chunk header: Disconnected')
+            if not IS_HEX.match(chunk_header):
+                raise InvalidChunk('Could not read chunk header', chunk_header)
+
+            # trailing CLRF?
+            self.chunk_length = int(chunk_header, 16)
+
+            if self.chunk_length > core.MAXLINE:
+                raise InvalidChunk('Requested too large a chunk',
+                                   self.chunk_length)
+
+            last = ''
+            while self.read < self.chunk_length:
+                self.state = M.NeedData(amount=self.chunk_length
+                                        - self.read)
+                t, last = yield self.state
+                assert t == M.HaveData.type
+
+                if not last:
+                    raise core.EndOfStream
+
+                self.read += len(last)
+                self.partials.append(last)
+
+            chunk = ''.join(self.partials)
+
+            self.state = M.NeedPeek(amount=2)
+            t, peek = yield self.state
+            assert t == M.HavePeek.type
+
+            cr, lf = peek[:2]
+
+            if cr == '\r' and lf == '\n':
+                discard = 2
+            elif cr == '\n':
+                # lf is not actually lf, but real data
+                discard == 1
+            else:
+                raise InvalidChunk('No trailing CRLF|LF', chunk)
+
+            self.state = M.NeedData(amount=discard)
+            t, data = yield self.state
+            assert t == M.HaveData.type
+
+            if not self.chunk_length and not chunk:
+                self.body.complete(self.bytes_read)
+                self.state = M.Complete
+            else:
+                self.reset()
+                self.body.chunk_received(chunk)
+
+        while True:
+            yield M.Complete
+
+
+class ChunkEncodedBodyWriter(Writer):
+
+    def __init__(self, body, *args, **kwargs):
+        self.body = body
