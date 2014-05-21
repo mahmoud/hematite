@@ -29,3 +29,4 @@ NeedPeek = make_message('NeedPeek', 'amount')
 
 Empty = make_message('Empty', 'none')(None)
 Complete = make_message('Complete', 'none')(None)
+WantDisconnect = make_message('WantDisconnect', 'none')(None)

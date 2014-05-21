@@ -82,7 +82,7 @@ class HTTPVersion(namedtuple('HTTPVersion', 'major minor'), BytestringHelper):
                                '(?P<http_minor_version>\d+)')
 
     def to_bytes(self):
-        return b'HTTP/' + b'.'.join(map(bytes, self))
+        return b'HTTP/%d.%d' % self
 
     @classmethod
     def from_match(cls, match):
@@ -146,10 +146,11 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         version, status_code, reason = self
         if reason is None:
             reason = CODE_REASONS.get(status_code)
-        bs = [version, status_code]
+
         if reason:
-            bs.append(reason)
-        return b' '.join(map(bytes, bs)) + b'\r\n'
+            reason = ' ' + reason
+
+        return b'%s %d%s\r\n' % (version, status_code, reason)
 
     @classmethod
     def from_match(cls, match):
@@ -218,7 +219,7 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         ...             version=HTTPVersion(1, 1)).to_bytes()
         'GET / HTTP/1.1'
         """
-        return b' '.join(map(bytes, self))
+        return b'%s %s %s' % self
 
     @classmethod
     def from_match(cls, match):
@@ -321,8 +322,8 @@ class Writer(_ProtocolElement):
             yield result
 
     def to_bytes(self):
-        return b''.join(l for _, l in self._make_writer(once=False) if
-                        l.type != M.Complete.type)
+        return b''.join(l for type, l in self._make_writer(once=False) if
+                        type != M.Complete.type)
 
     @abstractmethod
     def _make_writer(self, once=True):
@@ -417,7 +418,6 @@ class HeadersWriter(Writer):
 
         if once:
             self.state = M.Complete
-        yield M.Complete
 
 
 class IdentityEncodedBodyReader(Reader):
@@ -473,19 +473,21 @@ class IdentityEncodeBodyWriter(Writer):
 
     def _make_writer(self):
         for data in self.body.send_data():
-            yield M.HaveData(data)
+            self.bytes_written += len(data)
+            self.state = M.HaveData(data)
+            yield self.state
 
         if self.content_length is None:
-            yield M.HaveData('')
+            self.state = M.WantDisconnect
+            yield self.state
 
         self.body.complete(self.bytes_written)
 
-        while True:
-            yield M.Complete
+        self.state = M.Complete
 
 
 class ChunkEncodedBodyReader(Reader):
-    IS_HEX = re.compile('([\dA-Ha-h]+)')
+    IS_HEX = re.compile('([\dA-Ha-h]+)[\t ]*' + core.LINE_END.pattern)
 
     def __init__(self, body, *args, **kwargs):
         self.body = body
@@ -518,19 +520,19 @@ class ChunkEncodedBodyReader(Reader):
                                    self.chunk_length)
 
             last = ''
-            while self.read < self.chunk_length:
+            while self.bytes_read < self.chunk_length:
                 self.state = M.NeedData(amount=self.chunk_length
-                                        - self.read)
+                                        - self.bytes_read)
                 t, last = yield self.state
                 assert t == M.HaveData.type
 
                 if not last:
                     raise core.EndOfStream
 
-                self.read += len(last)
-                self.partials.append(last)
+                self.bytes_read += len(last)
+                self.chunk_partials.append(last)
 
-            chunk = ''.join(self.partials)
+            chunk = ''.join(self.chunk_partials)
 
             self.state = M.NeedPeek(amount=2)
             t, peek = yield self.state
@@ -558,6 +560,7 @@ class ChunkEncodedBodyReader(Reader):
                 self.body.chunk_received(chunk)
 
         while True:
+            self.body.complete(self.bytes_read)
             yield M.Complete
 
 
@@ -565,3 +568,135 @@ class ChunkEncodedBodyWriter(Writer):
 
     def __init__(self, body, *args, **kwargs):
         self.body = body
+        super(ChunkEncodedBodyWriter, self).__init__(*args, **kwargs)
+
+    def _make_writer(self):
+        for chunk in self.body.send_chunk():
+            header = '%x\r\n' % len(chunk)
+
+            for state in (M.HaveLine(header),
+                          M.HaveData(chunk),
+                          M.HaveLine('\r\n')):
+                self.state = state
+                yield self.state
+
+        # maybe we got an empty chunk; if so, don't send an additional
+        # end chunk
+        if chunk:
+            for state in (M.HaveLine('0\r\n'),
+                          M.HaveLine('\r\n')):
+                self.state = state
+                yield self.state
+
+        self.state = M.Complete
+
+
+class RequestWriter(Writer):
+
+    def __init__(self, request_line, headers, body=None, *args, **kwargs):
+        self.request_line = request_line
+        self.headers = headers
+        self.body = body
+        super(RequestWriter, self).__init__(*args, **kwargs)
+
+    def _make_writer(self):
+        rl = bytes(self.request_line)
+        self.bytes_written += len(rl)
+        self.state = M.HaveLine(rl)
+        yield self.state
+
+        for m in iter(self.headers):
+            self.bytes_written += self.headers.bytes_written
+            self.state = m
+            yield m
+
+        if not self.body:
+            self.state = M.Complete
+            return
+
+        for m in iter(self.body):
+            self.bytes_written += self.body.bytes_written
+            self.state = m
+            yield m
+
+        self.state = M.Complete
+
+
+class ResponseReader(Reader):
+
+    def __init__(self, *args, **kwargs):
+        self.status_line = None
+
+        self.headers = None
+        self.headers_reader = HeadersReader()
+
+        self.body_reader = None
+        self.body = None
+
+        self.content_length = None
+        self.chunked = False
+
+        super(ResponseReader, self).__init__(*args, **kwargs)
+
+    def _parse_headers(self):
+        # TODO: case-insensitive OMD!
+        lowercased = dict((k.lower(), v)
+                          for k, v in dict(self.headers).items())
+
+        content_length = lowercased.get('content-length')
+        encodings = lowercased.get('content-encoding', [])
+
+        if content_length:
+            self.content_length = int(content_length[-1])
+
+        self.chunked = any('chunked' in v.lower() for v in encodings)
+        # TODO mutual exclusion
+
+    def _make_reader(self):
+        LINE_END = core.LINE_END
+        self.state = M.NeedLine
+
+        # 4.1: In the interest of robustness, servers SHOULD
+        # ignore any empty line(s) received where a
+        # Request-Line is expected. In other words, if the
+        # server is reading the protocol stream at the
+        # beginning of a message and receives a CRLF first, it
+        # should ignore the CRLF.
+        #
+        # Assume the same for status lines
+        line = '\r\n'
+        while LINE_END.match(line):
+            t, line = yield self.state
+            assert t == M.HaveLine.type
+
+        match = StatusLine.PARSE_STATUS_LINE.match(line)
+        self.status_line = StatusLine.from_match(match)
+        if not core.LINE_END.match(line[match.end():]):
+            raise InvalidStatusLine('Status line did not end with [CR]LF')
+
+        self.state = self.headers_reader.state
+        while True:
+            state = self.headers_reader.send((yield self.state))
+            if self.headers_reader.complete:
+                self.headers = self.headers_reader.headers
+                break
+            self.state = state
+
+        self._parse_headers()
+
+        if not self.chunked:
+            self.body = datastructures.Body()
+            content_length = self.content_length
+            b_reader = IdentityEncodedBodyReader(self.body,
+                                                 content_length=content_length)
+            self.body_reader = b_reader
+        else:
+            self.body = datastructures.ChunkedBody()
+            self.body_reader = ChunkEncodedBodyReader(self.body)
+
+        self.state = self.body_reader.state
+        while not self.complete:
+            self.state = self.body_reader.send((yield self.state))
+
+        while True:
+            yield M.Complete
