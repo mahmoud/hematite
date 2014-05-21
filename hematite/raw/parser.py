@@ -520,15 +520,16 @@ class ChunkEncodedBodyReader(Reader):
                                    self.chunk_length)
 
             last = ''
-            while self.bytes_read < self.chunk_length:
+            while self.chunk_read < self.chunk_length:
                 self.state = M.NeedData(amount=self.chunk_length
-                                        - self.bytes_read)
+                                        - self.chunk_read)
                 t, last = yield self.state
                 assert t == M.HaveData.type
 
                 if not last:
                     raise core.EndOfStream
 
+                self.chunk_read += len(last)
                 self.bytes_read += len(last)
                 self.chunk_partials.append(last)
 
@@ -600,7 +601,7 @@ class RequestWriter(Writer):
         super(RequestWriter, self).__init__(*args, **kwargs)
 
     def _make_writer(self):
-        rl = bytes(self.request_line)
+        rl = bytes(self.request_line) + '\r\n'
         self.bytes_written += len(rl)
         self.state = M.HaveLine(rl)
         yield self.state
@@ -644,7 +645,7 @@ class ResponseReader(Reader):
                           for k, v in dict(self.headers).items())
 
         content_length = lowercased.get('content-length')
-        encodings = lowercased.get('content-encoding', [])
+        encodings = lowercased.get('transfer-encoding', [])
 
         if content_length:
             self.content_length = int(content_length[-1])

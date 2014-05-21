@@ -5,7 +5,7 @@ class Headers(OMD):
     pass
 
 
-class Body(object):
+class ChunkedBody(object):
 
     def __init__(self, chunks=None):
         self.chunks = chunks or []

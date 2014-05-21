@@ -23,6 +23,7 @@ class NonblockingSocketClientDriver(object):
 
     def __init__(self, sock, (request_line, headers, body)):
         self.writer = P.RequestWriter(request_line, headers, body)
+        self.writer_iter = iter(self.writer)
         self.reader = P.ResponseReader()
         self.socket = sock
         self.inbound, self.outbound = iopair_from_socket(sock)
@@ -31,14 +32,16 @@ class NonblockingSocketClientDriver(object):
         if not self.outbound.empty:
             self.outbound.write(None)
 
-        to_write = next(self.writer)
-        if to_write.value is M.WantDisconnect:
+        to_write = next(self.writer_iter, self.writer.state)
+        if to_write is M.Complete:
+            return self.writer.complete
+        elif to_write is M.WantDisconnect:
             self.inbound.close()
             self.outbound.close()
             self.socket.close()
         else:
             self.outbound.write(to_write.value)
-        return self.writer.complete
+        return False
 
     def read(self):
         self.state = self.reader.state
@@ -56,13 +59,11 @@ class NonblockingSocketClientDriver(object):
                 if not peeked:
                     raise io.BlockingIOError(None, None)
                 next_state = M.HavePeek(amount=peeked)
-            elif self.state.type == M.HaveData.type:
-                self.body_bits.append(self.state.value)
-                next_state = M.Empty
             else:
                 raise RuntimeError('Unknown state {0}'.format(self.state))
 
             self.state = self.reader.send(next_state)
+        return self.state
 
     @property
     def outbound_headers(self):
@@ -83,3 +84,7 @@ class NonblockingSocketClientDriver(object):
     @property
     def inbound_completed(self):
         return self.reader.complete
+
+    @property
+    def inbound_body(self):
+        return self.reader.body.data
