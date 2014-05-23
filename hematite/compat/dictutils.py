@@ -60,9 +60,14 @@ class OrderedMultiDict(dict):
     >>> OrderedMultiDict([('a', 1), ('b', 2), ('a', 3)]).todict()
     {'a': 3, 'b': 2}
 
-    The implementation could be more optimal, but overall it's far
-    better than other OMDs out there. Mad props to Mark Williams for
-    all his help.
+    With ``multi=False``, items appear with the keys according to
+    original/earliest insertion order, but with the most recently
+    inserted value.
+    >>> OrderedMultiDict([('a', 1), ('b', 2), ('a', 3)]).items(multi=False)
+    [('a', 3), ('b', 2)]
+
+    Mad props to Mark Williams for all his help.
+
     """
     def __init__(self, *args, **kwargs):
         if len(args) > 1:
@@ -258,14 +263,8 @@ class OrderedMultiDict(dict):
                 yield curr[KEY], curr[VALUE]
                 curr = curr[NEXT]
         else:
-            yielded = set()
-            yielded_add = yielded.add
-            while curr is not root:
-                k = curr[KEY]
-                if k not in yielded:
-                    yielded_add(k)
-                    yield k, curr[VALUE]
-                curr = curr[NEXT]
+            for key in self.iterkeys():
+                yield key, self[key]
 
     def iterkeys(self, multi=False):
         root = self.root
