@@ -401,7 +401,8 @@ class HeadersWriter(Writer):
         self.headers = headers
 
     def _make_writer(self, once=True):
-        for k, v in self.headers.iteritems(multi=True):
+        for k, v in self.headers.iteritems(multi=True,
+                                           with_original_case=True):
             line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
 
             state = M.HaveLine(line)
@@ -640,17 +641,16 @@ class ResponseReader(Reader):
         super(ResponseReader, self).__init__(*args, **kwargs)
 
     def _parse_headers(self):
-        # TODO: case-insensitive OMD!
-        lowercased = dict((k.lower(), v)
-                          for k, v in dict(self.headers).items())
-
-        content_length = lowercased.get('content-length')
-        encodings = lowercased.get('transfer-encoding', [])
+        content_length = self.headers.get('content-length')
+        connection = self.headers.get('connection').lower()
+        encodings = self.headers.get('transfer-encoding', [])
 
         if content_length:
             self.content_length = int(content_length[-1])
 
+        self.connection_close = connection.lower() == 'close'
         self.chunked = any('chunked' in v.lower() for v in encodings)
+
         # TODO mutual exclusion
 
     def _make_reader(self):
