@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from io import BytesIO
+
+from hematite.raw import messages as M
 from hematite.raw.messages import Complete
 from hematite.raw.datastructures import Headers
 from hematite.raw.parser import (HTTPVersion,
                                  RequestLine,
                                  RequestWriter,
+                                 RequestReader,
                                  HeadersWriter)
 
 
@@ -52,4 +56,29 @@ class RawRequest(object):
     @classmethod
     def from_bytes(cls, bytestr):
         # TODO
-        pass
+        bio = BytesIO(bytestr)
+        reader = RequestReader()
+        state = reader.state
+        while True:
+
+            if state is M.Complete:
+                break
+            elif state.type == M.NeedLine.type:
+                line = bio.readline()  # TODO: limit?
+                next_state = M.HaveLine(value=line)
+            elif state.type == M.NeedData.type:
+                data = bio.read(state.amount)
+                # TODO: can this block or return None if empty etc?
+                next_state = M.HaveData(value=data)
+            elif state.type == M.NeedPeek.type:
+                peeked = bio.peek(state.amount)
+                if not peeked:
+                    pass  # TODO: again, what happens on end of stream
+                next_state = M.HavePeek(amount=peeked)
+            else:
+                raise RuntimeError('Unknown state %r' % (state,))
+            state = reader.send(next_state)
+
+        return cls(request_line=reader.request_line,
+                   headers=reader.headers,
+                   body=reader.body)

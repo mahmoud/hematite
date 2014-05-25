@@ -628,16 +628,53 @@ class RequestReader(Reader):
         self.content_length = None
         self.chunked = False
 
-        super(ResponseReader, self).__init__(*args, **kwargs)
+        super(RequestReader, self).__init__(*args, **kwargs)
 
     def _parse_headers(self):
         content_length = self.headers.get('content-length')
-        encodings = self.headers.get('transfer-encoding', [])
-
         if content_length:
-            self.content_length = int(content_length[-1])
+            self.content_length = int(content_length)
+        try:
+            encodings = self.headers.getlist('transfer-encoding')
+        except KeyError:
+            encodings = []
 
-        self.chunked = any('chunked' in v.lower() for v in encodings)
+        self.chunked = any(['chunked' in v.lower() for v in encodings])
+
+    def _make_reader(self):
+        LINE_END = core.LINE_END
+        self.state = M.NeedLine
+
+        # 4.1: In the interest of robustness, servers SHOULD
+        # ignore any empty line(s) received where a
+        # Request-Line is expected. In other words, if the
+        # server is reading the protocol stream at the
+        # beginning of a message and receives a CRLF first, it
+        # should ignore the CRLF.
+
+        line = '\r\n'
+        while LINE_END.match(line):
+            t, line = yield self.state
+            assert t == M.HaveLine.type
+
+        match = RequestLine.PARSE_REQUEST_LINE.match(line)
+        self.request_line = RequestLine.from_match(match)
+        if not core.LINE_END.match(line[match.end():]):
+            raise InvalidRequestLine('Request line did not end with [CR]LF')
+
+        self.state = self.headers_reader.state
+        while True:
+            state = self.headers_reader.send((yield self.state))
+            if self.headers_reader.complete:
+                self.headers = self.headers_reader.headers
+                break
+            self.state = state
+
+        self._parse_headers()
+
+        # TODO: bodies
+        while True:
+            yield M.Complete
 
 
 class ResponseReader(Reader):
@@ -669,7 +706,7 @@ class ResponseReader(Reader):
 
         self.connection_close = connection.lower() == 'close'
         # TODO: strip + startswith may be more correct.
-        self.chunked = any('chunked' in v.lower() for v in encodings)
+        self.chunked = any(['chunked' in v.lower() for v in encodings])
 
         # TODO mutual exclusion
 
