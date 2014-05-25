@@ -128,3 +128,10 @@ some point:
 - The state of the Client isn't determined only by the parser -> The Joinable interface
 - The definition of Complete also changes when lazily fetching bodies
 - Nonblocking connects
+
+
+# Integration questions
+
+- double-check CRLF writing on empty headers
+- when a Reader/Writer is done, do we want while True: yield Complete
+  or do we want to return/StopIteration?

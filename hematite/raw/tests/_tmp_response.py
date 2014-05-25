@@ -1,8 +1,6 @@
 
 import io
 
-from hematite.raw.response import RawResponse
-
 
 def io_open(path):
     return io.open(path, mode='rb')

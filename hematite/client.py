@@ -109,3 +109,17 @@ class Client(object):
             raise socket.error('Unknown', err)
 
         return ret
+
+
+class Operation(object):
+    def __init__(self, method):
+        self.method = method
+
+    def __call__(self, *a, **kw):
+        pass
+
+    def async(self, *a, **kw):
+        pass
+
+    def _call(self, args, kwargs):
+        pass
