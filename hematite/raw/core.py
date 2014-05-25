@@ -60,10 +60,10 @@ IS_HEADERS_END = advancer(HEADERS_END.pattern, re.DOTALL)
 
 
 class HTTPException(Exception):
-    def __init__(self, msg, raw=None):
+    def __init__(self, msg=None, raw=None):
         if raw:
             try:
-                msg = ''.join([msg, ': ', _cut(raw)])
+                msg = ''.join([msg or '<unknown>', ': ', _cut(raw)])
             except:
                 pass
         super(HTTPException, self).__init__(msg)

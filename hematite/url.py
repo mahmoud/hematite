@@ -3,7 +3,7 @@
 import re
 import socket
 
-from compat import (unicode, bytes, OrderedMultiDict, BytestringHelper)
+from compat import (unicode, OrderedMultiDict, BytestringHelper)
 
 """
  - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
@@ -339,6 +339,15 @@ class URL(BytestringHelper):
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self.to_text())
+
+    def __eq__(self, other):
+        for attr in self._attrs:
+            if not getattr(self, attr) == getattr(other, attr, None):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
 
 
 _hexdig = '0123456789ABCDEFabcdef'

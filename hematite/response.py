@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 
+from io import BlockingIOError
 
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
+from hematite.socket_io import iopair_from_socket, readline
 
-from hematite.raw.body import ChunkEncodedBody
+# capital M stands out more, less likely to have a conflict
+from hematite.raw import messages as M
+from hematite.raw.body import Body, IdentityEncodedBody, ChunkEncodedBody
 from hematite.raw.response import RawResponse
-from hematite.raw.headers import StatusLine, Headers, HTTPVersion
+from hematite.raw.envelope import ResponseEnvelope
+from hematite.raw.envelope import StatusLine, Headers, HTTPVersion
+
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -102,5 +108,235 @@ class Response(object):
         pass
 
 
-if __name__ == '__main__':
-    main()
+class _State(object):
+    # TODO: ssl_connect?
+
+    (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
+     ReceiveResponseHeaders, ReceiveResponseBody, Complete) = range(8)
+
+    # Alternate schemes:
+    #
+    # Past tense:
+    # NotStarted, Started, HostResolved, Connected, RequestEnvelopeSent,
+    # RequestSent, ResponseStarted, ResponseEnvelopeComplete, ResponseComplete
+    #
+    # Gerunds:
+    # None, ResolvingHost, Connecting, SendingRequestEnvelope,
+    # SendingRequestContent, Waiting, ReceivingResponse,
+    # ReceivingResponseContent, Complete
+
+
+class ClientResponse(Response):
+    # TODO: are we going to need want_read/want_write for SSL?
+
+    def __init__(self, client, request=None):
+        self.client = client
+        self.request = request
+        self.raw_request = request.to_request_envelope()
+        self.state = _State.NotStarted
+        self.socket = None
+        self.timings = {}
+
+        self.nonblocking = False
+        self.autoload_body = True
+        self.timeout = None
+
+        self.raw_response = ResponseEnvelope()
+        self._resp_body = None
+
+        self._writer_iter = self.raw_request._make_writer()
+        # TODO: request body/total bytes uploaded counters
+        # TODO: response body/total bytes downloaded counters
+        # (for calculating progress)
+
+        # TODO: need to set error and Complete state on errors
+        self.error = None
+
+    def get_data(self):
+        if not self._resp_body:
+            return None
+        return self._resp_body.get_data()
+
+    def fileno(self):
+        if self.socket:
+            return self.socket.fileno()
+        return None  # or raise an exception?
+
+    @property
+    def is_complete(self):
+        return self.state == _State.Complete
+
+    @property
+    def want_write(self):
+        return self.state <= _State.SendRequestBody
+
+    @property
+    def want_read(self):
+        state = self.state
+        if state <= _State.SendRequestBody:
+            return False
+        elif state == _State.Complete:
+            return False
+        # TODO: what if body fetching is deferred
+        return True
+
+    def do_write(self):
+        if self.request is None:
+            raise ValueError('request not set')
+        state, request = self.state, self.request
+
+        # TODO: BlockingIOErrors for DNS/connect?
+        try:
+            if state is _State.NotStarted:
+                self.state += 1
+            elif state is _State.LookupHost:
+                self.addrinfo = self.client.get_addrinfo(request)
+                self.state += 1
+            elif state is _State.Connect:
+                self.socket = self.client.get_socket(request,
+                                                     self.addrinfo,
+                                                     self.nonblocking)
+                self._reader, self._writer = iopair_from_socket(self.socket)
+                self.state += 1
+            elif state is _State.SendRequestHeaders:
+                if self.write_request_headers():
+                    self.state += 1
+            elif state is _State.SendRequestBody:
+                self.state += 1
+                # TODO
+            else:
+                raise RuntimeError('not in a writable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_write
+
+    def do_read(self):
+        state = self.state
+        try:
+            if state is _State.ReceiveResponseHeaders:
+                if self.read_response_headers():
+                    self.state += 1
+            elif state is _State.ReceiveResponseBody:
+                if not self._resp_body:
+                    headers = self.raw_response.headers
+                    self._resp_body = ClientResponseBody(headers,
+                                                         self._reader)
+                if self.autoload_body:
+                    if self._resp_body.read_body():
+                        self.state += 1
+                else:
+                    self.state += 1
+            else:
+                raise RuntimeError('not in a readable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_read
+        # TODO: return socket
+        # TODO: how to resolve socket returns with as-yet-unfetched body
+        # (terminology: lazily-fetched?)
+
+    def write_request_headers(self):
+        if not self._writer.empty:
+            self._writer.write(None)
+
+        next_bit = next(self._writer_iter, M.Empty)
+        if next_bit is M.Empty:
+            return True
+        self._writer.write(next_bit.value)
+        return False
+
+    def read_response_headers(self):
+        while not self.raw_response.state == M.Complete:
+            if type(self.raw_response.state) is type(M.NeedLine):
+                # TODO: polish up the messages paradigm
+                line = readline(self._reader)
+                next_state = M.HaveLine(value=line)
+            else:
+                raise RuntimeError('Unknown state %r'
+                                   % self.raw_response.state)
+            self.raw_response.state = self.raw_response.reader.send(next_state)
+        return True  # TODO: pretty sure this is fine right?
+
+
+class ClientResponseBody(object):
+    # TODO: may merge somewhere or get a more generic name
+    # TODO: compression support goes here? how about charset decoding?
+    # TODO: callback on read complete (to release socket)
+    def __init__(self, headers, reader):
+        self.reader = reader
+        self._parts = []
+        self._data = None
+
+        is_chunked = Body(headers).chunked  # TODO
+        if is_chunked:
+            self._body = ChunkEncodedBody(headers)
+            self.read_body = self._read_response_body_chunk
+        else:
+            self._body = IdentityEncodedBody(headers)
+            self.read_body = self._read_response_body_ident
+
+    @property
+    def is_loaded(self):
+        return self._data is not None
+
+    def get_data(self):
+        if not self._data:
+            self.read_body()
+            if len(self._parts) == 1:
+                self._data = self._parts[0]
+            else:
+                self._data = ''.join(self._parts)
+        return self._data
+
+    def _read_response_body_chunk(self):
+        data = None
+        body = self._body
+        reader = self.reader
+        while not body.complete:
+            if body.state.type == M.NeedLine.type:
+                line = readline(reader)
+                next_state = M.HaveLine(value=line)
+            elif body.state.type == M.NeedData.type:
+                data = reader.read(body.state.amount)
+                if data is None:
+                    raise BlockingIOError(None, None)
+                next_state = M.HaveData(value=data)
+            elif body.state.type == M.NeedPeek.type:
+                peeked = reader.peek(body.state.amount)
+                if not peeked:
+                    raise BlockingIOError(None, None)
+                next_state = M.HavePeek(amount=peeked)
+            elif body.state.type == M.HaveData.type:
+                self._parts.append(body.state.value)
+                next_state = M.Empty
+            else:
+                raise RuntimeError('Unknown state {0}'.format(body.state))
+            body.state = body.reader.send(next_state)
+
+        assert body.complete, 'Unknown state {0}'.format(body.state)
+        return body.complete
+
+    def _read_response_body_ident(self, amt=None):
+        body = self._body
+        reader = self.reader
+        while not body.complete:
+            if body.state.type == M.NeedData.type:
+                data = reader.read(body.state.amount)
+                if data is None:
+                    raise BlockingIOError(None, None)
+                self._parts.append(data)
+                next_state = M.HaveData(value=data)
+            else:
+                raise RuntimeError('Unknown state {0}'.format(body.state))
+            body.state = body.reader.send(next_state)
+
+        assert body.complete, 'Unknown state {0}'.format(body.state)
+        return body.complete
+
+
+
+
+# Thought: It's prudent to raise exceptions with unencoded
+# text. Knowing that exception messages will end up in consoles,
+# logfiles, and on crazy wires to crazy places, it's safest to raise
+# exceptions with ASCII bytestring messages where possible.

@@ -134,3 +134,27 @@ some point:
 - Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
 - P3P
 - X-Powered-By?
+
+
+# Event thoughts
+
+- Connected (alt: failed, reused)
+- Request sent
+- Response first byte received
+- Headers complete
+- Content complete
+
+
+# Topics
+
+- Why shouldn't Body know about the reader/stream?
+- The state of the Client isn't determined only by the parser -> The Joinable interface
+- The definition of Complete also changes when lazily fetching bodies
+- Nonblocking connects
+
+
+# Integration questions
+
+- double-check CRLF writing on empty headers
+- when a Reader/Writer is done, do we want while True: yield Complete
+  or do we want to return/StopIteration?

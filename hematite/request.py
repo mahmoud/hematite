@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from hematite.raw.request import RawRequest
-from hematite.raw.headers import RequestLine, Headers, HTTPVersion
+from hematite.raw.envelope import (RequestEnvelope,
+                                   RequestLine,
+                                   Headers,
+                                   HTTPVersion)
 
 from hematite import serdes
 from hematite.url import parse_hostinfo
@@ -71,11 +74,19 @@ class Request(object):
         return cls(**kw)
 
     def to_raw_request(self):
-        status_line = RequestLine(self.method,
-                                  self._url.http_request_url,
-                                  self.version)
+        req_line = RequestLine(self.method,
+                               self._url.http_request_url,
+                               self.version)
         headers = self._get_header_dict()
-        return RawRequest(status_line, headers, self._body)
+        return RawRequest(req_line, headers, self._body)
+
+    # TODO: tmp
+    def to_request_envelope(self):
+        req_line = RequestLine(self.method,
+                               self._url.http_request_url,
+                               self.version)
+        headers = self._get_header_dict()
+        return RequestEnvelope(req_line, headers)
 
     @classmethod
     def from_bytes(cls, bytestr):
