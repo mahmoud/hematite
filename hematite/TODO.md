@@ -158,3 +158,5 @@ some point:
 - double-check CRLF writing on empty headers
 - when a Reader/Writer is done, do we want while True: yield Complete
   or do we want to return/StopIteration?
+  - Intentional, for composition of Readers.
+- Is * really a valid URL (e.g., "OPTIONS * HTTP/1.1")
