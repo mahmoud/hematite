@@ -6,7 +6,7 @@ import string
 from datetime import datetime, timedelta
 
 from hematite.constants import HEADER_CASE_MAP
-from hematite.raw.envelope import Headers
+from hematite.raw import Headers
 
 
 # these two functions are shared by Request and Response. Could use a

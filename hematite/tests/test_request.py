@@ -32,7 +32,7 @@ def test_request_rt():
     req = Request.from_bytes(GET_REQ_BYTES)
     assert req.host == 'en.wikipedia.org'
     assert req.path == '/wiki/Main_Page'
-    assert req.version == (1, 1)
+    assert req.http_version == (1, 1)
     assert req.if_modified_since < datetime.utcnow()
     rt_req_bytes = req.to_bytes()
     assert GET_REQ_BYTES == rt_req_bytes

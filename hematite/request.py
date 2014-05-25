@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from hematite.raw.request import RawRequest
-from hematite.raw.envelope import (RequestEnvelope,
-                                   RequestLine,
-                                   Headers,
-                                   HTTPVersion)
+from hematite.raw import RawRequest, Headers
+from hematite.raw.parser import RequestLine, HTTPVersion
+
 
 from hematite import serdes
 from hematite.url import parse_hostinfo
@@ -18,7 +16,7 @@ DEFAULT_SCHEME = 'http'
 class Request(object):
     def __init__(self, method=None, url=None, **kw):
         self.method = method or DEFAULT_METHOD
-        self.version = kw.pop('version', DEFAULT_VERSION)
+        self.http_version = kw.pop('http_version', DEFAULT_VERSION)
 
         self._body = kw.pop('body', None)
         self._raw_url = url or None
@@ -65,28 +63,21 @@ class Request(object):
 
     @classmethod
     def from_raw_request(cls, raw_req):
-        rl = raw_req.request_line
-        kw = {'method': rl.method,
-              'url': rl.url,
-              'version': rl.version,
+        kw = {'method': raw_req.method,
+              'url': raw_req.url,
+              'version': raw_req.http_version,
               'headers': raw_req.headers,
               'body': raw_req.body}
         return cls(**kw)
 
     def to_raw_request(self):
-        req_line = RequestLine(self.method,
-                               self._url.http_request_url,
-                               self.version)
+        url = self._url.http_request_url
         headers = self._get_header_dict()
-        return RawRequest(req_line, headers, self._body)
-
-    # TODO: tmp
-    def to_request_envelope(self):
-        req_line = RequestLine(self.method,
-                               self._url.http_request_url,
-                               self.version)
-        headers = self._get_header_dict()
-        return RequestEnvelope(req_line, headers)
+        return RawRequest(method=self.method,
+                          url=url,
+                          http_version=self.http_version,
+                          headers=headers,
+                          body=self._body)
 
     @classmethod
     def from_bytes(cls, bytestr):

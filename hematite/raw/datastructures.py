@@ -6,6 +6,12 @@ ORIG_KEY = VALUE + 1
 
 
 class Headers(OMD):
+    """
+    Headers is an OrderedMultiDict, a mapping that preserves order and
+    subsequent values for the same key, built for string keys that one
+    may want to query case-insensitively, but otherwise
+    case-preservingly.
+    """
 
     def _insert(self, k, v, orig_key):
         root = self.root
@@ -27,8 +33,8 @@ class Headers(OMD):
             self_insert(k, v, orig_key)
             values.append(v)
 
-    def __getitem__(self, k, v):
-        return super(Headers, self).__getitem__(k.lower(), v)
+    def __getitem__(self, key):
+        return super(Headers, self).__getitem__(key.lower())
 
     def get(self, k, default=None, multi=False):
         return super(Headers, self).get(k.lower(), default, multi)
@@ -47,11 +53,11 @@ class Headers(OMD):
         self._insert(k, v, orig_key)
         super(OMD, self).__setitem__(k, [v])
 
-    def iteritems(self, multi=False, with_original_case=False):
+    def iteritems(self, multi=False, preserve_case=True):
         root = self.root
         curr = root[NEXT]
         if multi:
-            if with_original_case:
+            if preserve_case:
                 while curr is not root:
                     yield curr[ORIG_KEY], curr[VALUE]
                     curr = curr[NEXT]
@@ -60,7 +66,7 @@ class Headers(OMD):
                     yield curr[KEY], curr[VALUE]
                     curr = curr[NEXT]
         else:
-            if with_original_case:
+            if preserve_case:
                 yielded = set()
                 yielded_add = yielded.add
                 while curr is not root:
@@ -82,8 +88,9 @@ class Headers(OMD):
     def poplast(self, k=_MISSING, default=_MISSING):
         return super(Headers, self).poplast(k.lower())
 
-    def items(self, multi=False, with_original_case=False):
-        return list(self.iteritems(multi, with_original_case))
+    def items(self, multi=False, preserve_case=True):
+        return list(self.iteritems(multi=multi,
+                                   preserve_case=preserve_case))
 
     # TODO popall, etc.
 

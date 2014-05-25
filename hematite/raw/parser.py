@@ -397,7 +397,7 @@ class HeadersWriter(Writer):
 
     def _make_writer(self):
         for k, v in self.headers.iteritems(multi=True,
-                                           with_original_case=True):
+                                           preserve_case=True):
             line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
 
             state = M.HaveLine(line)
