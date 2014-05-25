@@ -111,3 +111,10 @@ some point:
 - Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
 - P3P
 - X-Powered-By?
+
+
+# Integration questions
+
+- double-check CRLF writing on empty headers
+- when a Reader/Writer is done, do we want while True: yield Complete
+  or do we want to return/StopIteration?
