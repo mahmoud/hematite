@@ -42,3 +42,18 @@ class Client(object):
         kw['method'] = 'POST'
         kw['url'] = url
         return self.request(**kw)
+
+
+
+class Operation(object):
+    def __init__(self, method):
+        self.method = method
+
+    def __call__(self, *a, **kw):
+        pass
+
+    def async(self, *a, **kw):
+        pass
+
+    def _call(self, args, kwargs):
+        pass
