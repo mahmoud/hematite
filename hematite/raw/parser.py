@@ -321,12 +321,8 @@ class Writer(_ProtocolElement):
         for result in self.writer:
             yield result
 
-    def to_bytes(self):
-        return b''.join(l for type, l in self._make_writer(once=False) if
-                        type != M.Complete.type)
-
     @abstractmethod
-    def _make_writer(self, once=True):
+    def _make_writer(self):
         """Called to create the iterator provided by :attribute:`next()`"""
         pass
 
@@ -400,25 +396,22 @@ class HeadersWriter(Writer):
         super(HeadersWriter, self).__init__(*args, **kwargs)
         self.headers = headers
 
-    def _make_writer(self, once=True):
+    def _make_writer(self):
         for k, v in self.headers.iteritems(multi=True,
                                            with_original_case=True):
             line = b': '.join([bytes(k), bytes(v)]) + b'\r\n'
 
             state = M.HaveLine(line)
-            if once:
-                self.state = state
-                self.bytes_written += len(line)
+            self.state = state
+            self.bytes_written += len(line)
             yield state
 
         state = M.HaveLine(b'\r\n')
-        if once:
-            self.state = state
-            self.bytes_written += 2
+        self.state = state
+        self.bytes_written += 2
         yield state
 
-        if once:
-            self.state = M.Complete
+        self.state = M.Complete
 
 
 class IdentityEncodedBodyReader(Reader):
@@ -701,3 +694,12 @@ class ResponseReader(Reader):
 
         while True:
             yield M.Complete
+
+
+def _flush_writer_to_bytes(writer):
+    """\
+    Takes an instance of a Writer subclass and flushes what's left in
+    it to a bytestring, mostly a testing convenience.
+    """
+    return b''.join(part for _state, part in writer.writer if
+                    _state != M.Complete.type)

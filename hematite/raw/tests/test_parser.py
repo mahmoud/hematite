@@ -285,8 +285,10 @@ def test_HeadersReader():
 def test_HeadersWriter():
     writer = P.HeadersWriter(headers=_HEADER_PARSED)
     repr(writer)
-    assert writer.to_bytes()
+    assert P._flush_writer_to_bytes(writer)
+    assert writer.state is M.Complete
 
+    writer = P.HeadersWriter(headers=_HEADER_PARSED)
 
     for message, expected in izip(iter(writer), _HEADER_EXPECTED_LINES):
         t, actual = message
