@@ -616,6 +616,30 @@ class RequestWriter(Writer):
         self.state = M.Complete
 
 
+class RequestReader(Reader):
+    def __init__(self, *args, **kwargs):
+        self.request_line = None
+        self.headers = None
+        self.body = None
+
+        self.headers_reader = HeadersReader()
+        self.body_reader = None
+
+        self.content_length = None
+        self.chunked = False
+
+        super(ResponseReader, self).__init__(*args, **kwargs)
+
+    def _parse_headers(self):
+        content_length = self.headers.get('content-length')
+        encodings = self.headers.get('transfer-encoding', [])
+
+        if content_length:
+            self.content_length = int(content_length[-1])
+
+        self.chunked = any('chunked' in v.lower() for v in encodings)
+
+
 class ResponseReader(Reader):
 
     def __init__(self, *args, **kwargs):
@@ -635,12 +659,16 @@ class ResponseReader(Reader):
     def _parse_headers(self):
         content_length = self.headers.get('content-length')
         connection = self.headers.get('connection').lower()
-        encodings = self.headers.get('transfer-encoding', [])
+        try:
+            encodings = self.headers.getlist('transfer-encoding')
+        except KeyError:
+            encodings = []
 
         if content_length:
-            self.content_length = int(content_length[-1])
+            self.content_length = int(content_length)
 
         self.connection_close = connection.lower() == 'close'
+        # TODO: strip + startswith may be more correct.
         self.chunked = any('chunked' in v.lower() for v in encodings)
 
         # TODO mutual exclusion

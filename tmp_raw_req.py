@@ -4,7 +4,7 @@ from hematite.raw import RawRequest, Headers
 
 
 def main():
-    rreq = RawRequest(headers=Headers({'Accept': 'lol'}))
+    rreq = RawRequest(headers=Headers({'AccepT': 'lol'}))
     print repr(rreq.to_bytes())
     print '------'
     print rreq.to_bytes()
