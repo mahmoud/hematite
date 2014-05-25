@@ -195,7 +195,7 @@ def test_RequestLine(input, expected):
 def test_RequestLine_round_trip():
     """RequestLine.from_* should parse the output of RequestLine.to_bytes"""
 
-    expected = P.RequestLine(method='OPTIONS', url=URL(u'*/*'),
+    expected = P.RequestLine(method='OPTIONS', url=URL(u'*'),
                              version=P.HTTPVersion(1, 1))
 
     assert P.RequestLine.from_bytes(expected.to_bytes()) == expected

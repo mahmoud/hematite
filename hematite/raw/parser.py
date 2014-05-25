@@ -5,7 +5,7 @@ from collections import namedtuple
 from hematite.compat import BytestringHelper, make_sentinel
 from hematite.raw import datastructures
 from hematite.raw import core
-from hematite.url import URL, _ABS_RE
+from hematite.url import URL, _ABS_PATH_RE
 from hematite.constants import CODE_REASONS
 from hematite.raw import messages as M
 
@@ -205,7 +205,7 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
     PARSE_REQUEST_LINE = re.compile(''.join([
         '(?P<method>', core.TOKEN.pattern, ')?',
         '(?:', core.START_LINE_SEP.pattern, ')?',
-        '(?P<url>' + _ABS_RE + ')?',
+        '(?P<url>' + _ABS_PATH_RE + ')?',
         '(?:', core.START_LINE_SEP.pattern, ')?',
         '(?:', HTTPVersion.PARSE_VERSION.pattern, ')?']))
 

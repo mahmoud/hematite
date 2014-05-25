@@ -299,6 +299,10 @@ class URL(BytestringHelper):
         return u''.join(parts)
 
     def to_text(self, display=False):
+        """\
+        This method takes the place of urlparse.urlunparse/urlunsplit.
+        It's a tricky business.
+        """
         full_encode = (not display)
         scheme, path, params = self.scheme, self.path, self.params
         authority = self.get_authority(idna=full_encode)
@@ -316,7 +320,7 @@ class URL(BytestringHelper):
         elif (scheme and path[:2] != '//'):
             _add('//')
         if path:
-            if path[:1] != '/':
+            if parts and path[:1] != '/':
                 _add('/')
             _add(escape_path(path, to_bytes=full_encode))
         if params:

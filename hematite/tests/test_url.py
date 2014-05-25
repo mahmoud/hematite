@@ -10,6 +10,7 @@ from hematite.url import URL, _URL_RE, parse_authority
 
 
 TEST_URLS = [
+    '*',  # e.g., OPTIONS *
     'http://googlewebsite.com/e-shops.aspx',
     'http://example.com:8080/search?q=123&business=Nothing%20Special',
     'http://hatnote.com:9000?arg=1&arg=2&arg=3',
