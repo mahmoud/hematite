@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from request import Request
+from hematite.request import Request
 
 BASIC_REQ = '\r\n'.join(['GET /html/rfc3986 HTTP/1.1',
                          'Host: tooxols.ietf.org',

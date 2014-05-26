@@ -147,7 +147,7 @@ def accept_header_from_bytes(val):
     not implement "accept-extension", as they seem to have never been
     used. (search for "text/html;level=1" in RFC2616 to see an example)
 
-    >>> parse_accept_header('audio/*; q=0.2 , audio/basic')
+    >>> accept_header_from_bytes('audio/*; q=0.2 , audio/basic')
     [('audio/*', 0.2), ('audio/basic', 1.0)]
     """
     ret = []
@@ -504,7 +504,8 @@ def total_seconds(td):
 
     Accepts a timedelta object, returns number of total seconds.
 
-    >>> td = datetime.timedelta(days=4, seconds=33)
+    >>> from datetime import timedelta
+    >>> td = timedelta(days=4, seconds=33)
     >>> total_seconds(td)
     345633.0
 

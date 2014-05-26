@@ -117,6 +117,7 @@ class Body(object):
     def __init__(self, body=None):
         self.body = body or []
         self.data = None
+        self.nominal_length = None
 
     def data_received(self, data):
         self.body.append(data)
@@ -126,4 +127,4 @@ class Body(object):
 
     def complete(self, length):
         self.data = ''.join(self.body)
-        self.reported_length = length
+        self.nominal_length = length

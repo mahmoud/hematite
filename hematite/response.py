@@ -5,15 +5,13 @@ from io import BlockingIOError
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
-from hematite.socket_io import iopair_from_socket, readline
+#from hematite.socket_io import iopair_from_socket, readline
 
-# capital M stands out more, less likely to have a conflict
 from hematite.raw import messages as M
-from hematite.raw.body import Body, IdentityEncodedBody, ChunkEncodedBody
+from hematite.raw.parser import (StatusLine,
+                                 HTTPVersion)
+from hematite.raw.datastructures import Headers, Body, ChunkedBody
 from hematite.raw.response import RawResponse
-from hematite.raw.envelope import ResponseEnvelope
-from hematite.raw.envelope import StatusLine, Headers, HTTPVersion
-
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -26,7 +24,7 @@ class Response(object):
         if self.reason is None:
             self.reason = CODE_REASONS.get(self.status_code, '')
         self._raw_headers = kw.pop('headers', Headers())  # TODO
-        self.version = kw.pop('version', _DEFAULT_VERSION)
+        self.http_version = kw.pop('http_version', _DEFAULT_VERSION)
 
         self._body = body
         self._data = None
@@ -43,7 +41,7 @@ class Response(object):
 
     @property
     def is_chunked(self):
-        return isinstance(self._body, ChunkEncodedBody)
+        return isinstance(self._body, ChunkedBody)
 
     def _load_data(self):
         if self.is_chunked:
@@ -82,9 +80,12 @@ class Response(object):
         return cls(**kw)
 
     def to_raw_response(self):
-        status_line = StatusLine(self.version, self.status_code, self.reason)
         headers = self._get_header_dict()
-        return RawResponse(status_line, headers, self._body)
+        return RawResponse(status_code=self.status_code,
+                           reason=self.reason,
+                           http_version=self.http_version,
+                           headers=headers,
+                           body=self._body)
 
     @classmethod
     def from_bytes(cls, bytestr):
@@ -141,7 +142,7 @@ class ClientResponse(Response):
         self.autoload_body = True
         self.timeout = None
 
-        self.raw_response = ResponseEnvelope()
+        self.raw_response = RawResponse()
         self._resp_body = None
 
         self._writer_iter = self.raw_request._make_writer()
