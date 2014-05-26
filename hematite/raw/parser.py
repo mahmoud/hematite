@@ -133,7 +133,7 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
 
         >>> StatusLine(HTTPVersion(1, 1), status_code=200,
         ...            reason=None).to_bytes()
-        'HTTP/1.1 200 OK\r\n'
+        'HTTP/1.1 200 OK'
 
         If :attribute:`StatusLine.reason` is otherwise false, the
         reason is completely omitted:
