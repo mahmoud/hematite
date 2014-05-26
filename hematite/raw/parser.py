@@ -678,7 +678,33 @@ class RequestReader(Reader):
 
 
 class ResponseWriter(Writer):
-    pass
+    def __init__(self, status_line, headers, body=None, *args, **kwargs):
+        self.status_line = status_line
+        self.headers = headers
+        self.body = body
+        super(ResponseWriter, self).__init__(*args, **kwargs)
+
+    def _make_writer(self):
+        sl = bytes(self.status_line) + '\r\n'
+        self.bytes_written += len(sl)
+        self.state = M.HaveLine(sl)
+        yield self.state
+
+        for m in iter(self.headers):
+            self.bytes_written += self.headers.bytes_written
+            self.state = m
+            yield m
+
+        if not self.body:
+            self.state = M.Complete
+            return
+
+        for m in iter(self.body):
+            self.bytes_written += self.body.bytes_written
+            self.state = m
+            yield m
+
+        self.state = M.Complete
 
 
 class ResponseReader(Reader):

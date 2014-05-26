@@ -44,7 +44,7 @@ def main_req_read():
 
 def main():
     rresp = RawResponse.from_bytes(RESP_200_BYTES)
-    print rresp.headers
+    print rresp.to_bytes()
 
 
 if __name__ == '__main__':
