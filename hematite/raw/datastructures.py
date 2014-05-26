@@ -33,14 +33,49 @@ class Headers(OMD):
             self_insert(k, v, orig_key)
             values.append(v)
 
-    def __getitem__(self, key):
-        return super(Headers, self).__getitem__(key.lower())
+    def getlist(self, k):
+        return super(Headers, self).getlist(k.lower())
 
     def get(self, k, default=None, multi=False):
         return super(Headers, self).get(k.lower(), default, multi)
 
-    def getlist(self, k):
-        return super(Headers, self).getlist(k.lower())
+    def setdefault(self, k, default=None):
+        return super(Headers, self).setdefault(k.lower(), default)
+
+    def copy(self):
+        return self.__class__(self.iteritems(multi=True, preserve_case=True))
+
+    def update(self, E=(), **F):
+        if E is self:
+            return
+
+        self_add = self.add
+        if isinstance(E, Headers):
+            for k in E:
+                if k in self:
+                    del self[k]
+            for k, v in E.iteritems(multi=True, preserve_case=True):
+                self_add(k, v)
+        elif isinstance(E, OMD):
+            return super(Headers, self).update(E)
+        elif hasattr(E, 'keys'):
+            for k in E.keys():
+                self[k] = E[k]
+        else:
+            seen = set()
+            seen_add = seen.add
+            for k, v in E:
+                lower_k = k.lower()
+                if lower_k not in seen and lower_k in self:
+                    del self[k]
+                    seen_add(lower_k)
+                self_add(k, v)
+        for k in F:
+            self[k] = F[k]
+        return
+
+    def __getitem__(self, key):
+        return super(Headers, self).__getitem__(key.lower())
 
     def get_cased_items(self, k):
         k = k.lower()
@@ -57,42 +92,34 @@ class Headers(OMD):
         root = self.root
         curr = root[NEXT]
         if multi:
-            if preserve_case:
-                while curr is not root:
-                    yield curr[ORIG_KEY], curr[VALUE]
-                    curr = curr[NEXT]
-            else:
-                while curr is not root:
-                    yield curr[KEY], curr[VALUE]
-                    curr = curr[NEXT]
+            key_idx = ORIG_KEY if preserve_case else KEY
+            while curr is not root:
+                yield curr[key_idx], curr[VALUE]
+                curr = curr[NEXT]
         else:
+            # this isn't so good
+            items = super(Headers, self).iteritems(multi=False)
             if preserve_case:
-                yielded = set()
-                yielded_add = yielded.add
-                while curr is not root:
-                    k = curr[KEY]
-                    if k not in yielded:
-                        yielded_add(k)
-                        yield curr[ORIG_KEY], curr[VALUE]
-                    curr = curr[NEXT]
+                for key, value in items:
+                    orig_key = self._map.get(key)[-1][ORIG_KEY]
+                    yield orig_key, value
             else:
-                yielded = set()
-                yielded_add = yielded.add
-                while curr is not root:
-                    k = curr[KEY]
-                    if k not in yielded:
-                        yielded_add(k)
-                        yield k, curr[VALUE]
-                    curr = curr[NEXT]
+                for key, value in items:
+                    yield key, value
+
+    def popall(self, k, default=_MISSING):
+        return super(Headers, self).popall(k.lower(), default)
 
     def poplast(self, k=_MISSING, default=_MISSING):
-        return super(Headers, self).poplast(k.lower())
+        k = k.lower() if k is not _MISSING else k
+        return super(Headers, self).poplast(k)
 
     def items(self, multi=False, preserve_case=True):
         return list(self.iteritems(multi=multi,
                                    preserve_case=preserve_case))
 
-    # TODO popall, etc.
+    def __contains__(self, k):
+        return super(Headers, self).__contains__(k.lower())
 
 
 class ChunkedBody(object):
