@@ -98,27 +98,27 @@ def test_StatusLine_froms_raises(input, expected):
     [(P.StatusLine(version=P.HTTPVersion(major=1, minor=1),
                    status_code=200,
                    reason='OK'),
-      'HTTP/1.1 200 OK\r\n'),
+      'HTTP/1.1 200 OK'),
 
      (P.StatusLine(version=P.HTTPVersion(major=1, minor=0),
                    status_code=404,
                    reason='Not Found'),
-      'HTTP/1.0 404 Not Found\r\n'),
+      'HTTP/1.0 404 Not Found'),
 
      (P.StatusLine(version=P.HTTPVersion(major=1, minor=1),
                    status_code=500,
                    reason=''),
-      'HTTP/1.1 500\r\n'),
+      'HTTP/1.1 500'),
 
      (P.StatusLine(version=P.HTTPVersion(major=1, minor=1),
                    status_code=500,
                    reason=None),
-      'HTTP/1.1 500 Internal Server Error\r\n'),
+      'HTTP/1.1 500 Internal Server Error'),
 
      (P.StatusLine(version=P.HTTPVersion(major=1, minor=1),
                    status_code=500,
                    reason='Something went wrong'),
-      'HTTP/1.1 500 Something went wrong\r\n')])
+      'HTTP/1.1 500 Something went wrong')])
 def test_StatusLine_to_bytes(input, expected):
     """StatusLine.to_bytes should generate valid status lines."""
     assert bytes(input) == expected

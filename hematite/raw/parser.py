@@ -140,7 +140,7 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
 
         >>> StatusLine(HTTPVersion(1, 1), status_code=200,
         ...            reason='').to_bytes()
-        'HTTP/1.1 200\r\n'
+        'HTTP/1.1 200'
         """
         version, status_code, reason = self
         if reason is None:
@@ -149,7 +149,7 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         if reason:
             reason = ' ' + reason
 
-        return b'%s %d%s\r\n' % (version, status_code, reason)
+        return b'%s %d%s' % (version, status_code, reason)
 
     @classmethod
     def from_match(cls, match):
