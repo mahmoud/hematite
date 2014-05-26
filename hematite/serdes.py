@@ -2,11 +2,10 @@
 
 import re
 import time
-import string
 from datetime import datetime, timedelta
 
 from hematite.constants import HEADER_CASE_MAP
-from hematite.raw import Headers
+from hematite.raw import Headers, core
 
 
 # these two functions are shared by Request and Response. Could use a
@@ -53,15 +52,10 @@ def _get_headers(self, drop_empty=True):
 ###
 
 
-_TOKEN_CHARS = frozenset("!#$%&'*+-.^_`|~" + string.letters + string.digits)
-
-
-def quote_header_value(value, allow_token=True):
-    value = str(value)
-    if allow_token:
-        # TODO: is this really an optimization?
-        if set(value).issubset(_TOKEN_CHARS):
-            return value
+def quote_header_value(value, quote_token=False):
+    value = str(value)          # TODO: encoding arg!
+    if not value or (not quote_token and core.TOKEN.match(value)):
+        return value
     return '"%s"' % value.replace('\\', '\\\\').replace('"', '\\"')
 
 
