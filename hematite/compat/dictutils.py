@@ -134,7 +134,7 @@ class OrderedMultiDict(dict):
     def fromkeys(cls, keys, default=None):
         return cls([(k, default) for k in keys])
 
-    def update(self, E, **F):
+    def update(self, E=(), **F):
         # E and F are throwback names to the dict() __doc__
         if E is self:
             return
@@ -160,7 +160,7 @@ class OrderedMultiDict(dict):
             self[k] = F[k]
         return
 
-    def update_extend(self, E, **F):  # upsert?
+    def update_extend(self, E=(), **F):  # upsert?
         if E is self:
             iterator = iter(E.items())
         elif isinstance(E, OrderedMultiDict):
