@@ -55,12 +55,10 @@ class RawRequest(object):
 
     @classmethod
     def from_bytes(cls, bytestr):
-        # TODO
         bio = BytesIO(bytestr)
         reader = RequestReader()
         state = reader.state
         while True:
-
             if state is M.Complete:
                 break
             elif state.type == M.NeedLine.type:

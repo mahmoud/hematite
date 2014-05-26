@@ -677,6 +677,10 @@ class RequestReader(Reader):
             yield M.Complete
 
 
+class ResponseWriter(Writer):
+    pass
+
+
 class ResponseReader(Reader):
 
     def __init__(self, *args, **kwargs):
@@ -695,7 +699,9 @@ class ResponseReader(Reader):
 
     def _parse_headers(self):
         content_length = self.headers.get('content-length')
-        connection = self.headers.get('connection').lower()
+        connection = self.headers.get('connection')
+        if connection:
+            connection = connection.lower()
         try:
             encodings = self.headers.getlist('transfer-encoding')
         except KeyError:
@@ -704,7 +710,7 @@ class ResponseReader(Reader):
         if content_length:
             self.content_length = int(content_length)
 
-        self.connection_close = connection.lower() == 'close'
+        self.connection_close = connection == 'close'
         # TODO: strip + startswith may be more correct.
         self.chunked = any(['chunked' in v.lower() for v in encodings])
 

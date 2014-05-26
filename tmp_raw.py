@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from hematite.raw import RawRequest, Headers
+from hematite.raw import RawRequest, Headers, RawResponse
 
 _GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
                   'Host: en.wikipedia.org',
@@ -18,16 +18,34 @@ _GET_REQ_LINES = ('GET /wiki/Main_Page HTTP/1.1',
 GET_REQ_BYTES = '\r\n'.join(_GET_REQ_LINES)
 
 
-def main_write():
+_RESP_200_LINES = ('HTTP/1.1 200 OK',
+                   'Date: Tue, 11 Mar 2014 06:29:33 GMT',
+                   'Last-Modified: Mon, 10 Mar 2014 01:22:01 GMT',
+                   'Server: hematited/1.0',
+                   'Expires: Tue, 11 Mar 2014 06:29:34 GMT',
+                   'Content-Language: en, mi',
+                   'X-Proprietary-Header: lol',
+                   '', '')  # required to get trailing CRLF
+
+RESP_200_BYTES = '\r\n'.join(_RESP_200_LINES)
+
+
+def main_req_write():
     rreq = RawRequest(headers=Headers({'AccepT': 'lol'}))
     print repr(rreq.to_bytes())
     print '------'
     print rreq.to_bytes()
 
 
-def main():
+def main_req_read():
     rreq = RawRequest.from_bytes(GET_REQ_BYTES)
     assert rreq.to_bytes() == GET_REQ_BYTES
+
+
+def main():
+    rresp = RawResponse.from_bytes(RESP_200_BYTES)
+    print rresp.headers
+
 
 if __name__ == '__main__':
     main()
