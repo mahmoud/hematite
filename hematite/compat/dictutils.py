@@ -120,10 +120,12 @@ class OrderedMultiDict(dict):
         ret = super(OrderedMultiDict, self).get(k, [default])
         return ret[:] if multi else ret[-1]
 
-    def setdefault(self, k, default=_MISSING):
-        if not super(OrderedMultiDict, self).__contains__(k):
-            self[k] = [] if default is _MISSING else [default]
-        return default
+    def setdefault(self, k, default=None):
+        current = self.get(k, _MISSING)
+        if current is _MISSING:
+            self[k] = default
+            current = default
+        return current
 
     def copy(self):
         return self.__class__(self.items(multi=True))
@@ -643,3 +645,11 @@ def test_reversed():
         omd.add(i, i)
     r100.reverse()
     assert list(reversed(omd)) == r100
+
+
+def test_setdefault():
+    omd = OMD()
+    assert omd.setdefault('a', 1) == 1
+    assert omd.setdefault('a', 2) == 1
+
+    assert omd.items(multi=True) == [('a', 1)]
