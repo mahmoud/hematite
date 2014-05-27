@@ -604,16 +604,14 @@ class RequestWriter(Writer):
             self.state = m
             yield m
 
-        if not self.body:
-            self.state = M.Complete
-            return
-
-        for m in iter(self.body):
-            self.bytes_written += self.body.bytes_written
-            self.state = m
-            yield m
+        if self.body:
+            for m in iter(self.body):
+                self.bytes_written += self.body.bytes_written
+                self.state = m
+                yield m
 
         self.state = M.Complete
+        yield self.state
 
 
 class RequestReader(Reader):
@@ -710,6 +708,7 @@ class ResponseWriter(Writer):
 class ResponseReader(Reader):
 
     def __init__(self, *args, **kwargs):
+        self.raw_response = None
         self.status_line = None
 
         self.headers = None
@@ -787,6 +786,11 @@ class ResponseReader(Reader):
         self.state = self.body_reader.state
         while not self.complete:
             self.state = self.body_reader.send((yield self.state))
+
+        from hematite.raw.response import RawResponse  # TODO TODO
+        self.raw_response = RawResponse(status_line=self.status_line,
+                                        headers=self.headers,
+                                        body=self.body)
 
         while True:
             yield M.Complete

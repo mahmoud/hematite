@@ -54,6 +54,10 @@ class NonblockingSocketIO(compat.SocketIO):
             data = data or self.write_backlog
             written = super(NonblockingSocketIO, self).write(data)
             if written is None:
+                if self.write_backlog:
+                    self.write_backlog += data
+                else:
+                    self.write_backlog = data
                 raise eagain()
             self.write_backlog = data[written:]
             if self.write_backlog:

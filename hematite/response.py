@@ -8,6 +8,7 @@ from hematite.constants import CODE_REASONS
 #from hematite.socket_io import iopair_from_socket, readline
 
 from hematite.raw import messages as M
+from hematite.raw.drivers import NonblockingSocketClientDriver as NBSCD
 from hematite.raw.parser import (StatusLine,
                                  HTTPVersion)
 from hematite.raw.datastructures import Headers, Body, ChunkedBody
@@ -109,7 +110,7 @@ class Response(object):
         pass
 
 
-class _State(object):
+class _OldState(object):
     # TODO: ssl_connect?
 
     (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
@@ -127,14 +128,22 @@ class _State(object):
     # ReceivingResponseContent, Complete
 
 
-class ClientResponse(Response):
+class _State(object):
+    # TODO: Securing/Handshaking
+    # TODO: WaitingForContinue  # 100 Continue that is
+    (NotStarted, ResolvingHost, Connecting, Sending, Receiving,
+     Complete) = range(6)
+
+
+class ClientResponse(object):
     # TODO: are we going to need want_read/want_write for SSL?
 
     def __init__(self, client, request=None):
         self.client = client
         self.request = request
-        self.raw_request = request.to_request_envelope()
+        self.raw_request = request.to_raw_request()
         self.state = _State.NotStarted
+        self.driver = None
         self.socket = None
         self.timings = {}
 
@@ -142,10 +151,9 @@ class ClientResponse(Response):
         self.autoload_body = True
         self.timeout = None
 
-        self.raw_response = RawResponse()
+        self.raw_response = None
         self._resp_body = None
 
-        self._writer_iter = self.raw_request._make_writer()
         # TODO: request body/total bytes uploaded counters
         # TODO: response body/total bytes downloaded counters
         # (for calculating progress)
@@ -164,22 +172,23 @@ class ClientResponse(Response):
         return None  # or raise an exception?
 
     @property
+    def semantic_state(self):
+        return ('TBI', 'TBI details')
+
+    @property
     def is_complete(self):
         return self.state == _State.Complete
 
     @property
     def want_write(self):
-        return self.state <= _State.SendRequestBody
+        return self.state <= _State.Sending
 
     @property
     def want_read(self):
-        state = self.state
-        if state <= _State.SendRequestBody:
-            return False
-        elif state == _State.Complete:
-            return False
+        if self.state == _State.Receiving:
+            return True
+        return False
         # TODO: what if body fetching is deferred
-        return True
 
     def do_write(self):
         if self.request is None:
@@ -190,21 +199,18 @@ class ClientResponse(Response):
         try:
             if state is _State.NotStarted:
                 self.state += 1
-            elif state is _State.LookupHost:
+            elif state is _State.ResolvingHost:
                 self.addrinfo = self.client.get_addrinfo(request)
                 self.state += 1
-            elif state is _State.Connect:
+            elif state is _State.Connecting:
                 self.socket = self.client.get_socket(request,
                                                      self.addrinfo,
                                                      self.nonblocking)
-                self._reader, self._writer = iopair_from_socket(self.socket)
+                self.driver = NBSCD(self.socket, self.raw_request)
                 self.state += 1
-            elif state is _State.SendRequestHeaders:
-                if self.write_request_headers():
+            elif state is _State.Sending:
+                if self.driver.write():
                     self.state += 1
-            elif state is _State.SendRequestBody:
-                self.state += 1
-                # TODO
             else:
                 raise RuntimeError('not in a writable state: %r' % state)
         except BlockingIOError:
@@ -214,10 +220,13 @@ class ClientResponse(Response):
     def do_read(self):
         state = self.state
         try:
-            if state is _State.ReceiveResponseHeaders:
-                if self.read_response_headers():
+            if state is _State.Receiving:
+                res = self.driver.read()
+                if res:
                     self.state += 1
-            elif state is _State.ReceiveResponseBody:
+                    self.raw_response = self.driver.reader.raw_response
+                """
+                elif state is _State.ReceiveResponseBody:
                 if not self._resp_body:
                     headers = self.raw_response.headers
                     self._resp_body = ClientResponseBody(headers,
@@ -227,6 +236,7 @@ class ClientResponse(Response):
                         self.state += 1
                 else:
                     self.state += 1
+                """
             else:
                 raise RuntimeError('not in a readable state: %r' % state)
         except BlockingIOError:
