@@ -545,7 +545,7 @@ class ChunkEncodedBodyReader(Reader):
                 discard = 2
             elif cr == '\n':
                 # lf is not actually lf, but real data
-                discard == 1
+                discard = 1
             else:
                 raise InvalidChunk('No trailing CRLF|LF', chunk)
 
