@@ -476,9 +476,10 @@ class IdentityEncodeBodyWriter(Writer):
             self.state = M.HaveData(data)
             yield self.state
 
-        if self.content_length is None:
-            self.state = M.WantDisconnect
-            yield self.state
+        # TODO: this logic should go elsewhere
+        #if self.content_length is None:
+        #    self.state = M.WantDisconnect
+        #    yield self.state
 
         self.body.complete(self.bytes_written)
 
@@ -727,13 +728,9 @@ class ResponseReader(Reader):
     def __init__(self, *args, **kwargs):
         from hematite.raw.response import RawResponse  # TODO TODO
         self.raw_response = RawResponse()
-        self.status_line = None
 
-        self.headers = None
         self.headers_reader = HeadersReader()
-
         self.body_reader = None
-        self.body = None
 
         self.chunked = False
         self.content_length = None

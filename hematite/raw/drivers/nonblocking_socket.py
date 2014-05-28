@@ -42,13 +42,9 @@ class NonblockingSocketClientDriver(object):
         for state in self.writer_iter:
             if state is M.Complete:
                 return True
-            elif state is M.WantDisconnect:
-                self.inbound.close()
-                self.outbound.close()
-                self.socket.close()
             else:
                 self.outbound.write(state.value)
-        return False  # returns 'is_complete'
+        return False
 
     def read(self):
         """"
