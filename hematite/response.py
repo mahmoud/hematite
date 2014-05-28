@@ -164,12 +164,12 @@ class ClientResponse(object):
             raise TypeError('expected request to be a Request or RawRequest')
 
         self.state = _State.NotStarted
-        self.driver = None
         self.socket = None
+        self.driver = None
         self.timings = {}
 
-        self.nonblocking = False
         self.autoload_body = True
+        self.nonblocking = False
         self.timeout = None
 
         self.raw_response = None
@@ -206,9 +206,12 @@ class ClientResponse(object):
 
     @property
     def want_read(self):
-        if self.state == _State.Receiving:
+        if self.state != _State.Receiving:
+            return False
+        elif not self.autoload_body and self.driver.inbound_headers_completed:
+            return False
+        else:
             return True
-        return False
         # TODO: what if body fetching is deferred
 
     def do_write(self):
@@ -242,10 +245,11 @@ class ClientResponse(object):
         state = self.state
         try:
             if state is _State.Receiving:
+                self.raw_response = self.driver.reader.raw_response
                 res = self.driver.read()
                 if res:
                     self.state += 1
-                    self.raw_response = self.driver.reader.raw_response
+
                 """
                 elif state is _State.ReceiveResponseBody:
                 if not self._resp_body:

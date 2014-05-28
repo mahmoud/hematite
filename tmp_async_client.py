@@ -6,28 +6,56 @@ from hematite.client import Client
 from hematite.request import Request
 from hematite.response import ClientResponse
 
-# NOTE: hatnote.com returns the funniest response when the request
-# line is omitted (encountered due to socket_io.py bug)
+# TODO: noticed that sometimes RequestLine has .url = URL object,
+# other times a string
+# TODO: where to control automatic fetching of content and
+# following of redirects? join arg, ClientResponse attr, Client
+# default (internally falling back on ClientProfile)
+
+"""
+makuro.org = oldish Apache
+hatnote.com = newish Nginx, issuing a redirect
+blog.hatnote.com = ?? (tumblr)
+wikipedia.org = Apache + Varnish
+"""
 
 
 def main():
     client = Client()
     req = Request('GET', 'http://makuro.org/')
-    #req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
     #req = Request('GET', 'http://hatnote.com/')
+    #req = Request('GET', 'http://blog.hatnote.com/')
     resp = ClientResponse(client=client, request=req)
+    resp.autoload_body = False
     resp2 = ClientResponse(client=client, request=req)
     resp.nonblocking = True
     resp2.nonblocking = True
-    # TODO: where to control automatic fetching of content and
-    # following of redirects? join arg, ClientResponse attr, Client
-    # default (internally falling back on ClientProfile)
+
+    join([resp, resp2], timeout=5.0)
+
+    print resp.raw_response
+    resp.autoload_body = True
+    join([resp], timeout=1.0)
+    print resp.raw_response.body
+    import pdb;pdb.set_trace()
+
+
+def main_wp():
+    client = Client()
+    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
+    resp = ClientResponse(client=client, request=req)
+    resp.nonblocking = True  # TODO: kwargs
+    resp.autoload_body = False
     join([resp], timeout=5.0)
+    print resp.raw_response
+    resp.autoload_body = True
+    print resp.raw_response.body
+    join([resp])
+    print resp.raw_response.body
 
     # true for wikipedia:
     # assert resp.raw_response.headers != resp2.raw_response.headers
-    #assert resp.get_data() == resp2.get_data()
-    print resp.raw_response
+    # assert resp.get_data() == resp2.get_data()
     import pdb;pdb.set_trace()
 
 
