@@ -9,7 +9,8 @@ from hematite.raw.parser import (HTTPVersion,
                                  RequestLine,
                                  RequestWriter,
                                  RequestReader,
-                                 HeadersWriter)
+                                 HeadersWriter,
+                                 parse_message_traits)
 
 
 DEFAULT_METHOD = 'GET'
@@ -22,7 +23,8 @@ class RawRequest(object):
     _writer_class = RequestWriter
 
     def __init__(self, method=None, url=None, headers=None, body=None,
-                 http_version=None, request_line=None):
+                 http_version=None, **kwargs):  # TODO: http_version to kwargs?
+        request_line = kwargs.pop('request_line', None)
         if request_line:
             method = request_line.method
             url = request_line.url
@@ -35,6 +37,13 @@ class RawRequest(object):
 
         self.headers = headers or Headers()
         self.body = body  # TODO: bodies
+
+        traits = parse_message_traits(self.headers)
+        self.chunked = kwargs.pop('chunked', traits.chunked)
+        self.content_length = kwargs.pop('content_length',
+                                         traits.content_length)
+        if kwargs:
+            raise TypeError('got unexpected kwargs: %r' % kwargs.keys())
 
     # TODO: setter for the following?
     @property
