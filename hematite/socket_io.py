@@ -1,13 +1,10 @@
-
 import os
 import errno
-import socket
 from threading import Lock
 from io import BlockingIOError, BufferedReader
 
 import hematite.compat as compat
 import hematite.raw.core as core
-from hematite.raw.core import MAXLINE, LINE_END, EndOfStream, OverlongRead
 
 
 def eagain(characters_written=0):
@@ -51,13 +48,19 @@ class NonblockingSocketIO(compat.SocketIO):
 
     def write(self, data=None):
         with self.backlog_lock:
-            data = data or self.write_backlog
-            written = super(NonblockingSocketIO, self).write(data)
+            if self.write_backlog and data is not None:
+                raise ValueError('data must be None when there is a '
+                                 'write_backlog.  Did you call empty?')
+
+            to_write = self.write_backlog if data is None else data
+            written = super(NonblockingSocketIO, self).write(to_write)
             if written is None:
-                raise eagain()
-            self.write_backlog = data[written:]
+                self.write_backlog += to_write
+            else:
+                self.write_backlog = to_write[written:]
+
             if self.write_backlog:
-                raise eagain()
+                raise eagain(characters_written=written)
 
 
 def iopair_from_socket(sock):

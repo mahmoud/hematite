@@ -62,24 +62,23 @@ def test_iopair_from_socket_nonblocking_write():
 
     _, writer = sio.iopair_from_socket(a)
 
-    def _verify_eagain(data):
-        with pytest.raises(io.BlockingIOError) as exc_info:
-            writer.write(data)
+    with pytest.raises(io.BlockingIOError) as exc_info:
+        writer.write(expected)
 
-        assert exc_info.value.characters_written < len(expected)
-        assert not writer.empty
-
-    _verify_eagain(expected)
-    # the caller should check empty prior to writing to ensure the
-    # backlog is flushed
-    _verify_eagain(None)
+    assert exc_info.value.characters_written < len(expected)
+    assert not writer.empty
 
     first = b.recv(bufsize)
+    assert len(first) == exc_info.value.characters_written
 
-    # no exception, the send buffer is clear
+    assert not writer.empty
+
+    with pytest.raises(ValueError):
+        writer.write("thrown away because backlog isn't empty")
+
     writer.write(None)
     assert writer.empty
 
     second = b.recv(bufsize)
 
-    assert first + second == expected
+    assert len(first) + len(second) == len(expected)
