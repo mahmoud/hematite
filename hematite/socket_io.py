@@ -58,7 +58,7 @@ class NonblockingSocketIO(compat.SocketIO):
                 # this may be None, but characters_written on
                 # BlockingIOError must be an integer.  so set it to 0.
                 written = 0
-                self.write_backlog += to_write
+                self.write_backlog = to_write
             else:
                 self.write_backlog = to_write[written:]
 
