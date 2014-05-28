@@ -628,17 +628,6 @@ class RequestReader(Reader):
 
         super(RequestReader, self).__init__(*args, **kwargs)
 
-    def _parse_headers(self):
-        content_length = self.headers.get('content-length')
-        if content_length:
-            self.content_length = int(content_length)
-        try:
-            encodings = self.headers.getlist('transfer-encoding')
-        except KeyError:
-            encodings = []
-
-        self.chunked = any(['chunked' in v.lower() for v in encodings])
-
     def _make_reader(self):
         LINE_END = core.LINE_END
         self.state = M.NeedLine
@@ -668,7 +657,9 @@ class RequestReader(Reader):
                 break
             self.state = state
 
-        self._parse_headers()
+        req_traits = parse_message_traits(self.headers)
+        self.chunked = req_traits.chunked
+        self.content_length = req_traits.content_length
 
         # TODO: bodies
         while True:
@@ -705,6 +696,29 @@ class ResponseWriter(Writer):
         self.state = M.Complete
 
 
+MessageTraits = namedtuple('MessageTraits', ['chunked',
+                                             'content_length',
+                                             'connection_close'])
+
+
+def parse_message_traits(headers_dict):
+    hd = headers_dict
+    content_length = hd.get('content-length')
+    if content_length:
+        content_length = int(content_length)
+    connection_close = hd.get('connection', '').lower() == 'close'
+    try:
+        tencodings = hd.getlist('transfer-encoding')
+    except KeyError:
+        tencodings = []
+    chunked = any([te.strip().lower().startswith('chunked')
+                   for te in tencodings])
+
+    return MessageTraits(chunked=chunked,
+                         content_length=content_length,
+                         connection_close=connection_close)
+
+
 class ResponseReader(Reader):
 
     def __init__(self, *args, **kwargs):
@@ -721,25 +735,6 @@ class ResponseReader(Reader):
         self.chunked = False
 
         super(ResponseReader, self).__init__(*args, **kwargs)
-
-    def _parse_headers(self):
-        content_length = self.headers.get('content-length')
-        connection = self.headers.get('connection')
-        if connection:
-            connection = connection.lower()
-        try:
-            encodings = self.headers.getlist('transfer-encoding')
-        except KeyError:
-            encodings = []
-
-        if content_length:
-            self.content_length = int(content_length)
-
-        self.connection_close = connection == 'close'
-        # TODO: strip + startswith may be more correct.
-        self.chunked = any(['chunked' in v.lower() for v in encodings])
-
-        # TODO mutual exclusion
 
     def _make_reader(self):
         LINE_END = core.LINE_END
@@ -771,7 +766,11 @@ class ResponseReader(Reader):
                 break
             self.state = state
 
-        self._parse_headers()
+        resp_traits = parse_message_traits(self.headers)
+        self.chunked = resp_traits.chunked
+        self.content_length = resp_traits.content_length
+        self.connection_close = resp_traits.connection_close
+        # TODO mutual exclusion
 
         if not self.chunked:
             self.body = datastructures.Body()
