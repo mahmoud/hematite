@@ -725,7 +725,8 @@ def parse_message_traits(headers_dict):
 class ResponseReader(Reader):
 
     def __init__(self, *args, **kwargs):
-        self.raw_response = None
+        from hematite.raw.response import RawResponse  # TODO TODO
+        self.raw_response = RawResponse()
         self.status_line = None
 
         self.headers = None
@@ -734,8 +735,8 @@ class ResponseReader(Reader):
         self.body_reader = None
         self.body = None
 
-        self.content_length = None
         self.chunked = False
+        self.content_length = None
 
         super(ResponseReader, self).__init__(*args, **kwargs)
 
@@ -751,45 +752,47 @@ class ResponseReader(Reader):
         # should ignore the CRLF.
         #
         # Assume the same for status lines
+        rresp = self.raw_response
+
         line = '\r\n'
         while LINE_END.match(line):
             t, line = yield self.state
             assert t == M.HaveLine.type
 
-        self.status_line = StatusLine.from_bytes(line, expect_newline=True)
+        rresp.status_line = StatusLine.from_bytes(line, expect_newline=True)
 
         self.state = self.headers_reader.state
         while True:
             state = self.headers_reader.send((yield self.state))
             if self.headers_reader.complete:
-                self.headers = self.headers_reader.headers
+                rresp.headers = self.headers_reader.headers
                 break
             self.state = state
 
-        resp_traits = parse_message_traits(self.headers)
-        self.chunked = resp_traits.chunked
-        self.content_length = resp_traits.content_length
-        self.connection_close = resp_traits.connection_close
+        resp_traits = parse_message_traits(rresp.headers)
+        rresp.chunked = resp_traits.chunked
+        rresp.content_length = resp_traits.content_length
+        rresp.connection_close = resp_traits.connection_close
         # TODO mutual exclusion
 
-        if not self.chunked:
-            self.body = datastructures.Body()
-            content_length = self.content_length
-            b_reader = IdentityEncodedBodyReader(self.body,
+        if not rresp.chunked:
+            rresp.body = datastructures.Body()
+            content_length = rresp.content_length
+            b_reader = IdentityEncodedBodyReader(rresp.body,
                                                  content_length=content_length)
             self.body_reader = b_reader
         else:
-            self.body = datastructures.ChunkedBody()
-            self.body_reader = ChunkEncodedBodyReader(self.body)
+            rresp.body = datastructures.ChunkedBody()
+            self.body_reader = ChunkEncodedBodyReader(rresp.body)
 
         self.state = self.body_reader.state
         while not self.complete:
             self.state = self.body_reader.send((yield self.state))
 
-        from hematite.raw.response import RawResponse  # TODO TODO
-        self.raw_response = RawResponse(status_line=self.status_line,
-                                        headers=self.headers,
-                                        body=self.body)
+        #from hematite.raw.response import RawResponse  # TODO TODO
+        #self.raw_response = RawResponse(status_line=self.status_line,
+        #                                headers=self.headers,
+        #                                body=self.body)
 
         while True:
             yield M.Complete
