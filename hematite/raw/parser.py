@@ -177,7 +177,7 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         return cls(version, status_code, reason)
 
     @classmethod
-    def from_bytes(cls, line):
+    def from_bytes(cls, line, expect_newline=False):
         r"""Create a :class:`StatusLine` from a byte string.  The trailing
         carriage return and newline are *not* matched.
 
@@ -193,6 +193,9 @@ class StatusLine(namedtuple('StatusLine', 'version status_code reason'),
         match = cls.PARSE_STATUS_LINE.match(line)
         if not match:
             raise InvalidStatusLine('Could not parse status line', line)
+        if expect_newline:
+            if not core.LINE_END.match(line[match.end():]):
+                raise InvalidStatusLine('status line did not end with [CR]LF')
         return cls.from_match(match)
 
 
@@ -244,7 +247,7 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         return cls(method, url, version)
 
     @classmethod
-    def from_bytes(cls, line):
+    def from_bytes(cls, line, expect_newline=False):
         r"""Create a :class:`RequestLine` from a byte string.  The trailing
         carriage return and new line are *not* matched.
 
@@ -265,6 +268,9 @@ class RequestLine(namedtuple('RequestLine', 'method url version'),
         match = cls.PARSE_REQUEST_LINE.match(line)
         if not match:
             raise InvalidRequestLine('Could not parse request line', line)
+        if expect_newline:
+            if not core.LINE_END.match(line[match.end():]):
+                raise InvalidStatusLine('request line did not end with [CR]LF')
         return cls.from_match(match)
 
 
@@ -644,10 +650,7 @@ class RequestReader(Reader):
             t, line = yield self.state
             assert t == M.HaveLine.type
 
-        match = RequestLine.PARSE_REQUEST_LINE.match(line)
-        self.request_line = RequestLine.from_match(match)
-        if not core.LINE_END.match(line[match.end():]):
-            raise InvalidRequestLine('Request line did not end with [CR]LF')
+        self.request_line = RequestLine.from_bytes(line, expect_newline=True)
 
         self.state = self.headers_reader.state
         while True:
@@ -753,10 +756,7 @@ class ResponseReader(Reader):
             t, line = yield self.state
             assert t == M.HaveLine.type
 
-        match = StatusLine.PARSE_STATUS_LINE.match(line)
-        self.status_line = StatusLine.from_match(match)
-        if not core.LINE_END.match(line[match.end():]):
-            raise InvalidStatusLine('Status line did not end with [CR]LF')
+        self.status_line = StatusLine.from_bytes(line, expect_newline=True)
 
         self.state = self.headers_reader.state
         while True:
