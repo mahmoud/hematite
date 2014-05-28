@@ -16,22 +16,20 @@ DEFAULT_STATUS_CODE = 200
 DEFAULT_REASON = 'OK'
 DEFAULT_HTTP_VERSION = HTTPVersion(1, 1)
 
+# Does None/None make more sense for defaults, allowing the
+# instantiation of a truly blank RawResponse?
+
 
 class RawResponse(object):
     def __init__(self, status_code=None, reason=None, headers=None, body=None,
                  http_version=None, **kwargs):
         status_line = kwargs.pop('status_line', None)
         if status_line:
-            status_code = status_line.status_code
-            reason = status_line.reason
-            http_version = status_line.version
-        if status_code is None:
-            status_code = DEFAULT_STATUS_CODE
-        self.status_code = status_code
-        self.reason = reason if reason is not None else DEFAULT_REASON  # TODO
-        if http_version is None:
-            http_version = DEFAULT_HTTP_VERSION
-        self.http_version = http_version
+            self.status_line = status_line
+        else:
+            self.status_code = status_code
+            self.reason = reason
+            self.http_version = http_version
 
         self.headers = headers or Headers()
         self.body = body
@@ -45,12 +43,20 @@ class RawResponse(object):
         if kwargs:
             raise TypeError('got unexpected kwargs: %r' % kwargs.keys())
 
-    # TODO: setter, too?
     @property
     def status_line(self):
         return StatusLine(version=self.http_version,
                           status_code=self.status_code,
                           reason=self.reason)
+
+    @status_line.setter
+    def status_line(self, val):
+        if isinstance(val, bytes):
+            val = StatusLine.from_bytes(val)
+        try:
+            self.http_version, self.status_code, self.reason = val
+        except:
+            raise TypeError('expected StatusLine or tuple, not %r' % val)
 
     def get_writer(self):
         return ResponseWriter(status_line=self.status_line,
@@ -87,9 +93,7 @@ class RawResponse(object):
                 raise RuntimeError('Unknown state %r' % (state,))
             state = reader.send(next_state)
 
-        return cls(status_line=reader.status_line,
-                   headers=reader.headers,
-                   body=reader.body)
+        return reader.raw_response
 
     def __repr__(self):
         cn = self.__class__.__name__

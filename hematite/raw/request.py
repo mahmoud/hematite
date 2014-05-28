@@ -29,11 +29,12 @@ class RawRequest(object):
             method = request_line.method
             url = request_line.url
             http_version = request_line.version
-        self.method = method if method is not None else DEFAULT_METHOD
-        self.url = url if url is not None else DEFAULT_URL
-        if http_version is None:
-            http_version = DEFAULT_HTTP_VERSION
-        self.http_version = http_version
+        else:
+            self.method = method if method is not None else DEFAULT_METHOD
+            self.url = url if url is not None else DEFAULT_URL
+            if http_version is None:
+                http_version = DEFAULT_HTTP_VERSION
+            self.http_version = http_version
 
         self.headers = headers or Headers()
         self.body = body  # TODO: bodies
@@ -45,12 +46,20 @@ class RawRequest(object):
         if kwargs:
             raise TypeError('got unexpected kwargs: %r' % kwargs.keys())
 
-    # TODO: setter for the following?
     @property
     def request_line(self):
         return RequestLine(method=self.method,
                            url=self.url,
                            version=self.http_version)
+
+    @request_line.setter
+    def request_line(self, val):
+        if isinstance(val, bytes):
+            val = RequestLine.from_bytes(val)
+        try:
+            self.method, self.url, self.http_version = val
+        except:
+            raise TypeError('expected RequestLine or tuple, not %r' % val)
 
     def get_writer(self):
         return RequestWriter(request_line=self.request_line,
