@@ -141,6 +141,7 @@ some point:
 - Access-Control-(Allow-Headers, Allow-Methods, Allow-Origin, Expose-Headers)
 - P3P
 - X-Powered-By?
+- Link (used for favicons?)
 
 
 # Event thoughts
