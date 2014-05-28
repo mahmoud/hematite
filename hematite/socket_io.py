@@ -1,3 +1,4 @@
+
 import os
 import errno
 from threading import Lock
@@ -55,8 +56,8 @@ class NonblockingSocketIO(compat.SocketIO):
             to_write = self.write_backlog if data is None else data
             written = super(NonblockingSocketIO, self).write(to_write)
             if not written:
-                # this may be None, but characters_written on
-                # BlockingIOError must be an integer.  so set it to 0.
+                # written may be None, but characters_written on
+                # BlockingIOError must be an integer. so set it to 0.
                 written = 0
                 self.write_backlog = to_write
             else:

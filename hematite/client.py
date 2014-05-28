@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import ssl
 import errno
 import socket
 
@@ -91,6 +92,11 @@ class Client(object):
         family, socktype, sockaddr = addrinfo[0], addrinfo[1], addrinfo[2:]
 
         ret = socket.socket(family, socktype)
+
+        is_ssl = request.url.startswith('https')
+        if is_ssl:
+            ret = ssl.wrap_socket(ret)
+
         if nonblocking:
             ret.setblocking(0)
         try:
@@ -103,7 +109,8 @@ class Client(object):
                                 errno.EINPROGRESS, errno.EALREADY):
                 socket.error('Unknown', conn_res)
 
-        # TODO: what's this do?
+        # djb points out that some socket error conditions are only
+        # visible with this 'one weird old trick'
         err = ret.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if err:
             raise socket.error('Unknown', err)

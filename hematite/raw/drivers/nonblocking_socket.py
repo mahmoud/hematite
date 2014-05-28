@@ -1,6 +1,9 @@
+
+import io
+import ssl
 import errno
 import socket
-import io
+
 
 from hematite.socket_io import iopair_from_socket
 from hematite.raw import core, messages as M, parser as P
@@ -28,14 +31,47 @@ class NonblockingSocketClientDriver(object):
         self.socket = sock
         self.inbound, self.outbound = iopair_from_socket(sock)
 
+        self._ssl_exc = None
+
+    @property
+    def want_read(self):
+        if self._ssl_exc and self._ssl_exc.errno == ssl.SSL_ERROR_WANT_READ:
+            return True
+        if self.writer.state == M.Complete and self.reader.state != M.Complete:
+            return True
+        return False
+
+    @property
+    def want_write(self):
+        if self._ssl_exc and self._ssl_exc.errno == ssl.SSL_ERROR_WANT_WRITE:
+            return True
+        if self.writer.state != M.Complete:  # sort of implied
+            return True
+        return False
+
     def write(self):
-        """"
+        try:
+            ret = self._write()
+        except ssl.SSLError as ssle:
+            ret = False
+            self._ssl_exc = ssle
+            if ssle.errno != ssl.SSL_ERROR_WANT_READ \
+               and ssle.errno != ssl.SSL_ERROR_WANT_WRITE:
+                raise
+        except:
+            self._ssl_exc = None
+            raise
+        else:
+            self._ssl_exc = None
+        return ret
+
+    def _write(self):
+        """
         Writes as much of the message as possible.
 
         Returns whether or not the whole message is
         complete. BlockingIOErrors are raised through.
         """
-
         if not self.outbound.empty:
             self.outbound.write(None)
 
@@ -47,7 +83,23 @@ class NonblockingSocketClientDriver(object):
         return False
 
     def read(self):
-        """"
+        try:
+            ret = self._read()
+        except ssl.SSLError as ssle:
+            ret = False
+            self._ssl_exc = ssle
+            if ssle.errno != ssl.SSL_ERROR_WANT_READ \
+               and ssle.errno != ssl.SSL_ERROR_WANT_WRITE:
+                raise
+        except:
+            self._ssl_exc = None
+            raise
+        else:
+            self._ssl_exc = None
+        return ret
+
+    def _read(self):
+        """
         Reads and parses as much of the message as possible.
 
         Returns whether or not the whole message is
@@ -71,11 +123,7 @@ class NonblockingSocketClientDriver(object):
             else:
                 raise RuntimeError('Unknown state {0}'.format(self.state))
 
-            try:
-                self.state = self.reader.send(next_state)
-            except:
-                print repr(self.inbound.read())
-                raise
+            self.state = self.reader.send(next_state)
         return True
 
     @property
