@@ -138,6 +138,16 @@ class ChunkedBody(object):
         self.data = ''.join(self.chunks)
         assert len(self.data) == length
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if len(self.chunks) == 1:
+            chunkstr = '1 chunk'
+        else:
+            chunkstr = '%s chunks' % len(self.chunks)
+        compstr = 'complete' if self.data else 'incomplete'
+        totsize = sum([len(c) for c in self.chunks])
+        return '<%s %s, %s total bytes, %s>' % (cn, chunkstr, totsize, compstr)
+
 
 class Body(object):
 
@@ -155,3 +165,12 @@ class Body(object):
     def complete(self, length):
         self.data = ''.join(self.body)
         self.nominal_length = length
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        partstr = ''
+        if len(self.body) > 1:
+            partstr = ' %s parts,' % len(self.body)
+        compstr = 'complete' if self.data else 'incomplete'
+        totsize = sum([len(p) for p in self.body])
+        return '<%s%s %s total bytes, %s>' % (cn, partstr, totsize, compstr)
