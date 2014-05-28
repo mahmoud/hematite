@@ -132,8 +132,7 @@ class _State(object):
     (NotStarted, ResolvingHost, Connecting, Sending, Receiving,
      Complete) = range(6)
 
-"""
-RawRequest conversion paradigms:
+"""RawRequest conversion paradigms:
 
 if not isinstance(req, RawRequest):
     rreq = req.to_raw_request()
@@ -142,6 +141,9 @@ if isinstance(req, Request):
     rreq = RawRequest.from_request(req)
 
 Which is more conducive to extensibility?
+
+TODO: in order to enable sending a straight RawRequest, might need an
+explicit URL field.
 """
 
 

@@ -22,21 +22,23 @@ wikipedia.org = Apache + Varnish
 
 def main():
     client = Client()
-    req = Request('GET', 'http://makuro.org/')
+    req_count = 5
+    #req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
-    #req = Request('GET', 'http://blog.hatnote.com/')
+    req = Request('GET', 'http://blog.hatnote.com/')
     kwargs = dict(client=client, request=req,
                   autoload_body=False, nonblocking=True)
-    resp = ClientResponse(**kwargs)
-    resp2 = ClientResponse(**kwargs)
+    resp_list = [ClientResponse(**kwargs) for i in range(req_count)]
+    resp = resp_list[0]
 
-    join([resp, resp2], timeout=5.0)
+    join(resp_list, timeout=5.0)
 
     print resp.raw_response
+    print [resp.raw_response.status_code for r in resp_list]
     resp.autoload_body = True
-    join([resp], timeout=1.0)
+    join(resp_list, timeout=1.0)
     print resp.raw_response.body
-    import pdb;pdb.set_trace()
+    #import pdb;pdb.set_trace()
 
 
 def main_wp():
