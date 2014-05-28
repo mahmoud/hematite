@@ -5,10 +5,8 @@ from io import BlockingIOError
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
-#from hematite.socket_io import iopair_from_socket, readline
 from hematite.request import Request
 
-from hematite.raw import messages as M
 from hematite.raw.drivers import NonblockingSocketClientDriver as NBSCD
 from hematite.raw.parser import HTTPVersion
 from hematite.raw.datastructures import Headers, Body, ChunkedBody
@@ -150,7 +148,7 @@ Which is more conducive to extensibility?
 class ClientResponse(object):
     # TODO: are we going to need want_read/want_write for SSL?
 
-    def __init__(self, client, request=None):
+    def __init__(self, client, request=None, **kwargs):
         self.client = client
         self.request = request
 
@@ -167,20 +165,18 @@ class ClientResponse(object):
         self.socket = None
         self.driver = None
         self.timings = {}
-
-        self.autoload_body = True
-        self.nonblocking = False
-        self.timeout = None
+        # TODO: need to set error and Complete state on errors
+        self.error = None
 
         self.raw_response = None
-        self._resp_body = None
+
+        self.autoload_body = kwargs.pop('autoload_body', True)
+        self.nonblocking = kwargs.pop('nonblocking', False)
+        self.timeout = kwargs.pop('timeout', None)
 
         # TODO: request body/total bytes uploaded counters
         # TODO: response body/total bytes downloaded counters
         # (for calculating progress)
-
-        # TODO: need to set error and Complete state on errors
-        self.error = None
 
     def get_data(self):
         if not self._resp_body:
@@ -249,19 +245,6 @@ class ClientResponse(object):
                 res = self.driver.read()
                 if res:
                     self.state += 1
-
-                """
-                elif state is _State.ReceiveResponseBody:
-                if not self._resp_body:
-                    headers = self.raw_response.headers
-                    self._resp_body = ClientResponseBody(headers,
-                                                         self._reader)
-                if self.autoload_body:
-                    if self._resp_body.read_body():
-                        self.state += 1
-                else:
-                    self.state += 1
-                """
             else:
                 raise RuntimeError('not in a readable state: %r' % state)
         except BlockingIOError:
@@ -270,106 +253,8 @@ class ClientResponse(object):
         # TODO: return socket
         # TODO: how to resolve socket returns with as-yet-unfetched body
         # (terminology: lazily-fetched?)
-
-    def write_request_headers(self):
-        if not self._writer.empty:
-            self._writer.write(None)
-
-        next_bit = next(self._writer_iter, M.Empty)
-        if next_bit is M.Empty:
-            return True
-        self._writer.write(next_bit.value)
-        return False
-
-    def read_response_headers(self):
-        while not self.raw_response.state == M.Complete:
-            if type(self.raw_response.state) is type(M.NeedLine):
-                # TODO: polish up the messages paradigm
-                line = readline(self._reader)
-                next_state = M.HaveLine(value=line)
-            else:
-                raise RuntimeError('Unknown state %r'
-                                   % self.raw_response.state)
-            self.raw_response.state = self.raw_response.reader.send(next_state)
-        return True  # TODO: pretty sure this is fine right?
-
-
-class ClientResponseBody(object):
-    # TODO: may merge somewhere or get a more generic name
-    # TODO: compression support goes here? how about charset decoding?
-    # TODO: callback on read complete (to release socket)
-    def __init__(self, headers, reader):
-        self.reader = reader
-        self._parts = []
-        self._data = None
-
-        is_chunked = Body(headers).chunked  # TODO
-        if is_chunked:
-            self._body = ChunkEncodedBody(headers)
-            self.read_body = self._read_response_body_chunk
-        else:
-            self._body = IdentityEncodedBody(headers)
-            self.read_body = self._read_response_body_ident
-
-    @property
-    def is_loaded(self):
-        return self._data is not None
-
-    def get_data(self):
-        if not self._data:
-            self.read_body()
-            if len(self._parts) == 1:
-                self._data = self._parts[0]
-            else:
-                self._data = ''.join(self._parts)
-        return self._data
-
-    def _read_response_body_chunk(self):
-        data = None
-        body = self._body
-        reader = self.reader
-        while not body.complete:
-            if body.state.type == M.NeedLine.type:
-                line = readline(reader)
-                next_state = M.HaveLine(value=line)
-            elif body.state.type == M.NeedData.type:
-                data = reader.read(body.state.amount)
-                if data is None:
-                    raise BlockingIOError(None, None)
-                next_state = M.HaveData(value=data)
-            elif body.state.type == M.NeedPeek.type:
-                peeked = reader.peek(body.state.amount)
-                if not peeked:
-                    raise BlockingIOError(None, None)
-                next_state = M.HavePeek(amount=peeked)
-            elif body.state.type == M.HaveData.type:
-                self._parts.append(body.state.value)
-                next_state = M.Empty
-            else:
-                raise RuntimeError('Unknown state {0}'.format(body.state))
-            body.state = body.reader.send(next_state)
-
-        assert body.complete, 'Unknown state {0}'.format(body.state)
-        return body.complete
-
-    def _read_response_body_ident(self, amt=None):
-        body = self._body
-        reader = self.reader
-        while not body.complete:
-            if body.state.type == M.NeedData.type:
-                data = reader.read(body.state.amount)
-                if data is None:
-                    raise BlockingIOError(None, None)
-                self._parts.append(data)
-                next_state = M.HaveData(value=data)
-            else:
-                raise RuntimeError('Unknown state {0}'.format(body.state))
-            body.state = body.reader.send(next_state)
-
-        assert body.complete, 'Unknown state {0}'.format(body.state)
-        return body.complete
-
-
+        # TODO: compression support goes where? how about charset decoding?
+        # TODO: callback on read complete (to release socket)
 
 
 # Thought: It's prudent to raise exceptions with unencoded

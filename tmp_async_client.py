@@ -25,11 +25,10 @@ def main():
     req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
     #req = Request('GET', 'http://blog.hatnote.com/')
-    resp = ClientResponse(client=client, request=req)
-    resp.autoload_body = False
-    resp2 = ClientResponse(client=client, request=req)
-    resp.nonblocking = True
-    resp2.nonblocking = True
+    kwargs = dict(client=client, request=req,
+                  autoload_body=False, nonblocking=True)
+    resp = ClientResponse(**kwargs)
+    resp2 = ClientResponse(**kwargs)
 
     join([resp, resp2], timeout=5.0)
 
