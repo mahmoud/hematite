@@ -21,8 +21,8 @@ def readline(io_obj, sock):
 
 class NonblockingSocketClientDriver(object):
 
-    def __init__(self, sock, (request_line, headers, body)):
-        self.writer = P.RequestWriter(request_line, headers, body)
+    def __init__(self, sock, raw_request):
+        self.writer = raw_request.get_writer()
         self.writer_iter = iter(self.writer)
         self.reader = P.ResponseReader()
         self.socket = sock
@@ -32,16 +32,21 @@ class NonblockingSocketClientDriver(object):
         if not self.outbound.empty:
             self.outbound.write(None)
 
-        to_write = next(self.writer_iter, self.writer.state)
-        if to_write is M.Complete:
-            return self.writer.complete
-        elif to_write is M.WantDisconnect:
-            self.inbound.close()
-            self.outbound.close()
-            self.socket.close()
-        else:
-            self.outbound.write(to_write.value)
-        return False
+        for state in self.writer_iter:
+            if state is M.Complete:
+                return True
+            elif state is M.WantDisconnect:
+                self.inbound.close()
+                self.outbound.close()
+                self.socket.close()
+            else:
+                print 'writing: ', repr(state)
+                try:
+                    self.outbound.write(state.value)
+                except Exception as e:
+                    print 'backlog:', repr(self.outbound.write_backlog)
+                    raise
+        return False  # returns 'is_complete'
 
     def read(self):
         self.state = self.reader.state
@@ -62,8 +67,12 @@ class NonblockingSocketClientDriver(object):
             else:
                 raise RuntimeError('Unknown state {0}'.format(self.state))
 
-            self.state = self.reader.send(next_state)
-        return self.state
+            try:
+                self.state = self.reader.send(next_state)
+            except:
+                print repr(self.inbound.read())
+                raise
+        return True
 
     @property
     def outbound_headers(self):

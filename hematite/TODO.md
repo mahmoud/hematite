@@ -16,6 +16,7 @@
 - Composable URL
 - Gzip/deflate support
 - Automatic charset/decoding handling
+- WSGI compatibility layer (from_wsgi())
 
 ## Big features
 
@@ -29,6 +30,12 @@
 - File upload
 - Chardet
 - Public Suffix recognition
+- Multipart uploads?
+
+## Parser-impacting features
+
+- 100 Continue support (client side first, server side tbd)
+- Chunked upload
 
 # Field thoughts
 

@@ -12,7 +12,8 @@ from hematite.response import ClientResponse
 
 def main():
     client = Client()
-    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
+    req = Request('GET', 'http://makuro.org/')
+    #req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
     #req = Request('GET', 'http://hatnote.com/')
     resp = ClientResponse(client=client, request=req)
     resp2 = ClientResponse(client=client, request=req)
