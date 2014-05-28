@@ -29,6 +29,13 @@ class NonblockingSocketClientDriver(object):
         self.inbound, self.outbound = iopair_from_socket(sock)
 
     def write(self):
+        """"
+        Writes as much of the message as possible.
+
+        Returns whether or not the whole message is
+        complete. BlockingIOErrors are raised through.
+        """
+
         if not self.outbound.empty:
             self.outbound.write(None)
 
@@ -40,15 +47,16 @@ class NonblockingSocketClientDriver(object):
                 self.outbound.close()
                 self.socket.close()
             else:
-                print 'writing: ', repr(state)
-                try:
-                    self.outbound.write(state.value)
-                except Exception as e:
-                    print 'backlog:', repr(self.outbound.write_backlog)
-                    raise
+                self.outbound.write(state.value)
         return False  # returns 'is_complete'
 
     def read(self):
+        """"
+        Reads and parses as much of the message as possible.
+
+        Returns whether or not the whole message is
+        complete. BlockingIOErrors are raised through.
+        """
         self.state = self.reader.state
         while not self.reader.complete:
             if self.state.type == M.NeedLine.type:
