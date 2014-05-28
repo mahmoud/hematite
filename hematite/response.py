@@ -6,13 +6,13 @@ from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
 #from hematite.socket_io import iopair_from_socket, readline
+from hematite.request import Request
 
 from hematite.raw import messages as M
 from hematite.raw.drivers import NonblockingSocketClientDriver as NBSCD
-from hematite.raw.parser import (StatusLine,
-                                 HTTPVersion)
+from hematite.raw.parser import HTTPVersion
 from hematite.raw.datastructures import Headers, Body, ChunkedBody
-from hematite.raw.response import RawResponse
+from hematite.raw import RawResponse, RawRequest
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -134,6 +134,18 @@ class _State(object):
     (NotStarted, ResolvingHost, Connecting, Sending, Receiving,
      Complete) = range(6)
 
+"""
+RawRequest conversion paradigms:
+
+if not isinstance(req, RawRequest):
+    rreq = req.to_raw_request()
+
+if isinstance(req, Request):
+    rreq = RawRequest.from_request(req)
+
+Which is more conducive to extensibility?
+"""
+
 
 class ClientResponse(object):
     # TODO: are we going to need want_read/want_write for SSL?
@@ -141,7 +153,16 @@ class ClientResponse(object):
     def __init__(self, client, request=None):
         self.client = client
         self.request = request
-        self.raw_request = request.to_raw_request()
+
+        if request is None:
+            self.raw_request = None  # TODO
+        elif isinstance(request, RawRequest):
+            self.raw_request = request
+        elif isinstance(request, Request):
+            self.raw_request = request.to_raw_request()
+        else:
+            raise TypeError('expected request to be a Request or RawRequest')
+
         self.state = _State.NotStarted
         self.driver = None
         self.socket = None
@@ -191,7 +212,7 @@ class ClientResponse(object):
         # TODO: what if body fetching is deferred
 
     def do_write(self):
-        if self.request is None:
+        if self.raw_request is None:
             raise ValueError('request not set')
         state, request = self.state, self.request
 

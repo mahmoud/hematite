@@ -27,6 +27,7 @@ def main():
     # true for wikipedia:
     # assert resp.raw_response.headers != resp2.raw_response.headers
     #assert resp.get_data() == resp2.get_data()
+    print resp.raw_response
     import pdb;pdb.set_trace()
 
 
@@ -46,7 +47,7 @@ def join(reqs, timeout=5.0, raise_exc=True,
         if not (readers or writers):
             break
         if time.time() > cutoff_time:
-            # TODO: is time.time monotonic?
+            # TODO: is time.time monotonic? no, so... time.clock()?
             break
 
         if readers or selectable_writers:
