@@ -1,8 +1,10 @@
+import os
+import errno
+from io import BlockingIOError
 import re
 
 # TODO: make configurable
 MAXLINE = 2 ** 19
-MAXHEADERBYTES = MAXLINE * 100
 
 
 def _cut(s, to=MAXLINE):
@@ -10,26 +12,6 @@ def _cut(s, to=MAXLINE):
         return s
     return s[:to]
 
-
-class _callable_staticmethod(staticmethod):
-
-    def __call__(self, *args, **kwargs):
-        return self.__func__(*args, **kwargs)
-
-
-def advancer(regex, flags=0):
-    r = re.compile(regex, flags)
-
-    @_callable_staticmethod
-    def advance(string, matchonly=False):
-        m = r.match(string)
-        if matchonly:
-            return m
-        if m:
-            return string[m.end():], m
-        return string, None
-
-    return advance
 
 # RFC 2616 p.17
 _CRLF = '\r\n'
@@ -53,10 +35,6 @@ TEXT = re.compile('[^' + _TEXT_EXCLUDE + ']+')
 _LINE_END = '(?:(?:\r\n)|\n)'
 LINE_END = re.compile(_LINE_END, re.DOTALL)
 HEADERS_END = re.compile((_LINE_END * 2), re.DOTALL)
-HAS_LINE_END = advancer('.*?' + _LINE_END, re.DOTALL)
-HAS_HEADERS_END = advancer('.*?' + HEADERS_END.pattern, re.DOTALL)
-IS_LINE_END = advancer(LINE_END.pattern, re.DOTALL)
-IS_HEADERS_END = advancer(HEADERS_END.pattern, re.DOTALL)
 
 
 class HTTPException(Exception):
@@ -92,3 +70,11 @@ def readline(io_obj):
     elif len(line) == MAXLINE and not LINE_END.match(line):
         raise OverlongRead
     return line
+
+
+def eagain(characters_written=0):
+    # TODO: no os.strerror on windows
+    err = BlockingIOError(errno.EAGAIN,
+                          os.strerror(errno.EAGAIN))
+    err.characters_written = characters_written
+    return err

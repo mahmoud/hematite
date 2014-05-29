@@ -1,18 +1,8 @@
-
-import os
-import errno
 from threading import Lock
-from io import BlockingIOError, BufferedReader
+from io import BufferedReader
 
 import hematite.compat as compat
 import hematite.raw.core as core
-
-
-def eagain(characters_written=0):
-    err = BlockingIOError(errno.EAGAIN,
-                          os.strerror(errno.EAGAIN))
-    err.characters_written = characters_written
-    return err
 
 
 class NonblockingBufferedReader(BufferedReader):
@@ -30,7 +20,7 @@ class NonblockingBufferedReader(BufferedReader):
 
             self.linebuffer.append(line)
             if not core.LINE_END.search(line):
-                raise eagain()
+                raise core.eagain()
             line, self.linebuffer = ''.join(self.linebuffer), []
             return line
 
@@ -64,7 +54,7 @@ class NonblockingSocketIO(compat.SocketIO):
                 self.write_backlog = to_write[written:]
 
             if self.write_backlog:
-                raise eagain(characters_written=written)
+                raise core.eagain(characters_written=written)
 
 
 def iopair_from_socket(sock):

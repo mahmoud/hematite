@@ -7,7 +7,8 @@ from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
 from hematite.request import Request
 
-from hematite.raw.drivers import NonblockingSocketClientDriver as NBSCD
+from hematite.raw.drivers.socket_driver import SSLSocketClientDriver as NBSCD
+# from hematite.raw.drivers.nonblocking_socket import NonblockingSocketClientDriver as NBSCD
 from hematite.raw.parser import HTTPVersion
 from hematite.raw.datastructures import Headers, Body, ChunkedBody
 from hematite.raw import RawResponse, RawRequest

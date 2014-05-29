@@ -1,4 +1,3 @@
-
 import io
 import ssl
 import errno
@@ -119,7 +118,7 @@ class NonblockingSocketClientDriver(object):
                 peeked = self.inbound.peek(self.state.amount)
                 if not peeked:
                     raise io.BlockingIOError(None, None)
-                next_state = M.HavePeek(amount=peeked)
+                next_state = M.HavePeek(value=peeked)
             else:
                 raise RuntimeError('Unknown state {0}'.format(self.state))
 

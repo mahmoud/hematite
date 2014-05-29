@@ -21,7 +21,7 @@ def make_message(name, *fields):
 
 HaveData = make_message('HaveData', 'value')
 HaveLine = make_message('HaveLine', 'value')
-HavePeek = make_message('HavePeek', 'amount')
+HavePeek = make_message('HavePeek', 'value')
 
 NeedData = make_message('NeedData', 'amount')
 NeedLine = make_message('NeedLine', 'none')(None)

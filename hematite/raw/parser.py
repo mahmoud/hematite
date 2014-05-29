@@ -13,6 +13,9 @@ from hematite.raw import messages as M
 
 _MISSING = make_sentinel()
 
+MAXHEADERBYTES = core.MAXLINE * 10
+MAXCHUNK = core.MAXLINE * 20
+
 
 class HTTPParseException(core.HTTPException):
     """Raised when an error occurs while parsing an HTTP message"""
@@ -356,7 +359,7 @@ class HeadersReader(Reader):
 
     def _make_reader(self):
         prev_key = _MISSING
-        while self.bytes_read < core.MAXHEADERBYTES and not self.complete:
+        while self.bytes_read < MAXHEADERBYTES and not self.complete:
             self.state = M.NeedLine
             t, line = yield self.state
             assert t == M.HaveLine.type
@@ -512,10 +515,10 @@ class ChunkEncodedBodyReader(Reader):
             if not IS_HEX.match(chunk_header):
                 raise InvalidChunk('Could not read chunk header', chunk_header)
 
-            # trailing CLRF?
+            # trailing CRLF?
             self.chunk_length = int(chunk_header, 16)
 
-            if self.chunk_length > core.MAXLINE:
+            if self.chunk_length > MAXCHUNK:
                 raise InvalidChunk('Requested too large a chunk',
                                    self.chunk_length)
 
