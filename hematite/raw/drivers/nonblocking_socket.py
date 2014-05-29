@@ -35,16 +35,16 @@ class NonblockingSocketClientDriver(object):
 
     @property
     def want_read(self):
-        if self._ssl_exc and self._ssl_exc.errno == ssl.SSL_ERROR_WANT_READ:
-            return True
+        if self._ssl_exc:
+            return self._ssl_exc.errno == ssl.SSL_ERROR_WANT_READ
         if self.writer.state == M.Complete and self.reader.state != M.Complete:
             return True
         return False
 
     @property
     def want_write(self):
-        if self._ssl_exc and self._ssl_exc.errno == ssl.SSL_ERROR_WANT_WRITE:
-            return True
+        if self._ssl_exc:
+            return self._ssl_exc.errno == ssl.SSL_ERROR_WANT_WRITE
         if self.writer.state != M.Complete:  # sort of implied
             return True
         return False

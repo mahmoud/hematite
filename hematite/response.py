@@ -200,17 +200,21 @@ class ClientResponse(object):
 
     @property
     def want_write(self):
-        return self.state <= _State.Sending
+        driver = self.driver
+        if not driver:
+            return True  # to resolve hosts and connect
+        return driver.want_write
 
     @property
     def want_read(self):
-        if self.state != _State.Receiving:
+        driver = self.driver
+        if not driver:
             return False
-        elif not self.autoload_body and self.driver.inbound_headers_completed:
-            return False
-        else:
+        if driver.want_read:
+            if not self.autoload_body and driver.inbound_headers_completed:
+                return False
             return True
-        # TODO: what if body fetching is deferred
+        return False
 
     def do_write(self):
         if self.raw_request is None:
@@ -218,6 +222,7 @@ class ClientResponse(object):
         state, request = self.state, self.request
 
         # TODO: BlockingIOErrors for DNS/connect?
+        # TODO: SSLErrors on connect? (SSL is currently inside the driver)
         try:
             if state is _State.NotStarted:
                 self.state += 1
