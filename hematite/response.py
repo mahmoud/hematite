@@ -7,9 +7,8 @@ from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
 from hematite.request import Request
 
-from hematite.raw.drivers.socket_driver import SSLSocketClientDriver as NBSCD
-# from hematite.raw.drivers.nonblocking_socket import NonblockingSocketClientDriver as NBSCD
-from hematite.raw.parser import HTTPVersion
+from hematite.raw.drivers import SSLSocketDriver as NBSCD
+from hematite.raw.parser import HTTPVersion, ResponseReader
 from hematite.raw.datastructures import Headers, Body, ChunkedBody
 from hematite.raw import RawResponse, RawRequest
 
@@ -234,7 +233,9 @@ class ClientResponse(object):
                 self.socket = self.client.get_socket(request,
                                                      self.addrinfo,
                                                      self.nonblocking)
-                self.driver = NBSCD(self.socket, self.raw_request)
+                self.driver = NBSCD(self.socket,
+                                    reader=ResponseReader(),
+                                    writer=self.raw_request.get_writer())
                 self.state += 1
             elif state is _State.Sending:
                 if self.driver.write():
