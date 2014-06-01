@@ -25,9 +25,8 @@ def main(url, number, output):
     #req = Request('GET', 'http://hatnote.com/')
     # req = Request('GET', 'http://blog.hatnote.com/')
     req = Request('GET', url)
-    kwargs = dict(client=client, request=req,
-                  autoload_body=False, nonblocking=True)
-    resp_list = [ClientResponse(**kwargs) for i in range(number)]
+    kwargs = dict(request=req, autoload_body=False, async=True)
+    resp_list = [client.request(**kwargs) for i in range(number)]
     resp = resp_list[0]
 
     join(resp_list, timeout=5.0)

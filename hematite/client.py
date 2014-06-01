@@ -5,9 +5,13 @@ import errno
 import socket
 from io import BlockingIOError
 
+from hematite.async import join as async_join
 from hematite.request import Request, RawRequest
 from hematite.raw.parser import ResponseReader
 from hematite.raw.drivers import SSLSocketDriver
+
+
+DEFAULT_TIMEOUT = 5.0
 
 
 class Client(object):
@@ -83,12 +87,24 @@ class Client(object):
 
         return ret
 
+    def request(self,
+                request,
+                async=False,
+                autoload_body=True,
+                timeout=DEFAULT_TIMEOUT):
+        # TODO: kwargs for raise_exc, follow_redirects
+        kw = dict(client=self, request=request, autoload_body=autoload_body)
+        client_resp = ClientResponse(**kw)
+        if async:
+            return client_resp
+        return async_join([client_resp], timeout=timeout)
+
 
 class Operation(object):
     def __init__(self, method):
         self.method = method
 
-    def __call__(self, *a, **kw):
+    def __call__(self, url=None, data=None, request=None, **kw):
         pass
 
     def async(self, *a, **kw):
