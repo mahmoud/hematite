@@ -8,7 +8,6 @@ from compat import (unicode, OrderedMultiDict, BytestringHelper)
 """
  - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
- - IRI encoding
  - support empty port (e.g., http://gweb.com:/)
 """
 
@@ -193,6 +192,10 @@ def requote(url):
 """
 
 
+def percent_decode(bytestr):
+    pass
+
+
 class QueryArgDict(OrderedMultiDict):
     # TODO: caching
     # TODO: self.update_extend_from_string()?
@@ -226,6 +229,7 @@ class QueryArgDict(OrderedMultiDict):
 class URL(BytestringHelper):
     _attrs = ('scheme', 'username', 'password', 'family',
               'host', 'port', 'path', 'query', 'fragment')
+    _quotable_attrs = ('username', 'password', 'path', 'query')  # fragment?
 
     def __init__(self, url_str=None, encoding=None, strict=False):
         encoding = encoding or DEFAULT_ENCODING
@@ -240,7 +244,10 @@ class URL(BytestringHelper):
         _d = unicode()
         self.params = _d  # TODO: support path params?
         for attr in self._attrs:
-            setattr(self, attr, url_dict.get(attr, _d) or _d)
+            val = url_dict.get(attr, _d) or _d
+            if attr in self._quotable_attrs and '%' in val:
+                val = unquote(val)
+            setattr(self, attr, val)
         self.args = QueryArgDict.from_string(self.query)
 
     @property
@@ -249,7 +256,11 @@ class URL(BytestringHelper):
 
     @property
     def http_request_url(self):  # TODO: name
-        return ''.join([self.path, self.get_query_string()])
+        parts = [escape_path(self.path)]
+        query_string = self.get_query_string(to_bytes=True)
+        if query_string:
+            parts.append(query_string)
+        return '?'.join(parts)
 
     @property
     def http_request_host(self):  # TODO: name
