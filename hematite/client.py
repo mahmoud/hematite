@@ -12,9 +12,43 @@ from hematite.raw.drivers import SSLSocketDriver
 
 
 DEFAULT_TIMEOUT = 5.0
+CLIENT_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE',
+                  'TRACE', 'OPTIONS', 'PATCH']  # CONNECT intentionally omitted
+
+
+class ClientOperation(object):
+    def __init__(self, client, method):
+        self.client = client
+        self.method = method
+
+    def __call__(self, url, body=None):
+        req = Request(self.method, url, body=body)
+        return self.client.request(request=req)
+
+    def async(self, url, body=None):
+        req = Request(self.method, url, body=body)
+        return self.client.request(request=req, async=True)
+
+
+class UnboundClientOperation(object):
+    def __init__(self, method):
+        self.method = method
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return ClientOperation(client=obj, method=self.method)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(method=%r)' % (cn, self.method)
 
 
 class Client(object):
+
+    for client_method in CLIENT_METHODS:
+        locals()[client_method.lower()] = UnboundClientOperation('GET')
+    del client_method
 
     def get_addrinfo(self, request):
         # TODO: call from/merge with get_socket? would lose timing info
@@ -97,21 +131,8 @@ class Client(object):
         client_resp = ClientResponse(**kw)
         if async:
             return client_resp
-        return async_join([client_resp], timeout=timeout)
-
-
-class Operation(object):
-    def __init__(self, method):
-        self.method = method
-
-    def __call__(self, url=None, data=None, request=None, **kw):
-        pass
-
-    def async(self, *a, **kw):
-        pass
-
-    def _call(self, args, kwargs):
-        pass
+        async_join([client_resp], timeout=timeout)
+        return client_resp
 
 
 class _OldState(object):
