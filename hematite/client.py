@@ -3,6 +3,11 @@
 import ssl
 import errno
 import socket
+from io import BlockingIOError
+
+from hematite.request import Request, RawRequest
+from hematite.raw.parser import ResponseReader
+from hematite.raw.drivers import SSLSocketDriver
 
 
 class Client(object):
@@ -91,3 +96,162 @@ class Operation(object):
 
     def _call(self, args, kwargs):
         pass
+
+
+class _OldState(object):
+    # TODO: ssl_connect?
+
+    (NotStarted, LookupHost, Connect, SendRequestHeaders, SendRequestBody,
+     ReceiveResponseHeaders, ReceiveResponseBody, Complete) = range(8)
+
+    # Alternate schemes:
+    #
+    # Past tense:
+    # NotStarted, Started, HostResolved, Connected, RequestEnvelopeSent,
+    # RequestSent, ResponseStarted, ResponseEnvelopeComplete, ResponseComplete
+    #
+    # Gerunds:
+    # None, ResolvingHost, Connecting, SendingRequestEnvelope,
+    # SendingRequestContent, Waiting, ReceivingResponse,
+    # ReceivingResponseContent, Complete
+
+
+class _State(object):
+    # TODO: Securing/Handshaking
+    # TODO: WaitingForContinue  # 100 Continue that is
+    (NotStarted, ResolvingHost, Connecting, Sending, Receiving,
+     Complete) = range(6)
+
+"""RawRequest conversion paradigms:
+
+if not isinstance(req, RawRequest):
+    rreq = req.to_raw_request()
+
+if isinstance(req, Request):
+    rreq = RawRequest.from_request(req)
+
+Which is more conducive to extensibility?
+
+TODO: in order to enable sending a straight RawRequest, might need an
+explicit URL field.
+"""
+
+
+class ClientResponse(object):
+    # TODO: are we going to need want_read/want_write for SSL?
+
+    def __init__(self, client, request=None, **kwargs):
+        self.client = client
+        self.request = request
+
+        if request is None:
+            self.raw_request = None  # TODO
+        elif isinstance(request, RawRequest):
+            self.raw_request = request
+        elif isinstance(request, Request):
+            self.raw_request = request.to_raw_request()
+        else:
+            raise TypeError('expected request to be a Request or RawRequest')
+
+        self.state = _State.NotStarted
+        self.socket = None
+        self.driver = None
+        self.timings = {}
+        # TODO: need to set error and Complete state on errors
+        self.error = None
+
+        self.raw_response = None
+
+        self.autoload_body = kwargs.pop('autoload_body', True)
+        self.nonblocking = kwargs.pop('nonblocking', False)
+        self.timeout = kwargs.pop('timeout', None)
+
+        # TODO: request body/total bytes uploaded counters
+        # TODO: response body/total bytes downloaded counters
+        # (for calculating progress)
+
+    def get_data(self):
+        if not self._resp_body:
+            return None
+        return self._resp_body.get_data()
+
+    def fileno(self):
+        if self.socket:
+            return self.socket.fileno()
+        return None  # or raise an exception?
+
+    @property
+    def semantic_state(self):
+        return ('TBI', 'TBI details')
+
+    @property
+    def is_complete(self):
+        return self.state == _State.Complete
+
+    @property
+    def want_write(self):
+        driver = self.driver
+        if not driver:
+            return True  # to resolve hosts and connect
+        return driver.want_write
+
+    @property
+    def want_read(self):
+        driver = self.driver
+        if not driver:
+            return False
+        if driver.want_read:
+            if not self.autoload_body and driver.inbound_headers_completed:
+                return False
+            return True
+        return False
+
+    def do_write(self):
+        if self.raw_request is None:
+            raise ValueError('request not set')
+        state, request = self.state, self.request
+
+        # TODO: BlockingIOErrors for DNS/connect?
+        # TODO: SSLErrors on connect? (SSL is currently inside the driver)
+        try:
+            if state is _State.NotStarted:
+                self.state += 1
+            elif state is _State.ResolvingHost:
+                self.addrinfo = self.client.get_addrinfo(request)
+                self.state += 1
+            elif state is _State.Connecting:
+                self.socket = self.client.get_socket(request,
+                                                     self.addrinfo,
+                                                     self.nonblocking)
+                writer = self.raw_request.get_writer()
+                self.driver = SSLSocketDriver(self.socket,
+                                              reader=ResponseReader(),
+                                              writer=writer)
+                self.state += 1
+            elif state is _State.Sending:
+                if self.driver.write():
+                    self.state += 1
+            else:
+                raise RuntimeError('not in a writable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_write
+
+    def do_read(self):
+        state = self.state
+        try:
+            if state is _State.Receiving:
+                self.raw_response = self.driver.reader.raw_response
+                res = self.driver.read()
+                if res:
+                    self.state += 1
+            else:
+                raise RuntimeError('not in a readable state: %r' % state)
+        except BlockingIOError:
+            return False
+        return self.want_read
+        # TODO: return socket
+        # TODO: how to resolve socket returns with as-yet-unfetched body
+        # (terminology: lazily-fetched?)
+        # TODO: compression support goes where? how about charset decoding?
+        # TODO: callback on read complete (to release socket)

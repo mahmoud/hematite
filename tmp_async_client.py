@@ -1,10 +1,7 @@
-import time
-import select
-import sys
 
-from hematite.client import Client
+from hematite.async import join
+from hematite.client import Client, ClientResponse
 from hematite.request import Request
-from hematite.response import ClientResponse
 
 # TODO: noticed that sometimes RequestLine has .url = URL object,
 # other times a string
@@ -18,6 +15,8 @@ hatnote.com = newish Nginx, issuing a redirect
 blog.hatnote.com = ?? (tumblr)
 wikipedia.org = Apache + Varnish
 """
+
+DEFAULT_URL = 'https://en.wikipedia.org/wiki/Main_Page'
 
 
 def main(url, number, output):
@@ -47,53 +46,11 @@ def main(url, number, output):
     # import pdb;pdb.set_trace()
 
 
-def join(reqs, timeout=5.0, raise_exc=True,
-         follow_redirects=None, select_timeout=0.05):
-    ret = list(reqs)
-    cutoff_time = time.time() + timeout
-
-    while True:
-        readers = [r for r in reqs if r.want_read]
-        writers = [r for r in reqs if r.want_write]
-
-        # forced writers are e.g., resolving/connecting, don't have sockets yet
-        forced_writers = [r for r in writers if r.fileno() is None]
-        selectable_writers = [r for r in writers if r.fileno() is not None]
-
-        if not (readers or writers):
-            break
-        if time.time() > cutoff_time:
-            # TODO: is time.time monotonic? no, so... time.clock()?
-            break
-
-        if readers or selectable_writers:
-            read_ready, write_ready, _ = select.select(readers,
-                                                       selectable_writers,
-                                                       [],
-                                                       select_timeout)
-            write_ready.extend(forced_writers)
-        else:
-            read_ready = []
-            write_ready = forced_writers
-
-        for wr in write_ready:
-            while True:
-                _keep_writing = wr.do_write()
-                if not _keep_writing:
-                    break
-        for rr in read_ready:
-            while True:
-                _keep_reading = rr.do_read()
-                if not _keep_reading:
-                    break
-    return ret
-
-
 if __name__ == '__main__':
     import argparse
 
     a = argparse.ArgumentParser()
-    a.add_argument('url', default='https://en.wikipedia.org/wiki/Main_Page')
+    a.add_argument('url', nargs='?', default=DEFAULT_URL)
     a.add_argument('--number', '-n', type=int, default=10)
     a.add_argument('--output', '-o', default=None,
                    help='path to output file: "-" means stdout')
