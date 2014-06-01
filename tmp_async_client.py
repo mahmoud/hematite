@@ -23,10 +23,11 @@ wikipedia.org = Apache + Varnish
 def main():
     client = Client()
     req_count = 5
-    req = Request('GET', 'http://makuro.org/')
+    #req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
     # req = Request('GET', 'http://blog.hatnote.com/')
-    # req = Request('GET', 'https://en.wikipedia.org/wiki/Main_Page')
+    #req = Request('GET', 'https://en.wikipedia.org/wiki/Main_Page')
+    req = Request('GET', 'http://twitter.com/')
     kwargs = dict(client=client, request=req,
                   autoload_body=False, nonblocking=True)
     resp_list = [ClientResponse(**kwargs) for i in range(req_count)]
@@ -39,6 +40,7 @@ def main():
     resp.autoload_body = True
     join(resp_list, timeout=1.0)
     print resp.raw_response.body
+    print resp.raw_response.body.data[-100:]
     #import pdb;pdb.set_trace()
 
 

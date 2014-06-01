@@ -17,6 +17,9 @@ DEFAULT_METHOD = 'GET'
 DEFAULT_URL = '/'
 DEFAULT_HTTP_VERSION = HTTPVersion(1, 1)
 
+# NOTE on `host_url`/`url` separation: `host_url` is only used for
+# connection creation
+
 
 class RawRequest(object):
     # TODO: is this a good pattern at this level?
@@ -29,12 +32,12 @@ class RawRequest(object):
             method = request_line.method
             url = request_line.url
             http_version = request_line.version
-        else:
-            self.method = method if method is not None else DEFAULT_METHOD
-            self.url = url if url is not None else DEFAULT_URL
-            if http_version is None:
-                http_version = DEFAULT_HTTP_VERSION
-            self.http_version = http_version
+        self.method = method if method is not None else DEFAULT_METHOD
+        self.url = url if url is not None else DEFAULT_URL
+        self.host_url = kwargs.pop('host_url', url)
+        if http_version is None:
+            http_version = DEFAULT_HTTP_VERSION
+        self.http_version = http_version
 
         self.headers = headers or Headers()
         self.body = body  # TODO: bodies
