@@ -17,7 +17,7 @@ class RawRequest(object):
     _writer_class = RequestWriter
 
     def __init__(self, method=None, url=None, headers=None, body=None,
-                 http_version=None, **kwargs):  # TODO: http_version to kwargs?
+                 http_version=None, **kwargs):
         request_line = kwargs.pop('request_line', None)
         if request_line:
             method = request_line.method
@@ -87,6 +87,4 @@ class RawRequest(object):
                 raise RuntimeError('Unknown state %r' % (state,))
             state = reader.send(next_state)
 
-        return cls(request_line=reader.request_line,
-                   headers=reader.headers,
-                   body=reader.body)
+        return reader.raw_request

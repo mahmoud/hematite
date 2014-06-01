@@ -57,6 +57,8 @@ of the object, or should they be set to None? Usage will probably
 tell; if there's a lot of if checking and/or annoying imports, we can
 address it.
 
+- No way to infer scheme (http/https) from what's on the wire :/
+
 ## HeaderValueWrappers
 
 - CacheControl

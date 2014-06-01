@@ -34,6 +34,8 @@ class Request(object):
                 _url.family, _url.host, _url.port = family, host, port
         if not host_header and _url.host:
             self.host = _url.http_request_host
+        if not _url.scheme:
+            _url.scheme = DEFAULT_SCHEME
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)

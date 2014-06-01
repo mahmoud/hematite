@@ -31,17 +31,17 @@ def _cmpable_req(req_text):
 
 
 def test_basic_req_url():
-    req = Request.from_string(BASIC_REQ)
+    req = Request.from_bytes(BASIC_REQ)
     assert req.url.encode() == 'http://tooxols.ietf.org/html/rfc3986'
 
 
 def test_basic_req():
-    req = Request.from_string(BASIC_REQ)
-    assert req.encode() == BASIC_REQ
+    req = Request.from_bytes(BASIC_REQ)
+    assert req.to_bytes() == BASIC_REQ
 
 
 def test_wikipedia_req():
-    req = Request.from_string(WP_REQ)
+    req = Request.from_bytes(WP_REQ)
     assert req.connection == 'keep-alive'
-    re_req = req.encode()
+    re_req = req.to_bytes()
     assert _cmpable_req(re_req) == _cmpable_req(WP_REQ)

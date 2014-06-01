@@ -627,21 +627,21 @@ class RequestWriter(Writer):
 
 class RequestReader(Reader):
     def __init__(self, *args, **kwargs):
-        self.request_line = None
-        self.headers = None
-        self.body = None
+        from hematite.raw.request import RawRequest  # TODO TODO
+        self.raw_request = RawRequest()
 
         self.headers_reader = HeadersReader()
         self.body_reader = None
 
-        self.content_length = None
         self.chunked = False
+        self.content_length = None
 
         super(RequestReader, self).__init__(*args, **kwargs)
 
     def _make_reader(self):
         LINE_END = core.LINE_END
         self.state = M.NeedLine
+        rreq = self.raw_request
 
         # 4.1: In the interest of robustness, servers SHOULD
         # ignore any empty line(s) received where a
@@ -655,17 +655,17 @@ class RequestReader(Reader):
             t, line = yield self.state
             assert t == M.HaveLine.type
 
-        self.request_line = RequestLine.from_bytes(line, expect_newline=True)
+        rreq.request_line = RequestLine.from_bytes(line, expect_newline=True)
 
         self.state = self.headers_reader.state
         while True:
             state = self.headers_reader.send((yield self.state))
             if self.headers_reader.complete:
-                self.headers = self.headers_reader.headers
+                rreq.headers = self.headers_reader.headers
                 break
             self.state = state
 
-        req_traits = parse_message_traits(self.headers)
+        req_traits = parse_message_traits(rreq.headers)
         self.chunked = req_traits.chunked
         self.content_length = req_traits.content_length
 
@@ -744,6 +744,7 @@ class ResponseReader(Reader):
     def _make_reader(self):
         LINE_END = core.LINE_END
         self.state = M.NeedLine
+        rresp = self.raw_response
 
         # 4.1: In the interest of robustness, servers SHOULD
         # ignore any empty line(s) received where a
@@ -753,8 +754,6 @@ class ResponseReader(Reader):
         # should ignore the CRLF.
         #
         # Assume the same for status lines
-        rresp = self.raw_response
-
         line = '\r\n'
         while LINE_END.match(line):
             t, line = yield self.state
