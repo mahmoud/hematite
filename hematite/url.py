@@ -9,7 +9,6 @@ from compat import (unicode, OrderedMultiDict, BytestringHelper)
 """
  - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
- - IRI encoding
  - support empty port (e.g., http://gweb.com:/)
 """
 
@@ -173,31 +172,6 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     return gs
 
 
-"""
-def unquote_unreserved(url):
-    '''
-    Un-escape any percent-escape sequences in a URI that are unreserved
-    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
-    '''
-    parts = url.split('%')
-    for i in range(1, len(parts)):
-        h = parts[i][0:2]
-        if len(h) == 2 and h.isalnum():
-            c = chr(int(h, 16))
-            if c in _UNRESERVED_CHARS:
-                parts[i] = c + parts[i][2:]
-            else:
-                parts[i] = '%' + parts[i]
-        else:
-            parts[i] = '%' + parts[i]
-    return ''.join(parts)
-
-
-def requote(url):
-    return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
-"""
-
-
 class QueryArgDict(OrderedMultiDict):
     # TODO: caching
     # TODO: self.update_extend_from_string()?
@@ -231,6 +205,7 @@ class QueryArgDict(OrderedMultiDict):
 class URL(BytestringHelper):
     _attrs = ('scheme', 'username', 'password', 'family',
               'host', 'port', 'path', 'query', 'fragment')
+    _quotable_attrs = ('username', 'password', 'path', 'query')  # fragment?
 
     def __init__(self, url_str=None, encoding=None, strict=False):
         encoding = encoding or DEFAULT_ENCODING
@@ -245,7 +220,10 @@ class URL(BytestringHelper):
         _d = unicode()
         self.params = _d  # TODO: support path params?
         for attr in self._attrs:
-            setattr(self, attr, url_dict.get(attr, _d) or _d)
+            val = url_dict.get(attr, _d) or _d
+            if attr in self._quotable_attrs and '%' in val:
+                val = unquote(val)
+            setattr(self, attr, val)
         self.args = QueryArgDict.from_string(self.query)
 
     @property
@@ -254,7 +232,11 @@ class URL(BytestringHelper):
 
     @property
     def http_request_url(self):  # TODO: name
-        return ''.join([self.path, self.get_query_string()])
+        parts = [escape_path(self.path)]
+        query_string = self.get_query_string(to_bytes=True)
+        if query_string:
+            parts.append(query_string)
+        return '?'.join(parts)
 
     @property
     def http_request_host(self):  # TODO: name
@@ -366,7 +348,7 @@ _asciire = re.compile('([\x00-\x7f]+)')
 
 
 def unquote(s, encoding=DEFAULT_ENCODING):
-    """unquote('abc%20def') -> 'abc def'."""
+    "unquote('abc%20def') -> 'abc def'. aka percent decoding."
     if isinstance(s, unicode):
         if '%' not in s:
             return s

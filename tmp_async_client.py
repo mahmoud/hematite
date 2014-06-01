@@ -20,7 +20,7 @@ wikipedia.org = Apache + Varnish
 DEFAULT_URL = 'https://en.wikipedia.org/wiki/Main_Page'
 
 
-def main(url, number, output):
+def main(url, number, output, do_pdb=False):
     client = Client(profile=HematiteProfile())
     # req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
@@ -44,7 +44,9 @@ def main(url, number, output):
     elif output:
         with open(output, 'w') as f:
             f.write(resp.raw_response.body.data)
-    # import pdb;pdb.set_trace()
+    if do_pdb:
+        import pdb
+        pdb.set_trace()
 
 
 if __name__ == '__main__':
@@ -55,10 +57,11 @@ if __name__ == '__main__':
     a.add_argument('--number', '-n', type=int, default=10)
     a.add_argument('--output', '-o', default=None,
                    help='path to output file: "-" means stdout')
+    a.add_argument('--pdb', action='store_true', default=True)
 
     args = a.parse_args()
 
-    main(args.url, args.number, args.output)
+    main(args.url, args.number, args.output, args.pdb)
 
 
 class Joinable(object):
