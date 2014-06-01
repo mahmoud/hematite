@@ -88,3 +88,19 @@ class RawRequest(object):
             state = reader.send(next_state)
 
         return reader.raw_request
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        parts = ['<%s "%s %s"' % (cn, self.method, self.url)]
+        if self.content_length:
+            parts.append(' content_length=%s' % self.content_length)
+        if self.chunked:
+            parts.append(' +chunked')
+        if self.headers:
+            parts.append('\n  Headers:\n    ')
+            _hlines = ['%s: %s' % hi for hi in self.headers.items(multi=True)]
+            parts.append('\n    '.join(_hlines))
+        if self.body:
+            parts.append('\n  Body: %r' % self.body)
+        parts.append(' >')
+        return ''.join(parts)
