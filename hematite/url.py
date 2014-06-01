@@ -167,35 +167,6 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     return gs
 
 
-"""
-def unquote_unreserved(url):
-    '''
-    Un-escape any percent-escape sequences in a URI that are unreserved
-    characters. This leaves all reserved, illegal and non-ASCII bytes encoded.
-    '''
-    parts = url.split('%')
-    for i in range(1, len(parts)):
-        h = parts[i][0:2]
-        if len(h) == 2 and h.isalnum():
-            c = chr(int(h, 16))
-            if c in _UNRESERVED_CHARS:
-                parts[i] = c + parts[i][2:]
-            else:
-                parts[i] = '%' + parts[i]
-        else:
-            parts[i] = '%' + parts[i]
-    return ''.join(parts)
-
-
-def requote(url):
-    return quote(unquote_unreserved(url), safe="!#$%&'()*+,/:;=?@[]~")
-"""
-
-
-def percent_decode(bytestr):
-    pass
-
-
 class QueryArgDict(OrderedMultiDict):
     # TODO: caching
     # TODO: self.update_extend_from_string()?
@@ -372,7 +343,7 @@ _asciire = re.compile('([\x00-\x7f]+)')
 
 
 def unquote(s, encoding=DEFAULT_ENCODING):
-    """unquote('abc%20def') -> 'abc def'."""
+    "unquote('abc%20def') -> 'abc def'. aka percent decoding."
     if isinstance(s, unicode):
         if '%' not in s:
             return s
