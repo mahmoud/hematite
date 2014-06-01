@@ -7,11 +7,12 @@ from io import BlockingIOError
 
 from hematite.async import join as async_join
 from hematite.request import Request, RawRequest
+from hematite.response import Response
 from hematite.raw.parser import ResponseReader
 from hematite.raw.drivers import SSLSocketDriver
 
 
-DEFAULT_TIMEOUT = 5.0
+DEFAULT_TIMEOUT = 10.0
 CLIENT_METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE',
                   'TRACE', 'OPTIONS', 'PATCH']  # CONNECT intentionally omitted
 
@@ -184,20 +185,9 @@ explicit URL field.
 
 
 class ClientResponse(object):
-    # TODO: are we going to need want_read/want_write for SSL?
-
     def __init__(self, client, request=None, **kwargs):
         self.client = client
-        self.request = request
-
-        if request is None:
-            self.raw_request = None  # TODO
-        elif isinstance(request, RawRequest):
-            self.raw_request = request
-        elif isinstance(request, Request):
-            self.raw_request = request.to_raw_request()
-        else:
-            raise TypeError('expected request to be a Request or RawRequest')
+        self._set_request(request)
 
         self.state = _State.NotStarted
         self.socket = None
@@ -211,10 +201,24 @@ class ClientResponse(object):
         self.autoload_body = kwargs.pop('autoload_body', True)
         self.nonblocking = kwargs.pop('nonblocking', False)
         self.timeout = kwargs.pop('timeout', None)
+        self.follow_redirects = kwargs.pop('follow_redirects', None)
+        if self.follow_redirects is True:
+            self.follow_redirects = 3  # TODO: default limit?
 
         # TODO: request body/total bytes uploaded counters
         # TODO: response body/total bytes downloaded counters
         # (for calculating progress)
+
+    def _set_request(self, request):
+        self.request = request
+        if request is None:
+            self.raw_request = None  # TODO
+        elif isinstance(request, RawRequest):
+            self.raw_request = request
+        elif isinstance(request, Request):
+            self.raw_request = request.to_raw_request()
+        else:
+            raise TypeError('expected request to be a Request or RawRequest')
 
     def get_data(self):
         if not self._resp_body:
@@ -291,6 +295,8 @@ class ClientResponse(object):
                 res = self.driver.read()
                 if res:
                     self.state += 1
+                    resp = Response.from_raw_response(self.raw_response)
+                    self.response = resp
             else:
                 raise RuntimeError('not in a readable state: %r' % state)
         except BlockingIOError:
