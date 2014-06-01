@@ -1,6 +1,7 @@
 
 from hematite.async import join
-from hematite.client import Client, ClientResponse
+from hematite.client import Client
+from hematite.profile import HematiteProfile
 from hematite.request import Request
 
 # TODO: noticed that sometimes RequestLine has .url = URL object,
@@ -20,10 +21,11 @@ DEFAULT_URL = 'https://en.wikipedia.org/wiki/Main_Page'
 
 
 def main(url, number, output):
-    client = Client()
+    client = Client(profile=HematiteProfile())
     # req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
     # req = Request('GET', 'http://blog.hatnote.com/')
+
     req = Request('GET', url)
     kwargs = dict(request=req, autoload_body=False, async=True)
     resp_list = [client.request(**kwargs) for i in range(number)]

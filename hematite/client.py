@@ -23,10 +23,12 @@ class ClientOperation(object):
 
     def __call__(self, url, body=None):
         req = Request(self.method, url, body=body)
+        self.client.populate_headers(req)
         return self.client.request(request=req)
 
     def async(self, url, body=None):
         req = Request(self.method, url, body=body)
+        self.client.populate_headers(req)
         return self.client.request(request=req, async=True)
 
 
@@ -47,8 +49,15 @@ class UnboundClientOperation(object):
 class Client(object):
 
     for client_method in CLIENT_METHODS:
-        locals()[client_method.lower()] = UnboundClientOperation('GET')
+        locals()[client_method.lower()] = UnboundClientOperation(client_method)
     del client_method
+
+    def __init__(self, profile=None):
+        self.profile = profile
+
+    def populate_headers(self, request):
+        if self.profile:
+            self.profile.populate_headers(request)
 
     def get_addrinfo(self, request):
         # TODO: call from/merge with get_socket? would lose timing info
