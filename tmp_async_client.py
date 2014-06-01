@@ -1,4 +1,3 @@
-
 import time
 import select
 
@@ -20,16 +19,15 @@ wikipedia.org = Apache + Varnish
 """
 
 
-def main():
+def main(url, number, dump):
     client = Client()
-    req_count = 5
     # req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
     # req = Request('GET', 'http://blog.hatnote.com/')
-    req = Request('GET', 'https://en.wikipedia.org/wiki/Main_Page')
+    req = Request('GET', url)
     kwargs = dict(client=client, request=req,
                   autoload_body=False, nonblocking=True)
-    resp_list = [ClientResponse(**kwargs) for i in range(req_count)]
+    resp_list = [ClientResponse(**kwargs) for i in range(number)]
     resp = resp_list[0]
 
     join(resp_list, timeout=5.0)
@@ -37,29 +35,12 @@ def main():
     print resp.raw_response
     print [r.raw_response.status_code for r in resp_list]
     resp.autoload_body = True
+    # import pdb; pdb.set_trace()
     join(resp_list, timeout=1.0)
     print resp.raw_response.body
-    print resp.raw_response.body.data[-100:]
-    #import pdb;pdb.set_trace()
-
-
-def main_wp():
-    client = Client()
-    req = Request('GET', 'http://en.wikipedia.org/wiki/Main_Page')
-    resp = ClientResponse(client=client, request=req)
-    resp.nonblocking = True  # TODO: kwargs
-    resp.autoload_body = False
-    join([resp], timeout=5.0)
-    print resp.raw_response
-    resp.autoload_body = True
-    print resp.raw_response.body
-    join([resp])
-    print resp.raw_response.body
-
-    # true for wikipedia:
-    # assert resp.raw_response.headers != resp2.raw_response.headers
-    # assert resp.get_data() == resp2.get_data()
-    import pdb;pdb.set_trace()
+    if dump:
+        print resp.raw_response.body.data
+    # import pdb;pdb.set_trace()
 
 
 def join(reqs, timeout=5.0, raise_exc=True,
@@ -105,7 +86,16 @@ def join(reqs, timeout=5.0, raise_exc=True,
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    a = argparse.ArgumentParser()
+    a.add_argument('url', default='https://en.wikipedia.org/wiki/Main_Page')
+    a.add_argument('--number', '-n', type=int, default=10)
+    a.add_argument('--dump', '-d', action='store_true', default=False)
+
+    args = a.parse_args()
+
+    main(args.url, args.number, args.dump)
 
 
 class Joinable(object):
