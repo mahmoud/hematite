@@ -55,11 +55,11 @@ class Client(object):
         ret = socket.socket(family, socktype)
 
         is_ssl = request.url.startswith('https')
+        if nonblocking:
+            ret.setblocking(0)
         if is_ssl:
             ret = ssl.wrap_socket(ret)
 
-        if nonblocking:
-            ret.setblocking(0)
         try:
             conn_res = ret.connect_ex(sockaddr)
         except socket.error as se:

@@ -167,6 +167,7 @@ class SocketDriver(BaseIODriver):
                 self.write_backlog = data
             else:
                 self.write_backlog = data[written:]
+
             if self.write_backlog:
                 raise core.eagain(characters_written=written)
 
@@ -199,7 +200,7 @@ class SocketDriver(BaseIODriver):
     def write(self):
         with self.write_backlog_rlock:
             if self.write_backlog:
-                self.outbound.write(self.write_backlog)
+                self.write_data(self.write_backlog)
         return super(SocketDriver, self).write()
 
 
@@ -223,11 +224,11 @@ class SSLSocketDriver(SocketDriver):
             ret = method()
         except ssl.SSLError as ssle:
             ret = False
-            print ssle.errno, ssl.SSL_ERROR_WANT_READ
             self._ssl_exc = ssle
             if ssle.errno != ssl.SSL_ERROR_WANT_READ \
                and ssle.errno != ssl.SSL_ERROR_WANT_WRITE:
-                raise core.eagain()
+                raise
+            raise core.eagain()
         except Exception:
             self._ssl_exc = None
             raise

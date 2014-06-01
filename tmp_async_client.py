@@ -89,6 +89,7 @@ def join(reqs, timeout=5.0, raise_exc=True,
         else:
             read_ready = []
             write_ready = forced_writers
+
         for wr in write_ready:
             while True:
                 _keep_writing = wr.do_write()
@@ -97,7 +98,6 @@ def join(reqs, timeout=5.0, raise_exc=True,
         for rr in read_ready:
             while True:
                 _keep_reading = rr.do_read()
-                import pdb; pdb.set_trace()
                 if not _keep_reading:
                     break
     return ret
