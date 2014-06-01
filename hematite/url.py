@@ -19,7 +19,7 @@ _UNRESERVED_CHARS = frozenset(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     "0123456789-._~")
 # chars reserved some (but not all places)
-_RESERVED_CHARS = frozenset(":/?#[]@!$&'()*+,;=")
+_RESERVED_CHARS = frozenset("%:/?#[]@!$&'()*+,;=")
 _ALLOWED_CHARS = _UNRESERVED_CHARS | _RESERVED_CHARS
 
 # URL parsing regex (per RFC 3986)
