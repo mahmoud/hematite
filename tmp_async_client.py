@@ -1,5 +1,6 @@
 import time
 import select
+import sys
 
 from hematite.client import Client
 from hematite.request import Request
@@ -19,7 +20,7 @@ wikipedia.org = Apache + Varnish
 """
 
 
-def main(url, number, dump):
+def main(url, number, output):
     client = Client()
     # req = Request('GET', 'http://makuro.org/')
     #req = Request('GET', 'http://hatnote.com/')
@@ -38,8 +39,11 @@ def main(url, number, dump):
     # import pdb; pdb.set_trace()
     join(resp_list, timeout=1.0)
     print resp.raw_response.body
-    if dump:
+    if output == '-':
         print resp.raw_response.body.data
+    elif output:
+        with open(output, 'w') as f:
+            f.write(resp.raw_response.body.data)
     # import pdb;pdb.set_trace()
 
 
@@ -91,11 +95,12 @@ if __name__ == '__main__':
     a = argparse.ArgumentParser()
     a.add_argument('url', default='https://en.wikipedia.org/wiki/Main_Page')
     a.add_argument('--number', '-n', type=int, default=10)
-    a.add_argument('--dump', '-d', action='store_true', default=False)
+    a.add_argument('--output', '-o', default=None,
+                   help='path to output file: "-" means stdout')
 
     args = a.parse_args()
 
-    main(args.url, args.number, args.dump)
+    main(args.url, args.number, args.output)
 
 
 class Joinable(object):
