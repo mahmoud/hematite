@@ -120,11 +120,13 @@ class SocketDriver(BaseIODriver):
     readline_buffer_lock = Lock()
     write_backlog_rlock = RLock()
 
+    SocketIO = SocketIO
+
     # NB we're shadowing the socket module here!
     def __init__(self, socket, reader, writer):
         super(SocketDriver, self).__init__(reader=reader, writer=writer)
 
-        self.outbound = SocketIO(socket, 'rwb')
+        self.outbound = self.SocketIO(socket, 'rwb')
         self.inbound = io.BufferedReader(self.outbound)
         self.socket = socket
 
@@ -204,12 +206,36 @@ class SocketDriver(BaseIODriver):
         return super(SocketDriver, self).write()
 
 
+class SSLSocketIO(SocketIO):
+    _ssl_state = None
+
+    def readinto(self, b):
+        try:
+            self._ssl_state = None
+            return super(SSLSocketIO, self).readinto(b)
+        except ssl.SSLError as ssl_exc:
+            if ssl_exc.errno == ssl.SSL_ERROR_WANT_READ:
+                self._ssl_state = ssl_exc.errno
+                return None
+            raise
+
+    def write(self, b):
+        try:
+            self._ssl_state = None
+            return super(SSLSocketIO, self).write(b)
+        except ssl.SSLError as ssl_exc:
+            if ssl_exc.errno == ssl.SSL_ERROR_WANT_WRITE:
+                self._ssl_state = ssl_exc.errno
+                return None
+            raise
+
+
 class SSLSocketDriver(SocketDriver):
+    SocketIO = SSLSocketIO
 
     def __init__(self, *args, **kwargs):
         self._socket = None
         super(SSLSocketDriver, self).__init__(*args, **kwargs)
-        self._ssl_exc = None
 
     @property
     def socket(self):
@@ -219,39 +245,16 @@ class SSLSocketDriver(SocketDriver):
     def socket(self, sock):
         self._socket = sock._sock
 
-    def _do_ssl(self, method):
-        try:
-            ret = method()
-        except ssl.SSLError as ssle:
-            ret = False
-            self._ssl_exc = ssle
-            if ssle.errno != ssl.SSL_ERROR_WANT_READ \
-               and ssle.errno != ssl.SSL_ERROR_WANT_WRITE:
-                raise
-            raise core.eagain()
-        except Exception:
-            self._ssl_exc = None
-            raise
-        else:
-            self._ssl_exc = None
-        return ret
-
-    def write(self):
-        return self._do_ssl(super(SSLSocketDriver, self).write)
-
-    def read(self):
-        return self._do_ssl(super(SSLSocketDriver, self).read)
-
     @property
     def want_read(self):
-        if self._ssl_exc:
-            return self._ssl_exc.errno == ssl.SSL_ERROR_WANT_READ
+        if self.outbound._ssl_state:
+            return self.outbound._ssl_state == ssl.SSL_ERROR_WANT_READ
         return super(SSLSocketDriver, self).want_read
 
     @property
     def want_write(self):
-        if self._ssl_exc:
-            return self._ssl_exc.errno == ssl.SSL_ERROR_WANT_WRITE
+        if self.outbound._ssl_state:
+            return self.outbound._ssl_state == ssl.SSL_ERROR_WANT_WRITE
         return super(SSLSocketDriver, self).want_write
 
 
