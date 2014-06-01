@@ -75,6 +75,7 @@ class Request(object):
         headers = self._get_header_dict()
         return RawRequest(method=self.method,
                           url=url,
+                          host_url=self._url,
                           http_version=self.http_version,
                           headers=headers,
                           body=self._body)

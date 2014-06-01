@@ -17,7 +17,7 @@ class Client(object):
         # TODO: should one still run getaddrinfo even when a request has an IP
         # minor wtf: socket.getaddrinfo port can be a service name like 'http'
         ret = None
-        url = request._url  # the URL object
+        url = request.host_url  # a URL object
         host = url.host
         port = url.port or (443 if url.scheme.lower() == 'https' else 80)
 
@@ -59,7 +59,7 @@ class Client(object):
 
         ret = socket.socket(family, socktype)
 
-        is_ssl = request.url.startswith('https')
+        is_ssl = request.host_url.scheme.startswith('https')
         if nonblocking:
             ret.setblocking(0)
         if is_ssl:
@@ -209,7 +209,7 @@ class ClientResponse(object):
     def do_write(self):
         if self.raw_request is None:
             raise ValueError('request not set')
-        state, request = self.state, self.request
+        state, request = self.state, self.raw_request
 
         # TODO: BlockingIOErrors for DNS/connect?
         # TODO: SSLErrors on connect? (SSL is currently inside the driver)

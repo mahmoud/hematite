@@ -5,17 +5,11 @@ from io import BytesIO
 from hematite.raw import messages as M
 from hematite.raw.messages import Complete
 from hematite.raw.datastructures import Headers
-from hematite.raw.parser import (HTTPVersion,
-                                 RequestLine,
+from hematite.raw.parser import (RequestLine,
                                  RequestWriter,
                                  RequestReader,
                                  HeadersWriter,
                                  parse_message_traits)
-
-
-DEFAULT_METHOD = 'GET'
-DEFAULT_URL = '/'
-DEFAULT_HTTP_VERSION = HTTPVersion(1, 1)
 
 
 class RawRequest(object):
@@ -29,13 +23,11 @@ class RawRequest(object):
             method = request_line.method
             url = request_line.url
             http_version = request_line.version
-        else:
-            self.method = method if method is not None else DEFAULT_METHOD
-            self.url = url if url is not None else DEFAULT_URL
-            if http_version is None:
-                http_version = DEFAULT_HTTP_VERSION
-            self.http_version = http_version
+        self.method = method
+        self.url = url
+        self.http_version = http_version
 
+        self.host_url = kwargs.pop('host_url', url)
         self.headers = headers or Headers()
         self.body = body  # TODO: bodies
 
@@ -59,7 +51,7 @@ class RawRequest(object):
         try:
             self.method, self.url, self.http_version = val
         except:
-            raise TypeError('expected RequestLine or tuple, not %r' % val)
+            raise TypeError('expected RequestLine or 3-tuple, not %r' % val)
 
     def get_writer(self):
         return RequestWriter(request_line=self.request_line,
