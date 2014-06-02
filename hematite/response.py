@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from io import BlockingIOError
-
 from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
-from hematite.request import Request
 
-from hematite.raw.drivers import SSLSocketDriver as NBSCD
-from hematite.raw.parser import HTTPVersion, ResponseReader
-from hematite.raw.datastructures import Headers, Body, ChunkedBody
-from hematite.raw import RawResponse, RawRequest
+from hematite.raw import RawResponse
+from hematite.raw.parser import HTTPVersion
+from hematite.raw.datastructures import Headers, ChunkedBody
+
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)
 
@@ -43,6 +40,7 @@ class Response(object):
         return isinstance(self._body, ChunkedBody)
 
     def _load_data(self):
+        # TODO: dead code
         if self.is_chunked:
             chunk_list = []
             while True:
@@ -94,15 +92,6 @@ class Response(object):
     def to_bytes(self):
         raw_resp = self.to_raw_response()
         return raw_resp.to_bytes()
-
-    @classmethod
-    def from_io(cls, io_obj):
-        raw_resp = RawResponse.from_io(io_obj)
-        return cls.from_raw_response(raw_resp)
-
-    def to_io(self, io_obj):
-        raw_resp = self.to_raw_response()
-        return raw_resp.to_io(raw_resp)
 
     def validate(self):
         pass

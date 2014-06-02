@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from hematite.raw import RawRequest, Headers
-from hematite.raw.parser import RequestLine, HTTPVersion
+from hematite.raw.parser import HTTPVersion
 
 
 from hematite import serdes
