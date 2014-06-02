@@ -2,6 +2,7 @@
 
 import re
 import socket
+import string
 
 from compat import (unicode, OrderedMultiDict, BytestringHelper)
 
@@ -14,12 +15,16 @@ from compat import (unicode, OrderedMultiDict, BytestringHelper)
 DEFAULT_ENCODING = 'utf-8'
 
 # The unreserved URI characters (per RFC 3986)
-_UNRESERVED_CHARS = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    "0123456789-._~")
-# chars reserved some (but not all places)
-_RESERVED_CHARS = frozenset("%:/?#[]@!$&'()*+,;=")
-_ALLOWED_CHARS = _UNRESERVED_CHARS | _RESERVED_CHARS
+_UNRESERVED_CHARS = (frozenset(string.uppercase)
+                     | frozenset(string.lowercase)
+                     | frozenset(string.digits)
+                     | frozenset('-._~'))
+_RESERVED_CHARS = frozenset(":/?#[]@!$&'()*+,;=")
+_PCT_ENCODING = (frozenset('%')
+                 | frozenset(string.digits)
+                 | frozenset(string.uppercase[:6])
+                 | frozenset(string.lowercase[:6]))
+_ALLOWED_CHARS = _UNRESERVED_CHARS | _RESERVED_CHARS | _PCT_ENCODING
 
 # URL parsing regex (per RFC 3986)
 _URL_RE = re.compile(r'^((?P<scheme>[^:/?#]+):)?'
