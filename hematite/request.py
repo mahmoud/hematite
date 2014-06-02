@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from collections import Iterable
 from hematite.raw import RawRequest, Headers
 from hematite.raw.parser import HTTPVersion
 
@@ -7,7 +8,7 @@ from hematite.raw.parser import HTTPVersion
 from hematite import serdes
 from hematite.url import parse_hostinfo
 from hematite.fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
-from hematite.raw.datastructures import Body
+from hematite.raw.datastructures import Body, ChunkedBody
 
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -41,14 +42,21 @@ class Request(object):
         self.set_body(body)
 
     def set_body(self, value):
-        if not value:
-            self._body = None
-            self.content_length = None
-        elif isinstance(value, str):
+        self._body = None
+        self.content_length = None
+        self.chunked = False
+
+        if isinstance(value, str):
             self._body = Body(value)
             self.content_length = len(value)
+        elif not value:
+            self._body = None
+        elif isinstance(value, Iterable):
+            self._body = ChunkedBody(value)
+            self.chunked = True
         else:
-            raise TypeError('body only supports str for now')
+            raise ValueError('Body must be string, iterable of strings '
+                             'or None')
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)
@@ -88,6 +96,10 @@ class Request(object):
     def to_raw_request(self):
         url = self._url.http_request_url
         headers = self._get_header_dict()
+        if self.content_length is not None:
+            headers['Content-Length'] = self.content_length
+        elif self.chunked:
+            headers['Transfer-Encoding'] = 'chunked'
         return RawRequest(method=self.method,
                           url=url,
                           host_url=self._url,

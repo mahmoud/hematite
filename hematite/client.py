@@ -50,7 +50,7 @@ class ClientOperation(object):
         self.client = client
         self.method = method
 
-    def __call__(self, url, body=None, timeout=None):
+    def __call__(self, url, body=None, timeout=DEFAULT_TIMEOUT):
         req = Request(self.method, url, body=body)
         self.client.populate_headers(req)
         return self.client.request(request=req, timeout=timeout)
