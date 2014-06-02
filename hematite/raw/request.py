@@ -4,11 +4,12 @@ from io import BytesIO
 
 from hematite.raw import messages as M
 from hematite.raw.messages import Complete
-from hematite.raw.datastructures import Headers, Body
+from hematite.raw.datastructures import Headers, ChunkedBody, Body
 from hematite.raw.parser import (RequestLine,
                                  RequestWriter,
                                  RequestReader,
                                  HeadersWriter,
+                                 ChunkEncodedBodyWriter,
                                  IdentityEncodedBodyWriter,
                                  parse_message_traits)
 
@@ -55,10 +56,14 @@ class RawRequest(object):
             raise TypeError('expected RequestLine or 3-tuple, not %r' % val)
 
     def get_writer(self):
-        if self.body:
-            body = IdentityEncodedBodyWriter(self.body, self.content_length)
+        if isinstance(self.body, ChunkedBody):
+            body = ChunkEncodedBodyWriter(self.body)
+        elif isinstance(self.body, Body):
+            body = IdentityEncodedBodyWriter(self.body,
+                                             self.content_length)
         else:
             body = None
+
         return RequestWriter(request_line=self.request_line,
                              headers=HeadersWriter(self.headers),
                              body=body)  # TODO: bodies
