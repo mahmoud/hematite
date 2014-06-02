@@ -32,13 +32,16 @@ def join(reqs, timeout=5.0, raise_exc=True,
             read_ready = []
             write_ready = forced_writers
 
-        for wr in write_ready:
-            _keep_writing = True
-            while _keep_writing:
-                _keep_writing = wr.do_write()
-        for rr in read_ready:
-            _keep_reading = True
-            while _keep_reading:
-                _keep_reading = rr.do_read()
-
+        try:
+            for wr in write_ready:
+                _keep_writing = True
+                while _keep_writing:
+                    _keep_writing = wr.do_write()
+            for rr in read_ready:
+                _keep_reading = True
+                while _keep_reading:
+                    _keep_reading = rr.do_read()
+        except Exception:
+            if raise_exc:
+                raise
     return ret

@@ -38,8 +38,7 @@ class Request(object):
             _url.scheme = DEFAULT_SCHEME
 
         body = kw.pop('body', None)
-        if body:
-            self.set_body(body)
+        self.set_body(body)
 
     def set_body(self, value):
         if not value:

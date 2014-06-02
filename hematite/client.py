@@ -18,6 +18,9 @@ class ConnectionError(Exception):  # TODO: maybe inherit from socket.error?
         self.socket_error = kw.pop('socket_error', None)
         super(ConnectionError, self).__init__(*a, **kw)
 
+    def __str__(self):
+        return repr(self)
+
     def __repr__(self):
         cn = self.__class__.__name__
         if self.socket_error:
@@ -269,6 +272,11 @@ class ClientResponse(object):
         return None  # or raise an exception?
 
     @property
+    def norm_timings(self):
+        t = self.timings
+        return dict([(k, v - t['created']) for (k, v) in t.items()])
+
+    @property
     def semantic_state(self):
         return ('TBI', 'TBI details')
 
@@ -278,6 +286,8 @@ class ClientResponse(object):
 
     @property
     def want_write(self):
+        if self.error:
+            return False
         driver = self.driver
         if not driver:
             return True  # to resolve hosts and connect
@@ -285,6 +295,8 @@ class ClientResponse(object):
 
     @property
     def want_read(self):
+        if self.error:
+            return False
         driver = self.driver
         if not driver:
             return False
@@ -295,6 +307,8 @@ class ClientResponse(object):
         return False
 
     def do_write(self):
+        if self.error:
+            return False
         if self.raw_request is None:
             raise ValueError('request not set')
         state, request = self.state, self.raw_request
@@ -306,23 +320,37 @@ class ClientResponse(object):
                 self.state += 1
                 self.timings['started'] = time.time()
             elif state is _State.ResolvingHost:
-                self.addrinfo = self.client.get_addrinfo(request)
-                self.state += 1
-                self.timings['host_resolved'] = time.time()
-            elif state is _State.Connecting:
-                self.socket = self.client.get_socket(request,
-                                                     self.addrinfo,
-                                                     self.nonblocking)
-                writer = self.raw_request.get_writer()
-                self.driver = SSLSocketDriver(self.socket,
-                                              reader=ResponseReader(),
-                                              writer=writer)
-                self.state += 1
-                self.timings['connected'] = time.time()
-            elif state is _State.Sending:
-                if self.driver.write():
+                try:
+                    self.addrinfo = self.client.get_addrinfo(request)
+                except Exception as e:
+                    self.error = e
+                    raise
+                else:
                     self.state += 1
-                    self.timings['sent'] = time.time()
+                    self.timings['host_resolved'] = time.time()
+            elif state is _State.Connecting:
+                try:
+                    self.socket = self.client.get_socket(request,
+                                                         self.addrinfo,
+                                                         self.nonblocking)
+                    writer = self.raw_request.get_writer()
+                    self.driver = SSLSocketDriver(self.socket,
+                                                  reader=ResponseReader(),
+                                                  writer=writer)
+                except Exception as e:
+                    self.error = e
+                    raise
+                else:
+                    self.state += 1
+                    self.timings['connected'] = time.time()
+            elif state is _State.Sending:
+                try:
+                    if self.driver.write():
+                        self.state += 1
+                        self.timings['sent'] = time.time()
+                except Exception as e:
+                    self.error = e
+                    raise
             else:
                 raise RuntimeError('not in a writable state: %r' % state)
         except BlockingIOError:
@@ -330,17 +358,23 @@ class ClientResponse(object):
         return self.want_write
 
     def do_read(self):
+        if self.error:
+            return False
         state = self.state
         try:
             if state is _State.Receiving:
                 self.raw_response = self.driver.reader.raw_response
                 self.timings['first_read'] = time.time()
-                res = self.driver.read()
-                if res:
-                    self.state += 1
-                    self.timings['complete'] = time.time()
-                    resp = Response.from_raw_response(self.raw_response)
-                    self.response = resp
+                try:
+                    res = self.driver.read()
+                    if res:
+                        self.state += 1
+                        self.timings['complete'] = time.time()
+                        resp = Response.from_raw_response(self.raw_response)
+                        self.response = resp
+                except Exception as e:
+                    self.error = e
+                    raise
             else:
                 raise RuntimeError('not in a readable state: %r' % state)
         except BlockingIOError:

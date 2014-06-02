@@ -38,6 +38,20 @@ def do_survey(count):
     print 'done'
 
 
+def do_async_survey(count):
+    sites = get_sites('top_10k.csv', count)
+    client = Client()
+
+    blacklist = ['akamai', 'xhamster', 'imgur']
+    sites = [s for s in sites if all([bls not in s for bls in blacklist])]
+
+    # just adding www takes care of 65% of redirects
+    client_resps = [client.get.async('http://www.' + s + '/') for s in sites]
+    join(client_resps, raise_exc=False, timeout=30.0)
+    # [cr.norm_timings['complete'] for cr in client_resps if cr.raw_response]
+    import pdb;pdb.set_trace()
+
+
 def do_single(client, site, timeout=TIMEOUT):
     res = client.get('http://' + site + '/', timeout=timeout)
     if is_supported_redirect(res.response.status_code):
@@ -104,4 +118,5 @@ def main():
 
 
 if __name__ == '__main__':
+    #do_async_survey(100)
     main()
