@@ -1,9 +1,12 @@
 
 from hematite.url import URL
 from hematite.async import join
-from hematite.client import Client
+from hematite.client import Client, ConnectionError, RequestTimeout
 from hematite.profile import HematiteProfile
 from hematite.request import Request
+from hematite.raw.core import EndOfStream
+
+TIMEOUT = 15.0
 
 
 def get_sites(filename, count):
@@ -22,14 +25,21 @@ def do_survey(count):
     sites = get_sites('top_10k.csv', count)
     client = Client()
     for site in sites:
-        print '------------'
-        res = do_single(client, site)
+        print '-------', site, '--------'
+        try:
+            res = do_single(client, site, timeout=TIMEOUT)
+        except ConnectionError as ce:
+            print 'Connection Error:', ce
+        except RequestTimeout as rt:
+            print 'Timeout', rt
+        except EndOfStream as eos:
+            print 'EndOfStream', eos
         results.append(res)
     print 'done'
 
 
-def do_single(client, site):
-    res = client.get('http://' + site + '/')
+def do_single(client, site, timeout=TIMEOUT):
+    res = client.get('http://' + site + '/', timeout=timeout)
     if is_supported_redirect(res.response.status_code):
         res = follow_next_redirect(res)
         if is_supported_redirect(res.response.status_code):
@@ -44,7 +54,7 @@ def is_supported_redirect(status_code):
     return 300 < status_code < 309
 
 
-def follow_next_redirect(client_resp):
+def follow_next_redirect(client_resp, timeout=TIMEOUT):
     rreq = client_resp.raw_request
     resp = client_resp.response
     status_code = resp.status_code
@@ -74,7 +84,7 @@ def follow_next_redirect(client_resp):
     new_req = Request(method=new_method, url=new_url)
     print new_req.to_raw_request()
 
-    return client_resp.client.request(request=new_req)
+    return client_resp.client.request(request=new_req, timeout=timeout)
 
 
 def main():
