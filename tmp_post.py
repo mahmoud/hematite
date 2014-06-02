@@ -1,16 +1,16 @@
 
 from hematite.client import Client
 from hematite.request import Request
-from hematite.raw.datastructures import Body
 
 DEFAULT_URL = 'http://localhost:5000/debug'
 
 
 def test_post(url):
     client = Client()
-    req = Request('POST', url, body='{}')
+    data = '{}'  # 'a' * 2 ** 22
+    req = Request('POST', url, body=data)
     req.content_type = 'application/json'
-    client_resp = client.request(request=req, timeout=300.0)
+    client_resp = client.request(request=req)
     import pdb
     pdb.set_trace()
 

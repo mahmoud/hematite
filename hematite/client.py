@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import ssl
+import time
 import errno
 import socket
 from io import BlockingIOError
@@ -137,7 +138,7 @@ class Client(object):
 
         ret = socket.socket(family, socktype)
 
-        is_ssl = request.host_url.scheme.startswith('https')
+        is_ssl = request.host_url.scheme.lower() == 'https'
         if nonblocking:
             ret.setblocking(0)
         if is_ssl:
@@ -225,7 +226,7 @@ class ClientResponse(object):
         self.state = _State.NotStarted
         self.socket = None
         self.driver = None
-        self.timings = {}
+        self.timings = {'created': time.time()}
         # TODO: need to set error and Complete state on errors
         self.error = None
 
@@ -253,10 +254,14 @@ class ClientResponse(object):
         else:
             raise TypeError('expected request to be a Request or RawRequest')
 
-    def get_data(self):
-        if not self._resp_body:
-            return None
-        return self._resp_body.get_data()
+    def execute(self):
+        while True:
+            if self.want_write:
+                self.do_write()
+            elif self.want_read:
+                self.do_read()
+            else:
+                break
 
     def fileno(self):
         if self.socket:
@@ -299,9 +304,11 @@ class ClientResponse(object):
         try:
             if state is _State.NotStarted:
                 self.state += 1
+                self.timings['started'] = time.time()
             elif state is _State.ResolvingHost:
                 self.addrinfo = self.client.get_addrinfo(request)
                 self.state += 1
+                self.timings['host_resolved'] = time.time()
             elif state is _State.Connecting:
                 self.socket = self.client.get_socket(request,
                                                      self.addrinfo,
@@ -311,9 +318,11 @@ class ClientResponse(object):
                                               reader=ResponseReader(),
                                               writer=writer)
                 self.state += 1
+                self.timings['connected'] = time.time()
             elif state is _State.Sending:
                 if self.driver.write():
                     self.state += 1
+                    self.timings['sent'] = time.time()
             else:
                 raise RuntimeError('not in a writable state: %r' % state)
         except BlockingIOError:
@@ -325,9 +334,11 @@ class ClientResponse(object):
         try:
             if state is _State.Receiving:
                 self.raw_response = self.driver.reader.raw_response
+                self.timings['first_read'] = time.time()
                 res = self.driver.read()
                 if res:
                     self.state += 1
+                    self.timings['complete'] = time.time()
                     resp = Response.from_raw_response(self.raw_response)
                     self.response = resp
             else:
