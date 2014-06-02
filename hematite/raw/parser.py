@@ -466,10 +466,10 @@ class IdentityEncodedBodyReader(Reader):
             yield M.Complete
 
 
-class IdentityEncodeBodyWriter(Writer):
+class IdentityEncodedBodyWriter(Writer):
 
     def __init__(self, body, content_length=None, *args, **kwargs):
-        super(IdentityEncodeBodyWriter, self).__init__(*args, **kwargs)
+        super(IdentityEncodedBodyWriter, self).__init__(*args, **kwargs)
         self.body = body
         self.content_length = content_length
         self.bytes_remaining = None

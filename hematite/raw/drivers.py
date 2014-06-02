@@ -60,7 +60,7 @@ class BaseIODriver(object):
                 return True
             elif state.type == M.HaveLine.type:
                 self.write_line(state.value)
-            elif state == M.HaveData.type:
+            elif state.type == M.HaveData.type:
                 self.write_data(state.value)
             else:
                 raise RuntimeError("Unknown state {0!r}".format(state))

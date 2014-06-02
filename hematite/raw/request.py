@@ -4,11 +4,12 @@ from io import BytesIO
 
 from hematite.raw import messages as M
 from hematite.raw.messages import Complete
-from hematite.raw.datastructures import Headers
+from hematite.raw.datastructures import Headers, Body
 from hematite.raw.parser import (RequestLine,
                                  RequestWriter,
                                  RequestReader,
                                  HeadersWriter,
+                                 IdentityEncodedBodyWriter,
                                  parse_message_traits)
 
 
@@ -54,9 +55,13 @@ class RawRequest(object):
             raise TypeError('expected RequestLine or 3-tuple, not %r' % val)
 
     def get_writer(self):
+        if self.body:
+            body = IdentityEncodedBodyWriter(Body(self.body), len(self.body))
+        else:
+            body = None
         return RequestWriter(request_line=self.request_line,
                              headers=HeadersWriter(self.headers),
-                             body=self.body)  # TODO: bodies
+                             body=body)  # TODO: bodies
 
     def to_bytes(self):
         writer = self.get_writer()

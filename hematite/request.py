@@ -37,6 +37,10 @@ class Request(object):
         if not _url.scheme:
             _url.scheme = DEFAULT_SCHEME
 
+        # TODO
+        if self._body:
+            self.content_length = len(self._body)
+
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)
                               for hf in HTTP_REQUEST_FIELDS])
