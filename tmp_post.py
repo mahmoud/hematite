@@ -10,7 +10,9 @@ def test_post(url):
     client = Client()
     req = Request('POST', url, body='{}')
     req.content_type = 'application/json'
-    print client.request(request=req, timeout=300.0)
+    client_resp = client.request(request=req, timeout=300.0)
+    import pdb
+    pdb.set_trace()
 
 
 def main():

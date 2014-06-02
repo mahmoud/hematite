@@ -56,7 +56,7 @@ class RawRequest(object):
 
     def get_writer(self):
         if self.body:
-            body = IdentityEncodedBodyWriter(Body(self.body), len(self.body))
+            body = IdentityEncodedBodyWriter(self.body, self.content_length)
         else:
             body = None
         return RequestWriter(request_line=self.request_line,

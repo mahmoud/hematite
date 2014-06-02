@@ -7,6 +7,7 @@ from hematite.raw.parser import RequestLine, HTTPVersion
 from hematite import serdes
 from hematite.url import parse_hostinfo
 from hematite.fields import REQUEST_FIELDS, HTTP_REQUEST_FIELDS
+from hematite.raw.datastructures import Body
 
 DEFAULT_METHOD = 'GET'
 DEFAULT_VERSION = HTTPVersion(1, 1)
@@ -18,7 +19,6 @@ class Request(object):
         self.method = method or DEFAULT_METHOD
         self.http_version = kw.pop('http_version', DEFAULT_VERSION)
 
-        self._body = kw.pop('body', None)
         self._raw_url = url or None
         self._raw_headers = kw.pop('headers', Headers())
 
@@ -37,9 +37,19 @@ class Request(object):
         if not _url.scheme:
             _url.scheme = DEFAULT_SCHEME
 
-        # TODO
-        if self._body:
-            self.content_length = len(self._body)
+        body = kw.pop('body', None)
+        if body:
+            self.set_body(body)
+
+    def set_body(self, value):
+        if not value:
+            self._body = None
+            self.content_length = None
+        elif isinstance(value, str):
+            self._body = Body(value)
+            self.content_length = len(value)
+        else:
+            raise TypeError('body only supports str for now')
 
     # TODO: could use a metaclass for this, could also build it at init
     _header_field_map = dict([(hf.http_name, hf)
