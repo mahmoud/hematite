@@ -1,0 +1,644 @@
+------------
+http://google.com/ 301 -> GET http://www.google.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.google.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:23 GMT
+    Expires: -1
+    Cache-Control: private, max-age=0
+    Content-Type: text/html; charset=ISO-8859-1
+    Set-Cookie: PREF=ID=0e9fb65500801b3e:FF=0:TM=1401668423:LM=1401668423:S=t9Gtgirlz6QPBCYa; expires=Wed, 01-Jun-2016 00:20:23 GMT; path=/; domain=.google.com
+    Set-Cookie: NID=67=VObNzAQLiBaJDjD-zQSWEwOQgEh-OENEKT3cE-K-vQeEMQldT1qOOu2a6LbSta-fbkzrHH8PVMJI78tp-oDGVUWjYNO0pnqkevDLwJkc6jnqef2NVSuqZ6GtW2LQVVv6; expires=Tue, 02-Dec-2014 00:20:23 GMT; path=/; domain=.google.com; HttpOnly
+    P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+    Server: gws
+    X-XSS-Protection: 1; mode=block
+    X-Frame-Options: SAMEORIGIN
+    Alternate-Protocol: 80:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 3 chunks, 46205 total bytes, complete> >
+------------
+http://facebook.com/ 302 -> GET http://www.facebook.com/unsupportedbrowser
+<RawRequest "GET /unsupportedbrowser"
+  Headers:
+    Host: www.facebook.com >
+http://www.facebook.com/unsupportedbrowser 301 -> GET https://www.facebook.com/unsupportedbrowser
+<RawRequest "GET /unsupportedbrowser"
+  Headers:
+    Host: www.facebook.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    X-Frame-Options: DENY
+    X-Content-Type-Options: nosniff
+    P3P: CP="Facebook does not have a P3P policy. Learn why here: http://fb.me/p3p"
+    Pragma: no-cache
+    X-XSS-Protection: 0
+    Cache-Control: private, no-cache, no-store, must-revalidate
+    Expires: Sat, 01 Jan 2000 00:00:00 GMT
+    Set-Cookie: reg_fb_gate=https%3A%2F%2Fwww.facebook.com%2Funsupportedbrowser; path=/; domain=.facebook.com
+    Set-Cookie: reg_fb_ref=https%3A%2F%2Fwww.facebook.com%2Funsupportedbrowser; path=/; domain=.facebook.com
+    Set-Cookie: reg_ext_ref=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT; path=/; domain=.facebook.com
+    Set-Cookie: datr=R8OLU_UksOimWOmPP7VpAeJU; expires=Wed, 01-Jun-2016 00:20:23 GMT; path=/; domain=.facebook.com; httponly
+    Content-Type: text/html; charset=utf-8
+    X-FB-Debug: U1Q6Hfy/LZrUfFFCLoZcMN6Ok+1Lp7XlWCWXNI4uupE=
+    Date: Mon, 02 Jun 2014 00:20:24 GMT
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+  Body: <ChunkedBody 6 chunks, 25556 total bytes, complete> >
+------------
+http://youtube.com/ 301 -> GET http://www.youtube.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.youtube.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:24 GMT
+    Server: gwiseguy/2.0
+    P3P: CP="This is not a P3P policy! See http://support.google.com/accounts/bin/answer.py?answer=151657&hl=en for more info."
+    X-XSS-Protection: 1; mode=block; report=https://www.google.com/appserve/security-bugs/log/youtube
+    Expires: Tue, 27 Apr 1971 19:44:06 EST
+    Content-Type: text/html; charset=utf-8
+    Cache-Control: no-cache
+    Set-Cookie: YSC=Z9XXY-j0nhg; path=/; domain=.youtube.com; httponly
+    Set-Cookie: VISITOR_INFO1_LIVE=i9WxYz3g3XU; path=/; domain=.youtube.com; expires=Sat, 31-Jan-2015 12:13:24 GMT
+    X-Frame-Options: SAMEORIGIN
+    X-Content-Type-Options: nosniff
+    Alternate-Protocol: 80:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 10 chunks, 212121 total bytes, complete> >
+------------
+http://yahoo.com/ 301 -> GET https://www.yahoo.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.yahoo.com >
+<RawResponse "200 OK" content_length=91530
+  Headers:
+    Date: Mon, 02 Jun 2014 00:15:28 GMT
+    P3P: policyref="http://info.yahoo.com/w3c/p3p.xml", CP="CAO DSP COR CUR ADM DEV TAI PSA PSD IVAi IVDi CONi TELo OTPi OUR DELi SAMi OTRi UNRi PUBi IND PHY ONL UNI PUR FIN COM NAV INT DEM CNT STA POL HEA PRE LOC GOV"
+    Last-Modified: Mon, 02 Jun 2014 00:15:19 GMT
+    Accept-Ranges: bytes
+    Content-Length: 91530
+    Vary: Accept-Encoding
+    Content-Type: text/html; charset=utf-8
+    Age: 297
+    Via: http/1.1 fs20.fp.gq1.yahoo.com (ApacheTrafficServer/4.0.2 [cHs f ]), https/1.1 ir27.fp.gq1.yahoo.com (ApacheTrafficServer/4.0.2)
+    Server: ATS
+    Connection: keep-alive
+    Cache-Control: no-store, no-cache, private, max-age=0
+    Expires: -1
+  Body: <Body 91530 total bytes, complete> >
+------------
+<RawResponse "200 OK" content_length=81
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:25 GMT
+    Server: Apache
+    Cache-Control: max-age=86400
+    Expires: Tue, 03 Jun 2014 00:20:25 GMT
+    Last-Modified: Tue, 12 Jan 2010 13:48:00 GMT
+    ETag: "51-4b4c7d90"
+    Accept-Ranges: bytes
+    Content-Length: 81
+    Connection: Keep-Alive
+    Content-Type: text/html
+  Body: <Body 81 total bytes, complete> >
+------------
+http://wikipedia.org/ 301 -> GET http://www.wikipedia.org/
+<RawRequest "GET /"
+  Headers:
+    Host: www.wikipedia.org >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: Apache
+    X-Content-Type-Options: nosniff
+    Cache-control: s-maxage=3600, must-revalidate, max-age=0
+    Last-modified: Sat, 31 May 2014 18:54:48 GMT
+    Vary: Accept-Encoding
+    Content-Type: text/html; charset=utf-8
+    X-Varnish: 3147412490 3147266872, 403040849 403040756, 1560519250 1556641950
+    Via: 1.1 varnish, 1.1 varnish, 1.1 varnish
+    Transfer-Encoding: chunked
+    Date: Mon, 02 Jun 2014 00:20:26 GMT
+    Age: 3543
+    Connection: keep-alive
+    X-Cache: cp1055 hit (4432), cp4018 hit (4), cp4009 frontend hit (19144)
+    Set-Cookie: GeoIP=US:San_Jose:37.3061:-122.0020:v4; Path=/; Domain=.wikipedia.org
+  Body: <ChunkedBody 2 chunks, 42185 total bytes, complete> >
+------------
+http://qq.com/ 302 -> GET http://www.qq.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.qq.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: squid/3.2.1
+    Date: Mon, 02 Jun 2014 00:20:27 GMT
+    Content-Type: text/html; charset=GB2312
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    Vary: Accept-Encoding
+    Expires: Mon, 02 Jun 2014 00:21:27 GMT
+    Cache-Control: max-age=60
+    Vary: Accept-Encoding
+    X-Cache: HIT from tianjin.qq.com
+  Body: <ChunkedBody 1 chunk, 524650 total bytes, complete> >
+------------
+http://twitter.com/ 301 -> GET https://twitter.com/
+<RawRequest "GET /"
+  Headers:
+    Host: twitter.com >
+<RawResponse "200 OK" content_length=46384
+  Headers:
+    cache-control: no-cache, no-store, must-revalidate, pre-check=0, post-check=0
+    content-length: 46384
+    content-type: text/html;charset=utf-8
+    date: Mon, 02 Jun 2014 00:20:32 GMT
+    expires: Tue, 31 Mar 1981 05:00:00 GMT
+    last-modified: Mon, 02 Jun 2014 00:20:32 GMT
+    ms: S
+    pragma: no-cache
+    server: tfe
+    set-cookie: goth=1
+    set-cookie: _twitter_sess=BAh7CSIKZmxhc2hJQzonQWN0aW9uQ29udHJvbGxlcjo6Rmxhc2g6OkZsYXNo%250ASGFzaHsABjoKQHVzZWR7ADoPY3JlYXRlZF9hdGwrCETx8llGAToMY3NyZl9p%250AZCIlMzExN2Y5ZjA4ZGQ2MmM5ODYzYTNlYjczYzFkZWYwMWU6B2lkIiU5MTE1%250AZDBlOGM3OWJhMzMzMTY4NTc4OGRiOThhMmEwZQ%253D%253D--252c6e5506b3c5178102efc365176ab17e8654aa; Path=/; Domain=.twitter.com; Secure; HTTPOnly
+    set-cookie: guest_id=v1%3A140166843219358239; Domain=.twitter.com; Path=/; Expires=Wed, 01-Jun-2016 00:20:32 UTC
+    status: 200 OK
+    strict-transport-security: max-age=631138519
+    x-content-type-options: nosniff
+    x-frame-options: SAMEORIGIN
+    x-transaction: 4ae1327e0c0731c9
+    x-ua-compatible: IE=edge,chrome=1
+    x-xss-protection: 1; mode=block
+  Body: <Body 46384 total bytes, complete> >
+------------
+http://taobao.com/ 302 -> GET http://www.taobao.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.taobao.com >
+http://www.taobao.com/ 302 -> GET http://www.taobao.com/index_global.php
+<RawRequest "GET /index_global.php"
+  Headers:
+    Host: www.taobao.com >
+http://www.taobao.com/index_global.php 302 -> GET http://www.taobao.com/market/global/index_new.php
+<RawRequest "GET /market/global/index_new.php"
+  Headers:
+    Host: www.taobao.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: Tengine
+    Date: Mon, 02 Jun 2014 00:20:34 GMT
+    Content-Type: text/html; charset=GB2312
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    Vary: Accept-Encoding
+    Expires: Mon, 02 Jun 2014 01:20:34 GMT
+    Cache-Control: max-age=3600
+  Body: <ChunkedBody 15 chunks, 141223 total bytes, complete> >
+------------
+http://amazon.com/ 301 -> GET http://www.amazon.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.amazon.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:36 GMT
+    Server: Server
+    Set-Cookie: skin=noskin; path=/; domain=.amazon.com
+    pragma: no-cache
+    x-amz-id-1: 1JW1PXG8F4TMHWWGXN3B
+    p3p: policyref="http://www.amazon.com/w3c/p3p.xml",CP="CAO DSP LAW CUR ADM IVAo IVDo CONo OTPo OUR DELi PUBi OTRi BUS PHY ONL UNI PUR FIN COM NAV INT DEM CNT STA HEA PRE LOC GOV OTC "
+    cache-control: no-cache
+    x-frame-options: SAMEORIGIN
+    expires: -1
+    x-amz-id-2: v9wSUOXIYerXqdqn/5IyWI4UsdBaBKcWgDf72vX905fpcNWRF/w2hi1IpB+IUi4f
+    Vary: Accept-Encoding,User-Agent
+    Content-Type: text/html; charset=ISO-8859-1
+    Set-cookie: x-wl-uid=10y5hgIF93Q1ssHTw7Q26REx0jvYqc4j+7MEWZGgjrIMHisjGyJfzoU0zU+fmlDHt70k2cChoAbI=; path=/; domain=.amazon.com; expires=Tue, 01-Jan-2036 08:00:01 GMT
+    Set-cookie: session-id-time=2082787201l; path=/; domain=.amazon.com; expires=Tue, 01-Jan-2036 08:00:01 GMT
+    Set-cookie: session-id=191-6082518-7048843; path=/; domain=.amazon.com; expires=Tue, 01-Jan-2036 08:00:01 GMT
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 51 chunks, 170195 total bytes, complete> >
+------------
+http://live.com/ 301 -> GET http://www.live.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.live.com >
+http://www.live.com/ 302 -> GET https://login.live.com/login.srf?wa=wsignin1.0&rpsnv=12&ct=1401668436&rver=6.4.6456.0&wp=MBI&wreply=http://mail.live.com/default.aspx&lc=1033&id=64855&mkt=en-US&cbcxt=mai&snsc=1
+<RawRequest "GET /login.srf?wa=wsignin1.0&rpsnv=12&ct=1401668436&rver=6.4.6456.0&wp=MBI&wreply=http://mail.live.com/default.aspx&lc=1033&id=64855&mkt=en-US&cbcxt=mai&snsc=1"
+  Headers:
+    Host: login.live.com >
+<RawResponse "200 OK" content_length=9270 +connection_close
+  Headers:
+    Cache-Control: max-age=0
+    Content-Length: 9270
+    Content-Type: text/html; charset=utf-8
+    Expires: Mon, 02 Jun 2014 00:19:38 GMT
+    Server: Microsoft-IIS/7.5
+    P3P: CP="DSP CUR OTPi IND OTRi ONL FIN"
+    X-XSS-Protection: 0
+    X-Content-Type-Options: nosniff
+    Set-Cookie: MSPRequ=lt=1401668438&co=1&id=64855; path=/;HTTPOnly=;version=1
+    Set-Cookie: MSPOK=$uuid-6f61207f-54c2-4850-873f-f5954cd74ef9; domain=login.live.com;path=/;HTTPOnly= ;version=1
+    X-Frame-Options: deny
+    PPServer: PPV: 30 H: BL2IDSLGN2B011 V: 0
+    Date: Mon, 02 Jun 2014 00:20:37 GMT
+    Connection: close
+  Body: <Body 9270 total bytes, complete> >
+------------
+http://linkedin.com/ 301 -> GET https://www.linkedin.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.linkedin.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: Apache-Coyote/1.1
+    P3P: CP="CAO CUR ADM DEV PSA PSD OUR"
+    X-Frame-Options: SAMEORIGIN
+    Content-Type: text/html;charset=UTF-8
+    Content-Language: en-US
+    Vary: Accept-Encoding
+    Date: Mon, 02 Jun 2014 00:20:38 GMT
+    X-FS-UUID: 74a2fbb404ba7313104e7597252b0000
+    X-LI-UUID: dKL7tAS6cxMQTnWXJSsAAA==
+    X-Content-Type-Options: nosniff
+    X-Li-Fabric: PROD-ELA4
+    Set-Cookie: _lipt=deleteMe; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/
+    Set-Cookie: leo_auth_token="GST:9WheRgpaHgpajDCWsEhs3phn4-hWupFO2-H7aotOb7WW2hCDsgQAhs:1401668438:84d24a5e04a859e0aa657f638d20697f369e94c8"; Version=1; Max-Age=1799; Expires=Mon, 02-Jun-2014 00:50:37 GMT; Path=/
+    Set-Cookie: sl="delete me"; Version=1; Max-Age=0; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/
+    Set-Cookie: sl="delete me"; Version=1; Domain=.www.linkedin.com; Max-Age=0; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/
+    Set-Cookie: s_leo_auth_token="delete me"; Version=1; Max-Age=0; Expires=Thu, 01-Jan-1970 00:00:10 GMT; Path=/
+    Set-Cookie: JSESSIONID="ajax:6669092269332937650"; Version=1; Path=/
+    Set-Cookie: visit="v=1&G"; Version=1; Max-Age=63072000; Expires=Wed, 01-Jun-2016 00:20:38 GMT; Path=/
+    Set-Cookie: bcookie="v=2&9f7300bb-c160-4dec-8c6e-5b45c9daa3bf"; domain=.linkedin.com; Path=/; Expires=Wed, 01-Jun-2016 11:58:10 GMT
+    Set-Cookie: bscookie="v=1&201406020020387f1c51ff-6486-4204-8c28-f1a0841cf742AQGJqWYMOIDUZMGou6N_TeK_9bT57jJt"; domain=.www.linkedin.com; Path=/; Secure; Expires=Wed, 01-Jun-2016 11:58:10 GMT; HttpOnly
+    Pragma: no-cache
+    Expires: Thu, 01 Jan 1970 00:00:00 GMT
+    Cache-Control: no-cache, no-store
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    X-Li-Pop: PROD-ELA4
+    Set-Cookie: lidc="b=LB47:g=81:u=1:i=1401668438:t=1401754838:s=1058882293"; Expires=Tue, 03 Jun 2014 00:20:38 GMT; domain=.linkedin.com; Path=/
+  Body: <ChunkedBody 18 chunks, 49932 total bytes, complete> >
+------------
+http://google.co.in/ 301 -> GET http://www.google.co.in/
+<RawRequest "GET /"
+  Headers:
+    Host: www.google.co.in >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:38 GMT
+    Expires: -1
+    Cache-Control: private, max-age=0
+    Content-Type: text/html; charset=ISO-8859-1
+    Set-Cookie: PREF=ID=1af94ee49b5e96bd:FF=0:TM=1401668438:LM=1401668438:S=lO6xLRCYOuImI7rt; expires=Wed, 01-Jun-2016 00:20:38 GMT; path=/; domain=.google.co.in
+    Set-Cookie: NID=67=PjbB983HC2Z4e_K508Uvi5x1zTEEn_DRsWiqBF5yiWk9RtQB27tIEGluttxQas_pi3QLiMiyZ8nVgGIylvGIKDAd721_KHMdDWhstW1cZ-uMbqCEv6elh0s3O6HAIjY0; expires=Tue, 02-Dec-2014 00:20:38 GMT; path=/; domain=.google.co.in; HttpOnly
+    P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+    Server: gws
+    X-XSS-Protection: 1; mode=block
+    X-Frame-Options: SAMEORIGIN
+    Alternate-Protocol: 80:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 2 chunks, 46869 total bytes, complete> >
+------------
+http://sina.com.cn/ 301 -> GET http://www.sina.com.cn/
+<RawRequest "GET /"
+  Headers:
+    Host: www.sina.com.cn >
+<RawResponse "200 OK" content_length=543995
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:40 GMT
+    Server: PWS/8.0.25
+    X-Px: rf-ht h0-s1002.p12-sjc ( h0-s1023.p12-sjc), ht h0-s1023.p12-sjc.cdngp.net
+    Cache-Control: max-age=60
+    Expires: Mon, 02 Jun 2014 00:21:14 GMT
+    Age: 26
+    Accept-Ranges: bytes
+    Content-Length: 543995
+    Content-Type: text/html
+    Last-Modified: Mon, 02 Jun 2014 00:19:14 GMT
+    Connection: keep-alive
+  Body: <Body 543995 total bytes, complete> >
+------------
+http://blogspot.com/ 301 -> GET http://www.blogger.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.blogger.com >
+http://www.blogger.com/ 302 -> GET http://www.blogger.com/home
+<RawRequest "GET /home"
+  Headers:
+    Host: www.blogger.com >
+http://www.blogger.com/home 302 -> GET https://www.blogger.com/home
+<RawRequest "GET /home"
+  Headers:
+    Host: www.blogger.com >
+<RawResponse "302 Moved Temporarily" +chunked
+  Headers:
+    P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+    Location: https://accounts.google.com/ServiceLogin?service=blogger&passive=1209600&continue=https://www.blogger.com/home&followup=https://www.blogger.com/home&ltmpl=start
+    Content-Type: text/html; charset=UTF-8
+    Date: Mon, 02 Jun 2014 00:20:41 GMT
+    Expires: Mon, 02 Jun 2014 00:20:41 GMT
+    Cache-Control: private, max-age=0
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: SAMEORIGIN
+    X-XSS-Protection: 1; mode=block
+    Server: GSE
+    Alternate-Protocol: 443:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 1 chunk, 358 total bytes, complete> >
+------------
+http://hao123.com/ 302 -> GET http://www.hao123.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.hao123.com >
+<RawResponse "200 OK" content_length=321009
+  Headers:
+    LFY: cq02.51
+    Set-Cookie: BAIDUID=30568505299C821BCA8257DE05F46FCC:FG=1; max-age=31536000; expires=Tue, 02-Jun-15 00:20:42 GMT; domain=.hao123.com; path=/; version=1
+    P3P: CP=" OTI DSP COR IVA OUR IND COM "
+    SFY: cq02.21
+    Set-Cookie: hz=0; path=/; domain=www.hao123.com
+    Content-type: text/html;charset=UTF-8
+    ETag: "863788959"
+    Accept-Ranges: bytes
+    Last-Modified: Mon, 02 Jun 2014 00:20:00 GMT
+    Expires: Mon, 02 Jun 2014 00:20:42 GMT
+    Cache-Control: max-age=0
+    Vary: Accept-Encoding
+    Content-Length: 321009
+    Date: Mon, 02 Jun 2014 00:20:42 GMT
+    Server: BWS/1.0
+  Body: <Body 321009 total bytes, complete> >
+------------
+http://weibo.com/ 301 -> GET http://www.weibo.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.weibo.com >
+http://www.weibo.com/ 302 -> GET http://us.weibo.com/
+<RawRequest "GET /"
+  Headers:
+    Host: us.weibo.com >
+http://us.weibo.com/ 302 -> GET http://us.weibo.com/gb
+<RawRequest "GET /gb"
+  Headers:
+    Host: us.weibo.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:49 GMT
+    Content-Type: text/html
+    Connection: keep-alive
+    X-Powered-By: PHP/5.4.16
+    Vary: Accept-Encoding
+    Set-Cookie: TS016d18b4=01d72e94ac4260854059a1d2c8beda38ffee87625c4e741ef8e93fd4ea2514149c8e774cf0; Path=/
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 3 chunks, 41428 total bytes, complete> >
+------------
+http://yahoo.co.jp/ 301 -> GET http://www.yahoo.co.jp/
+<RawRequest "GET /"
+  Headers:
+    Host: www.yahoo.co.jp >
+<RawResponse "200 OK" +chunked +connection_close
+  Headers:
+    Date: Mon, 02 Jun 2014 00:20:51 GMT
+    P3P: policyref="http://privacy.yahoo.co.jp/w3c/p3p.xml", CP="CAO DSP COR CUR ADM DEV TAI PSA PSD IVAi IVDi CONi TELo OTPi OUR DELi SAMi OTRi UNRi PUBi IND PHY ONL UNI PUR FIN COM NAV INT DEM CNT STA POL HEA PRE GOV"
+    Expires: -1
+    Pragma: no-cache
+    Cache-Control: private, no-cache, no-store, must-revalidate
+    X-XRDS-Location: https://open.login.yahooapis.jp/openid20/www.yahoo.co.jp/xrds
+    Vary: Accept-Encoding
+    Connection: close
+    Transfer-Encoding: chunked
+    Content-Type: text/html; charset=utf-8
+  Body: <ChunkedBody 1 chunk, 21998 total bytes, complete> >
+------------
+http://vk.com/ 302 -> GET http://m.vk.com/
+<RawRequest "GET /"
+  Headers:
+    Host: m.vk.com >
+<RawResponse "200 OK" content_length=5436
+  Headers:
+    Server: nginx/1.2.4
+    Date: Mon, 02 Jun 2014 00:20:52 GMT
+    Content-Type: text/html; charset=utf-8
+    Content-Length: 5436
+    Connection: keep-alive
+    X-Powered-By: PHP/3.6112
+    Set-Cookie: remixlang=3; expires=Wed, 27 May 2015 20:51:08 GMT; path=/; domain=.vk.com
+    Set-Cookie: remixstid=1050354980_034dc44c89df8c7b2a; expires=Wed, 27 May 2015 21:33:21 GMT; path=/; domain=.vk.com
+    Pragma: no-cache
+    Cache-control: no-store
+    X-Frame-Options: SAMEORIGIN
+  Body: <Body 5436 total bytes, complete> >
+------------
+http://wordpress.com/ 301 -> GET https://wordpress.com/
+<RawRequest "GET /"
+  Headers:
+    Host: wordpress.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: nginx
+    Date: Mon, 02 Jun 2014 00:20:53 GMT
+    Content-Type: text/html; charset=utf-8
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    Vary: Accept-Encoding
+    X-Frame-Options: SAMEORIGIN
+    Vary: Cookie
+  Body: <ChunkedBody 1 chunk, 9660 total bytes, complete> >
+------------
+http://yandex.ru/ 302 -> GET http://www.yandex.ru/
+<RawRequest "GET /"
+  Headers:
+    Host: www.yandex.ru >
+<RawResponse "200 Ok" content_length=175840 +connection_close
+  Headers:
+    Server: nginx
+    Date: Mon, 02 Jun 2014 00:20:55 GMT
+    Content-Type: text/html; charset=UTF-8
+    Content-Length: 175840
+    Connection: close
+    Cache-Control: no-cache,no-store,max-age=0,must-revalidate
+    Expires: Mon, 02 Jun 2014 00:20:55 GMT
+    Last-Modified: Mon, 02 Jun 2014 00:20:55 GMT
+    P3P: policyref="/w3c/p3p.xml", CP="NON DSP ADM DEV PSD IVDo OUR IND STP PHY PRE NAV UNI"
+    Set-Cookie: yandexuid=5762881901401668455; Expires=Thu, 30-May-2024 00:20:55 GMT; Domain=.yandex.ru; Path=/
+    X-Frame-Options: DENY
+    X-XRDS-Location: http://openid.yandex.ru/server_xrds/
+  Body: <Body 175840 total bytes, complete> >
+------------
+http://ebay.com/ 301 -> GET http://www.ebay.com
+<RawRequest "GET /"
+  Headers:
+    Host: www.ebay.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    RlogId: t6e%60cckjkb9%3Fvo%7B0wf34e*%3Bc6b-14659f35476-0xb5
+    X-Frame-Options: SAMEORIGIN
+    Set-Cookie: JSESSIONID=280EE77536812311B3B2CA05F38283D6; Path=/
+    Set-Cookie: ebay=%5Esbf%3D%23%5E;Domain=.ebay.com;Path=/
+    Set-Cookie: dp1=bu1p/QEBfX0BAX19AQA**556cf6e9^bl/US574e2a69^;Domain=.ebay.com;Expires=Wed, 01-Jun-2016 00:20:57 GMT;Path=/
+    Set-Cookie: s=CgAD4ACBTjRTpNTlmMzU0NTExNDYwYTI1NjliODdjYzFlZmZlYjFmODctWrwh;Domain=.ebay.com;Path=/; HttpOnly
+    Set-Cookie: nonsession=CgADLAAFTi8pxMQDKACBc8cTpNTlmMzU0NTExNDYwYTI1NjliODdjYzFlZmZlYjFmODdqsatZ;Domain=.ebay.com;Expires=Tue, 02-Jun-2015 00:20:57 GMT;Path=/
+    Set-Cookie: lucky9=6495956;Domain=.ebay.com;Expires=Sat, 01-Jun-2019 00:20:57 GMT;Path=/
+    Content-Type: text/html;charset=utf-8
+    Content-Language: en-US
+    Transfer-Encoding: chunked
+    Date: Mon, 02 Jun 2014 00:20:57 GMT
+    Server: eBay Server
+  Body: <ChunkedBody 28 chunks, 226346 total bytes, complete> >
+------------
+http://tmall.com/ 302 -> GET http://www.tmall.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.tmall.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: Tengine
+    Date: Mon, 02 Jun 2014 00:21:00 GMT
+    Content-Type: text/html; charset=GB2312
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    Vary: Accept-Encoding
+    Expires: Mon, 02 Jun 2014 00:21:00 GMT
+    Cache-Control: max-age=0
+  Body: <ChunkedBody 2 chunks, 34287 total bytes, complete> >
+------------
+http://google.de/ 301 -> GET http://www.google.de/
+<RawRequest "GET /"
+  Headers:
+    Host: www.google.de >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:21:00 GMT
+    Expires: -1
+    Cache-Control: private, max-age=0
+    Content-Type: text/html; charset=ISO-8859-1
+    Set-Cookie: PREF=ID=a65ccf1539fdf530:FF=0:TM=1401668460:LM=1401668460:S=wp1-bWhVOq5q_SB0; expires=Wed, 01-Jun-2016 00:21:00 GMT; path=/; domain=.google.de
+    Set-Cookie: NID=67=oReVrEwd_sDkMzZZHbM5ioq7gxJ0W97wkyu4Q1dFA6Vf2zoA3zE3oGzQ2mqkwD8lojUWmdAO1AdtBcvQc3LeYHM4xyYny3pIPDLl8WwaC2MmOkmc3cpAWr5SmNqaJLuZ; expires=Tue, 02-Dec-2014 00:21:00 GMT; path=/; domain=.google.de; HttpOnly
+    P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+    Server: gws
+    X-XSS-Protection: 1; mode=block
+    X-Frame-Options: SAMEORIGIN
+    Alternate-Protocol: 80:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 3 chunks, 45852 total bytes, complete> >
+------------
+http://bing.com/ 301 -> GET http://www.bing.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.bing.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Cache-Control: private, max-age=0
+    Transfer-Encoding: chunked
+    Content-Type: text/html; charset=utf-8
+    Server: Microsoft-IIS/8.5
+    P3P: CP="NON UNI COM NAV STA LOC CURa DEVa PSAa PSDa OUR IND"
+    Set-Cookie: _FS=NU=1; domain=.bing.com; path=/
+    Set-Cookie: _SS=SID=634DE27CE7794DE29658347ADC7C824B&C=20.0; domain=.bing.com; path=/
+    Set-Cookie: MUID=18AD6262D6D76CCC079A642FD7C46CE7; expires=Wed, 01-Jun-2016 00:21:01 GMT; domain=.bing.com; path=/
+    Set-Cookie: MUIDB=18AD6262D6D76CCC079A642FD7C46CE7; expires=Wed, 01-Jun-2016 00:21:01 GMT; path=/
+    Set-Cookie: OrigMUID=18AD6262D6D76CCC079A642FD7C46CE7%2c162c6408ade1497597df0eee4c872906; expires=Wed, 01-Jun-2016 00:21:01 GMT; domain=.bing.com; path=/
+    Set-Cookie: SRCHD=D=3375381&MS=3375381&AF=NOFORM; expires=Wed, 01-Jun-2016 00:21:01 GMT; domain=.bing.com; path=/
+    Set-Cookie: SRCHUID=V=2&GUID=0FABD2DDAF0D4EF8B9B32E04B98E3806; expires=Wed, 01-Jun-2016 00:21:01 GMT; path=/
+    Set-Cookie: SRCHUSR=AUTOREDIR=0&GEOVAR=&DOB=20140602; expires=Wed, 01-Jun-2016 00:21:01 GMT; domain=.bing.com; path=/
+    Edge-control: no-store
+    X-MSEdge-Ref: Ref A: F224F0B26A914EF793A04E0DDC046B0D Ref B: F53F060D6387FB8C3A240303D9B05191 Ref C: Sun Jun 01 17:21:01 2014 PST
+    Set-Cookie: MUID=01DA725B38886B5C2AF7741639CD6A7D; path=/; expires=Wed, 01-Jun-2016 00:21:01 GMT; domain=bing.com
+    Date: Mon, 02 Jun 2014 00:21:01 GMT
+  Body: <ChunkedBody 8 chunks, 49369 total bytes, complete> >
+------------
+http://pinterest.com/ 301 -> GET http://www.pinterest.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.pinterest.com >
+http://www.pinterest.com/ 302 -> GET https://www.pinterest.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.pinterest.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Age: 0
+    Content-Security-Policy-Report-Only: default-src 'self' *.pinterest.com *.pinimg.com *.google.com connect.facebook.net *.google-analytics.com https://*.facebook.com *.facebook.com www.googleadservices.com googleads.g.doubleclick.net *.tiles.mapbox.com *.4sqi.net media.pinterest.com.s3.amazonaws.com *.online-metrix.net 'unsafe-inline' 'unsafe-eval'; img-src *; object-src *; frame-src *; report-uri /_/_/csp_report/
+    Content-Type: text/html; charset=utf-8
+    Date: Mon, 02 Jun 2014 00:21:02 GMT
+    Pinterest-Breed: CORGI
+    Pinterest-Generated-By: ngapp2-c1f2fdef
+    Pinterest-Version: a09938d
+    Server: nginx
+    Set-Cookie: csrftoken=wSJrmk8yVlDLToihRK3c5SrtQoAJNKRc; Domain=.pinterest.com; expires=Mon, 01-Jun-2015 00:21:02 GMT; Max-Age=31449600; Path=/
+    Set-Cookie: _pinterest_sess="eJwzcnMPLrN0189ISUs2SPQssCzJCPOqSgm3iMi3tY8vycxNtfUNCSz3DYk08ncJNPJNt7VVK04tLs5MsfXMSjb1c/cs93XJyfGriqzwdQk0iAoJy/Az8jTxCw+s8jUKLfcLjwTqzcn1BOoDAHdhI38="; Domain=.pinterest.com; expires=Thu, 28-May-2015 00:21:02 GMT; Max-Age=31103999; Path=/; HttpOnly
+    Vary: User-Agent, Cookie, Accept-Encoding
+    Via: 1.1 varnish
+    X-Frame-Options: SAMEORIGIN
+    X-Pinterest-RID: 400923066510
+    X-Ua-Compatible: IE=edge
+    X-Varnish: 1285852177
+    transfer-encoding: chunked
+    Connection: keep-alive
+  Body: <ChunkedBody 10 chunks, 51458 total bytes, complete> >
+------------
+http://sohu.com/ 302 -> GET http://www.sohu.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.sohu.com >
+<RawResponse "200 OK" content_length=93354
+  Headers:
+    Content-Type: text/html
+    Content-Length: 93354
+    Connection: keep-alive
+    Date: Mon, 02 Jun 2014 00:20:36 GMT
+    Server: SWS
+    Vary: Accept-Encoding
+    Cache-Control: max-age=120
+    Expires: Mon, 02 Jun 2014 00:22:36 GMT
+    Last-Modified: Mon, 02 Jun 2014 00:18:28 GMT
+    Content-Encoding: gzip
+    FSS-Cache: HIT from 16351885.24216215.24153605
+  Body: <Body 93354 total bytes, complete> >
+------------
+http://google.co.uk/ 301 -> GET http://www.google.co.uk/
+<RawRequest "GET /"
+  Headers:
+    Host: www.google.co.uk >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Date: Mon, 02 Jun 2014 00:21:04 GMT
+    Expires: -1
+    Cache-Control: private, max-age=0
+    Content-Type: text/html; charset=ISO-8859-1
+    Set-Cookie: PREF=ID=dec9e967fa45a7db:FF=0:TM=1401668464:LM=1401668464:S=Isie7XRrapK0SeWI; expires=Wed, 01-Jun-2016 00:21:04 GMT; path=/; domain=.google.co.uk
+    Set-Cookie: NID=67=g4Wr4UOEK2Pbjp_LuANKFc4XfDgEnjZ0rU80wVV6__GvTCFaa51VR0TY0z6Alu6BpeLoWIpyWOmdjo1Kwjgzt6RjfHuY9WQlk9-tI3KJk_qOnIbaxlQYZnevRkJUcgvZ; expires=Tue, 02-Dec-2014 00:21:04 GMT; path=/; domain=.google.co.uk; HttpOnly
+    P3P: CP="This is not a P3P policy! See http://www.google.com/support/accounts/bin/answer.py?hl=en&answer=151657 for more info."
+    Server: gws
+    X-XSS-Protection: 1; mode=block
+    X-Frame-Options: SAMEORIGIN
+    Alternate-Protocol: 80:quic
+    Transfer-Encoding: chunked
+  Body: <ChunkedBody 3 chunks, 45942 total bytes, complete> >
+------------
+http://ask.com/ 301 -> GET http://www.ask.com/
+<RawRequest "GET /"
+  Headers:
+    Host: www.ask.com >
+<RawResponse "200 OK" +chunked
+  Headers:
+    Server: Apache
+    Content-Type: text/html;charset=UTF-8
+    tr-request-id: U4vDcApcrLkAAFtulSgAAAEM
+    from-tr: trafrt019iad.io.askjeeves.info
+    Expires: Thu, 01 Jan 1970 00:00:00 GMT
+    X-UA-Compatible: IE=Edge,chrome=1
+    Content-Language: en-US
+    Date: Mon, 02 Jun 2014 00:21:04 GMT
+    Transfer-Encoding: chunked
+    Connection: keep-alive
+    Connection: Transfer-Encoding
+    Set-Cookie: user=o=0&l=dir;Path=/;Domain=ask.com
+    Set-Cookie: uc=u=9EFF987A-20A8-436B-B92C-8D3898613A30&sn=askus029iad.io.askjeeves.info&od=none&op=-&fv=1401668464788&lv=1401668464788&ok=-&nv=1;Path=/;Domain=.ask.com;Expires=Sat, 25-May-2024 20:21:04 GMT
+    Set-Cookie: ucs=sk=-&sp=-&so=-&sd=none&sc=-&s=1121025421&ap=&am=&an=&ad=dirN&sv=1401668464788&ag=&ps=1&af=;Path=/;Domain=.ask.com
+  Body: <ChunkedBody 2 chunks, 39871 total bytes, complete> >
+------------
+http://google.fr/ 301 -> GET http://www.google.fr/
+<RawRequest "GET /"
+  Headers:
+    Host: www.google.fr >

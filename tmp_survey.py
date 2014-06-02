@@ -23,12 +23,21 @@ def do_survey(count):
     client = Client()
     for site in sites:
         print '------------'
-        res = client.get('http://' + site + '/')
-        if is_supported_redirect(res.response.status_code):
-            res = follow_next_redirect(res)
-        print res.raw_response
+        res = do_single(client, site)
         results.append(res)
     print 'done'
+
+
+def do_single(client, site):
+    res = client.get('http://' + site + '/')
+    if is_supported_redirect(res.response.status_code):
+        res = follow_next_redirect(res)
+        if is_supported_redirect(res.response.status_code):
+            res = follow_next_redirect(res)
+            if is_supported_redirect(res.response.status_code):
+                res = follow_next_redirect(res)  # lol RECURSE
+    print res.raw_response
+    return res
 
 
 def is_supported_redirect(status_code):
@@ -72,11 +81,16 @@ def main():
     import argparse
 
     a = argparse.ArgumentParser()
+    a.add_argument('--single')
     a.add_argument('--top-n', '-n', type=int, default=10)
     a.add_argument('--output', '-o', default=None,
                    help='path to output file: "-" means stdout')
     args = a.parse_args()
-    do_survey(args.top_n)
+    if args.single:
+        client = Client()
+        do_single(client, args.single)
+    else:
+        do_survey(args.top_n)
 
 
 if __name__ == '__main__':

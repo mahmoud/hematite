@@ -203,7 +203,8 @@ class HTTPHeaderField(Field):
     def _default_set_value(self, obj, value):
         # TODO: special handling for None? text/unicode type? (i.e, not bytes)
         if isinstance(value, str):
-            value = self.from_bytes(value)
+            if value:
+                value = self.from_bytes(value)
         elif value is None:
             pass
         elif not isinstance(value, self.native_type):
