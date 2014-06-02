@@ -118,6 +118,7 @@ class BaseIODriver(object):
 
 class SocketDriver(BaseIODriver):
     readline_buffer_lock = Lock()
+    peek_buffer_lock = Lock()
     write_backlog_rlock = RLock()
 
     SocketIO = SocketIO
@@ -131,6 +132,7 @@ class SocketDriver(BaseIODriver):
         self.socket = socket
 
         self.readline_buffer = []
+        self.peek_buffer = []
         self.write_backlog = ''
 
     def distinguish_empty(self, io_method, args):
@@ -197,7 +199,14 @@ class SocketDriver(BaseIODriver):
         return data
 
     def read_peek(self, amount):
-        return self.distinguish_empty(self.inbound.peek, (amount,))
+        with self.peek_buffer_lock:
+            peeked = self.distinguish_empty(self.inbound.peek, (amount,))
+            self.peek_buffer.append(peeked)
+            if len(peeked) < amount:
+                raise
+            result = ''.join(self.peek_buffer)
+            self.peek_buffer = []
+            return result
 
     def write(self):
         with self.write_backlog_rlock:
