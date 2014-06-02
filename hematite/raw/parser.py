@@ -438,6 +438,10 @@ class IdentityEncodedBodyReader(Reader):
                                 if self.content_length is None
                                 else self.content_length)
 
+        def _stop():
+            self.body.complete(self.bytes_read)
+            self.state = M.Complete
+
         while not self.complete:
             t, read = yield M.NeedData(amount=self.bytes_remaining)
             assert t == M.HaveData.type
@@ -445,9 +449,11 @@ class IdentityEncodedBodyReader(Reader):
             amount = len(read)
 
             if not amount:
+                # Connection: close
                 if self.content_length is None or self.bytes_remaining <= 0:
-                    self.state = M.Complete
-                    continue
+                    _stop()
+                    break
+
                 raise IncompleteBody('Could not read remaining {0} '
                                      'bytes'.format(self.bytes_remaining))
 
@@ -459,8 +465,7 @@ class IdentityEncodedBodyReader(Reader):
                 self.bytes_remaining = (self.content_length - self.bytes_read)
 
             if self.bytes_remaining <= 0:
-                self.body.complete(self.bytes_read)
-                self.state = M.Complete
+                _stop()
 
         while True:
             yield M.Complete
