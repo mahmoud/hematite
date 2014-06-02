@@ -203,7 +203,7 @@ class SocketDriver(BaseIODriver):
             peeked = self.distinguish_empty(self.inbound.peek, (amount,))
             self.peek_buffer.append(peeked)
             if len(peeked) < amount:
-                raise
+                raise core.eagain()
             result = ''.join(self.peek_buffer)
             self.peek_buffer = []
             return result
