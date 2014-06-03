@@ -107,6 +107,13 @@ class Headers(OMD):
                 for key, value in items:
                     yield key, value
 
+    def itercaseditems(self):
+        root = self.root
+        curr = root[NEXT]
+        while curr is not root:
+            yield curr[ORIG_KEY], curr[KEY], curr[VALUE]
+            curr = curr[NEXT]
+
     def popall(self, k, default=_MISSING):
         return super(Headers, self).popall(k.lower(), default)
 

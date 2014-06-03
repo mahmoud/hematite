@@ -15,9 +15,9 @@ def _init_headers(self):
     self.headers = Headers()
     # plenty of ways to arrange this
     hf_map = self._header_field_map
-    for hname, hval in self._raw_headers.items(multi=True):
+    for hname, lower_hname, hval in self._raw_headers.itercaseditems():
         try:
-            norm_hname = HEADER_CASE_MAP[hname]
+            norm_hname = HEADER_CASE_MAP[lower_hname]
             field = hf_map[norm_hname]
         except KeyError:
             # preserves insertion order and duplicates

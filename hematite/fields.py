@@ -167,7 +167,7 @@ class HTTPHeaderField(Field):
         self.attr_name = name  # used for error messages
         http_name = kw.pop('http_name', None)
         if http_name is None:
-            http_name = HEADER_CASE_MAP[name.replace('_', '-')]
+            http_name = HEADER_CASE_MAP[name.lower().replace('_', '-')]
         self.http_name = http_name
         self.native_type = kw.pop('native_type', unicode)
 
