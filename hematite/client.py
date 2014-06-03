@@ -55,7 +55,7 @@ class ClientOperation(object):
         self.client.populate_headers(req)
         return self.client.request(request=req, timeout=timeout)
 
-    def async(self, url, body=None):
+    def async(self, url, body=None, nonblocking=True):
         req = Request(self.method, url, body=body)
         self.client.populate_headers(req)
         return self.client.request(request=req, async=True)
@@ -233,6 +233,7 @@ class ClientResponse(object):
         # TODO: need to set error and Complete state on errors
         self.error = None
 
+        self.response = None
         self.raw_response = None
 
         self.autoload_body = kwargs.pop('autoload_body', True)
@@ -320,41 +321,30 @@ class ClientResponse(object):
                 self.state += 1
                 self.timings['started'] = time.time()
             elif state is _State.ResolvingHost:
-                try:
-                    self.addrinfo = self.client.get_addrinfo(request)
-                except Exception as e:
-                    self.error = e
-                    raise
-                else:
-                    self.state += 1
-                    self.timings['host_resolved'] = time.time()
+                self.addrinfo = self.client.get_addrinfo(request)
+                self.state += 1
+                self.timings['host_resolved'] = time.time()
             elif state is _State.Connecting:
-                try:
-                    self.socket = self.client.get_socket(request,
-                                                         self.addrinfo,
-                                                         self.nonblocking)
-                    writer = self.raw_request.get_writer()
-                    self.driver = SSLSocketDriver(self.socket,
-                                                  reader=ResponseReader(),
-                                                  writer=writer)
-                except Exception as e:
-                    self.error = e
-                    raise
-                else:
-                    self.state += 1
-                    self.timings['connected'] = time.time()
+                self.socket = self.client.get_socket(request,
+                                                     self.addrinfo,
+                                                     self.nonblocking)
+                writer = self.raw_request.get_writer()
+                self.driver = SSLSocketDriver(self.socket,
+                                              reader=ResponseReader(),
+                                              writer=writer)
+                self.state += 1
+                self.timings['connected'] = time.time()
             elif state is _State.Sending:
-                try:
-                    if self.driver.write():
-                        self.state += 1
-                        self.timings['sent'] = time.time()
-                except Exception as e:
-                    self.error = e
-                    raise
+                if self.driver.write():
+                    self.state += 1
+                    self.timings['sent'] = time.time()
             else:
                 raise RuntimeError('not in a writable state: %r' % state)
         except BlockingIOError:
             return False
+        except Exception as e:
+            self.error = e
+            raise
         return self.want_write
 
     def do_read(self):
@@ -365,20 +355,18 @@ class ClientResponse(object):
             if state is _State.Receiving:
                 self.raw_response = self.driver.reader.raw_response
                 self.timings['first_read'] = time.time()
-                try:
-                    res = self.driver.read()
-                    if res:
-                        self.state += 1
-                        self.timings['complete'] = time.time()
-                        resp = Response.from_raw_response(self.raw_response)
-                        self.response = resp
-                except Exception as e:
-                    self.error = e
-                    raise
+                res = self.driver.read()
+                if res:
+                    self.state += 1
+                    self.timings['complete'] = time.time()
+                    resp = Response.from_raw_response(self.raw_response)
+                    self.response = resp
             else:
                 raise RuntimeError('not in a readable state: %r' % state)
         except BlockingIOError:
             return False
+        except Exception as e:
+            self.error = e
         return self.want_read
         # TODO: return socket
         # TODO: how to resolve socket returns with as-yet-unfetched body

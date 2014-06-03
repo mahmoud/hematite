@@ -47,8 +47,12 @@ def do_async_survey(count):
 
     # just adding www takes care of 65% of redirects
     client_resps = [client.get.async('http://www.' + s + '/') for s in sites]
-    join(client_resps, raise_exc=False, timeout=30.0)
+    for cr in client_resps:
+        cr.nonblocking = True
+    observer = AsyncObserver(client_resps)
+    join(client_resps + [observer], raise_exc=False, timeout=30.0)
     # [cr.norm_timings['complete'] for cr in client_resps if cr.raw_response]
+    # [(cr.request.url, cr.norm_timings['connected'], cr.norm_timings['complete']) for cr in client_resps if cr.response]
     import pdb;pdb.set_trace()
 
 
@@ -117,6 +121,42 @@ def main():
         do_survey(args.top_n)
 
 
+import time
+
+
+class AsyncObserver(object):
+    def __init__(self, others, interval=0.1):
+        self.others = [o for o in others if o is not self]
+        self.last_print = 0.0
+        self.interval = interval
+
+    @property
+    def want_write(self):
+        all_complete = len(self.get_complete_others()) == len(self.others)
+        if all_complete:
+            return False
+        return True
+
+    @property
+    def want_read(self):
+        return False
+
+    def fileno(self):
+        return None
+
+    def get_complete_others(self):
+        return [o.want_read or o.want_write for o in self.others
+                if not (o.want_read or o.want_write)]
+
+    def do_write(self):
+        cur_time = time.time()
+        if (cur_time - self.last_print) > self.interval:
+            print 'completed:', len(self.get_complete_others())
+            self.last_print = cur_time
+
+    def do_read(self):
+        pass
+
 if __name__ == '__main__':
-    #do_async_survey(100)
+    #do_async_survey(25)
     main()
