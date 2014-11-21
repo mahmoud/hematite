@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from collections import Iterable
-from hematite.raw import RawRequest, Headers
+from hematite.raw.request import RawRequest
+from hematite.raw.datastructures import Headers
 from hematite.raw.parser import HTTPVersion
 
 

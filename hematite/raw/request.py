@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from io import BytesIO
-
 from hematite.raw import messages as M
 from hematite.raw.messages import Complete
 from hematite.raw.datastructures import Headers, ChunkedBody, Body

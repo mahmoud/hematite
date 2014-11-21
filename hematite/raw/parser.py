@@ -1,7 +1,6 @@
 import re
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-import time
 
 from hematite.compat import BytestringHelper, make_sentinel
 from hematite.raw import datastructures

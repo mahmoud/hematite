@@ -89,7 +89,9 @@ def test_vary_field():
 def test_content_type():
     resp_bytes = ('HTTP/1.1 200 OK\r\n'
                   'Content-Type: text/html; charset=UTF-8\r\n'
-                  '\r\n')
+                  'Content-Length: 4\r\n'
+                  '\r\n'
+                  'body')
     resp = Response.from_bytes(resp_bytes)
     assert resp.content_type.media_type == 'text/html'
     assert resp.content_type.charset == 'UTF-8'

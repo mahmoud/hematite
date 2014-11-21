@@ -4,7 +4,7 @@ from hematite import serdes
 from hematite.fields import RESPONSE_FIELDS
 from hematite.constants import CODE_REASONS
 
-from hematite.raw import RawResponse
+from hematite.raw.response import RawResponse
 from hematite.raw.parser import HTTPVersion
 from hematite.raw.datastructures import Headers, ChunkedBody
 
@@ -35,23 +35,8 @@ class Response(object):
     _init_headers = serdes._init_headers
     _get_header_dict = serdes._get_headers
 
-    @property
-    def is_chunked(self):
-        return isinstance(self._body, ChunkedBody)
-
     def _load_data(self):
-        # TODO: dead code
-        if self.is_chunked:
-            chunk_list = []
-            while True:
-                chunk = self._body.read_chunk()
-                if not chunk:
-                    break
-                chunk_list.append(chunk)
-            data = ''.join(chunk_list)
-        else:
-            data = self._body.read()
-        self._data = data
+        self._data = self._body.data
 
     def get_data(self, as_bytes=True):
         if self._data is None:
