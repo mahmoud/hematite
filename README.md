@@ -7,3 +7,6 @@ Python. Core features:
   * Async-compatible, reentrant, streaming HTTP parser, based on Python generators (coroutines)
   * Built-in nonblocking HTTP client
   * WSGI-compatible
+
+Hematite is still very much a work in progress, but feel free to
+`python setup.py develop` and try out some examples!
