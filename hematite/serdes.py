@@ -5,7 +5,8 @@ import time
 from datetime import datetime, timedelta
 
 from hematite.constants import HEADER_CASE_MAP
-from hematite.raw import Headers, core
+from hematite.raw import core
+from hematite.raw.datastructures import Headers
 
 
 # these two functions are shared by Request and Response. Could use a
@@ -15,9 +16,9 @@ def _init_headers(self):
     self.headers = Headers()
     # plenty of ways to arrange this
     hf_map = self._header_field_map
-    for hname, hval in self._raw_headers.items(multi=True):
+    for hname, lower_hname, hval in self._raw_headers.itercaseditems():
         try:
-            norm_hname = HEADER_CASE_MAP[hname]
+            norm_hname = HEADER_CASE_MAP[lower_hname]
             field = hf_map[norm_hname]
         except KeyError:
             # preserves insertion order and duplicates

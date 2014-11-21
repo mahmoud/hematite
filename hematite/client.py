@@ -11,6 +11,7 @@ from hematite.request import Request, RawRequest
 from hematite.response import Response
 from hematite.raw.parser import ResponseReader
 from hematite.raw.drivers import SSLSocketDriver
+from hematite.profile import HematiteProfile
 
 
 class ConnectionError(Exception):  # TODO: maybe inherit from socket.error?
@@ -117,7 +118,7 @@ class Client(object):
     del client_method
 
     def __init__(self, profile=None):
-        self.profile = profile
+        self.profile = profile or HematiteProfile()
 
     def populate_headers(self, request):
         if self.profile:
@@ -346,6 +347,9 @@ class ClientResponse(object):
             self.error = e
             raise
         return self.want_write
+
+    def get_data(self):
+        return self.driver.reader.raw_response.body.data
 
     def do_read(self):
         if self.error:

@@ -65,7 +65,7 @@ def escape_path(text, to_bytes=True):
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
-        pass
+        bytestr = text
     except:
         raise ValueError('expected text or UTF-8 encoded bytes, not %r' % text)
     return ''.join([_PATH_QUOTE_MAP[b] for b in bytestr])
@@ -77,7 +77,7 @@ def escape_query_element(text, to_bytes=True):
     try:
         bytestr = text.encode('utf-8')
     except UnicodeDecodeError:
-        pass
+        bytestr = text
     except:
         raise ValueError('expected text or UTF-8 encoded bytes, not %r' % text)
     return ''.join([_QUERY_ELEMENT_QUOTE_MAP[b] for b in bytestr])

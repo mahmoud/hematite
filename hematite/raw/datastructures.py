@@ -1,4 +1,4 @@
-
+import zlib
 from hematite.compat import OrderedMultiDict as OMD
 from hematite.compat.dictutils import PREV, NEXT, KEY, VALUE, _MISSING
 
@@ -107,6 +107,13 @@ class Headers(OMD):
                 for key, value in items:
                     yield key, value
 
+    def itercaseditems(self):
+        root = self.root
+        curr = root[NEXT]
+        while curr is not root:
+            yield curr[ORIG_KEY], curr[KEY], curr[VALUE]
+            curr = curr[NEXT]
+
     def popall(self, k, default=_MISSING):
         return super(Headers, self).popall(k.lower(), default)
 
@@ -122,21 +129,41 @@ class Headers(OMD):
         return super(Headers, self).__contains__(k.lower())
 
 
-class ChunkedBody(object):
+class Decompress(object):
+    WBITS = {'gzip': (16 + zlib.MAX_WBITS,),
+             'deflate': ()}
 
-    def __init__(self, chunks=None):
+    def __init__(self, decompression):
+        if decompression:
+            try:
+                args = self.WBITS[decompression]
+            except KeyError:
+                raise RuntimeError('unknown decompression '
+                                   '{0}'.format(decompression))
+            self.decompressor = zlib.decompressobj(*args)
+            self.decompress = self.decompressor.decompress
+
+    def decompress(self, data):
+        return data
+
+
+class ChunkedBody(Decompress):
+
+    def __init__(self, chunks=None, decompression=None):
+        super(ChunkedBody, self).__init__(decompression)
         self.chunks = chunks or []
         self.data = None
+        self.nominal_length = None
 
     def send_chunk(self):
         return iter(self.chunks)
 
     def chunk_received(self, chunk):
-        self.chunks.append(chunk)
+        return self.chunks.append(self.decompress(chunk))
 
     def complete(self, length):
         self.data = ''.join(self.chunks)
-        assert len(self.data) == length
+        self.nominal_length = length
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -149,15 +176,18 @@ class ChunkedBody(object):
         return '<%s %s, %s total bytes, %s>' % (cn, chunkstr, totsize, compstr)
 
 
-class Body(object):
+class Body(Decompress):
 
-    def __init__(self, body=None):
+    def __init__(self, body=None, decompression=None):
+        super(Body, self).__init__(decompression)
         self.body = body or []
         self.data = None
         self.nominal_length = None
 
     def data_received(self, data):
-        self.body.append(data)
+        # To help determine Content-Length when Transfer-Encoding:
+        # gzip
+        return self.body.append(self.decompress(data))
 
     def send_data(self):
         return [self.body]
@@ -174,3 +204,8 @@ class Body(object):
         compstr = 'complete' if self.data else 'incomplete'
         totsize = sum([len(p) for p in self.body])
         return '<%s%s %s total bytes, %s>' % (cn, partstr, totsize, compstr)
+
+
+class UnifiedBody(object):
+    def __init__(self):
+        pass

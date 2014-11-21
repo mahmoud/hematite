@@ -9,6 +9,7 @@ from hematite.raw import core
 from hematite.url import URL, _ABS_PATH_RE
 from hematite.constants import CODE_REASONS
 from hematite.raw import messages as M
+from hematite.serdes import items_header_from_bytes, _list_header_from_bytes
 
 # TODO: maintain case
 
@@ -711,25 +712,46 @@ class ResponseWriter(Writer):
 
 MessageTraits = namedtuple('MessageTraits', ['chunked',
                                              'content_length',
-                                             'connection_close'])
+                                             'connection_close',
+                                             'decompression'])
 
 
 def parse_message_traits(headers_dict):
+    # TODO - WE NEED REAL PARSING LOGIC HERE
     hd = headers_dict
     content_length = hd.get('content-length')
     if content_length:
         content_length = int(content_length)
     connection_close = hd.get('connection', '').lower() == 'close'
     try:
-        tencodings = hd.getlist('transfer-encoding')
+        # NB: items_header_from_bytes doesn't split on ; which
+        # transfer-codings expect (RFC2616 3.6)
+        tencodings = [te
+                      for te_kvs in hd.getlist('transfer-encoding')
+                      for te, _ in items_header_from_bytes(te_kvs)]
     except KeyError:
         tencodings = []
+
     chunked = any([te.strip().lower().startswith('chunked')
                    for te in tencodings])
 
+    # WRONG - CAN BE MULTIPLE
+    #
+    # 14.11
+    # Content-Encoding  = "Content-Encoding" ":" 1#content-coding
+    content_encodings = hd.get('content-encoding', '')
+    content_encodings = [ce
+                         for ce in
+                         _list_header_from_bytes(content_encodings)]
+
+    decompression = None
+    if content_encodings and content_encodings[-1] in ('gzip', 'deflate'):
+        decompression = content_encodings[-1]
+
     return MessageTraits(chunked=chunked,
                          content_length=content_length,
-                         connection_close=connection_close)
+                         connection_close=connection_close,
+                         decompression=decompression)
 
 
 class ResponseReader(Reader):
@@ -778,16 +800,17 @@ class ResponseReader(Reader):
         rresp.chunked = resp_traits.chunked
         rresp.content_length = resp_traits.content_length
         rresp.connection_close = resp_traits.connection_close
+        decomp = rresp.decompression = resp_traits.decompression
         # TODO mutual exclusion
 
         if not rresp.chunked:
-            rresp.body = datastructures.Body()
+            rresp.body = datastructures.Body(decompression=decomp)
             content_length = rresp.content_length
             b_reader = IdentityEncodedBodyReader(rresp.body,
                                                  content_length=content_length)
             self.body_reader = b_reader
         else:
-            rresp.body = datastructures.ChunkedBody()
+            rresp.body = datastructures.ChunkedBody(decompression=decomp)
             self.body_reader = ChunkEncodedBodyReader(rresp.body)
 
         self.state = self.body_reader.state
