@@ -204,3 +204,8 @@ class Body(Decompress):
         compstr = 'complete' if self.data else 'incomplete'
         totsize = sum([len(p) for p in self.body])
         return '<%s%s %s total bytes, %s>' % (cn, partstr, totsize, compstr)
+
+
+class UnifiedBody(object):
+    def __init__(self):
+        pass
