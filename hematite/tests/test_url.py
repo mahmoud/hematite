@@ -27,7 +27,10 @@ TEST_URLS = [
     'news:alt.rec.motorcycle',
     'tel:+1-800-867-5309',
     'urn:oasis:member:A00024:x',
-    'magnet:?xt=urn:btih:1a42b9e04e122b97a5254e3df77ab3c4b7da725f&dn=Puppy%20Linux%20precise-5.7.1.iso&tr=udp://tracker.openbittorrent.com:80&tr=udp://tracker.publicbt.com:80&tr=udp://tracker.istole.it:6969&tr=udp://tracker.ccc.de:80&tr=udp://open.demonii.com:1337']
+    ('magnet:?xt=urn:btih:1a42b9e04e122b97a5254e3df77ab3c4b7da725f&dn=Puppy%'
+     '20Linux%20precise-5.7.1.iso&tr=udp://tracker.openbittorrent.com:80&'
+     'tr=udp://tracker.publicbt.com:80&tr=udp://tracker.istole.it:6969&'
+     'tr=udp://tracker.ccc.de:80&tr=udp://open.demonii.com:1337')]
 
 
 UNICODE_URLS = [
@@ -141,13 +144,3 @@ def test_is_absolute():
     assert not url.is_absolute
     url = URL('http://googlewebsite.biz/hi')
     assert url.is_absolute
-
-
-def _url2parseresult(url_str):
-    # TODO: is this necessary anymores?
-    from urlparse import ParseResult
-    pd = parse_url(url_str)
-    parsed = ParseResult(pd['scheme'], pd['authority'], pd['path'],
-                         '', pd['query'], pd['fragment'])
-    parsed = parsed._replace(netloc=parsed.netloc.decode('idna'))
-    return parsed
