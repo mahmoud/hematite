@@ -51,6 +51,11 @@ _URL_RE_STRICT = re.compile(r'^(?:(?P<scheme>[' + _SCHEME_CHARS + ']+):)?'
                             + _ABS_PATH_RE)
 
 
+_HEX_CHAR_MAP = dict([(a + b, chr(int(a + b, 16)))
+                      for a in string.hexdigits for b in string.hexdigits])
+_ASCII_RE = re.compile('([\x00-\x7f]+)')
+
+
 def _make_quote_map(allowed_chars):
     ret = {}
     for i, c in zip(range(256), str(bytearray(range(256)))):
@@ -202,8 +207,6 @@ class QueryParamDict(OrderedMultiDict):
         return u'&'.join(ret_list)
 
 
-# TODO: naming: 'args', 'query_args', or 'query_params'?
-
 class URL(BytestringHelper):
     _attrs = ('scheme', 'username', 'password', 'family',
               'host', 'port', 'path', 'query', 'fragment')
@@ -346,18 +349,12 @@ class URL(BytestringHelper):
         return not self == other
 
 
-_hexdig = '0123456789ABCDEFabcdef'
-_hextochr = dict((a + b, chr(int(a + b, 16)))
-                 for a in _hexdig for b in _hexdig)
-_asciire = re.compile('([\x00-\x7f]+)')
-
-
 def unquote(s, encoding=DEFAULT_ENCODING):
     "unquote('abc%20def') -> 'abc def'. aka percent decoding."
     if isinstance(s, unicode):
         if '%' not in s:
             return s
-        bits = _asciire.split(s)
+        bits = _ASCII_RE.split(s)
         res = [bits[0]]
         append = res.append
         for i in range(1, len(bits), 2):
@@ -375,7 +372,7 @@ def unquote(s, encoding=DEFAULT_ENCODING):
     append = res.append
     for item in bits[1:]:
         try:
-            append(_hextochr[item[:2]])
+            append(_HEX_CHAR_MAP[item[:2]])
             append(item[2:])
         except KeyError:
             append('%')
