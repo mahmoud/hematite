@@ -6,7 +6,7 @@ from hematite.constants import CODE_REASONS
 
 from hematite.raw.response import RawResponse
 from hematite.raw.parser import HTTPVersion
-from hematite.raw.datastructures import Headers, ChunkedBody
+from hematite.raw.datastructures import Headers
 
 
 _DEFAULT_VERSION = HTTPVersion(1, 1)

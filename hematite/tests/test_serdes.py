@@ -17,7 +17,8 @@ _ACCEPT_TESTS = [('', []),
                  (' ', []),
 
                  # Accept
-                 ('audio/*; q=0.2 , audio/basic', [('audio/*', 0.2), ('audio/basic', 1.0)]),
+                 ('audio/*; q=0.2 , audio/basic', [('audio/*', 0.2),
+                                                   ('audio/basic', 1.0)]),
                  ('text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                   [('text/html', 1.0), ('application/xhtml+xml', 1.0),
                    ('application/xml', 0.9), ('image/webp', 1.0), ('*/*', 0.8)]),
@@ -29,11 +30,15 @@ _ACCEPT_TESTS = [('', []),
                  # Accept-Encoding
                  ('*',  [('*', 1.0)]),
                  ('compress, gzip', [('compress', 1.0), ('gzip', 1.0)]),
-                 ('compress;q=0.5, gzip;q=1.0', [('compress', 0.5), ('gzip', 1.0)]),
-                 ('gzip;q=1.0, identity; q=0.5, *;q=0', [('gzip', 1.0), ('identity', 0.5), ('*', 0.0)]),
+                 ('compress;q=0.5, gzip;q=1.0', [('compress', 0.5),
+                                                 ('gzip', 1.0)]),
+                 ('gzip;q=1.0, identity; q=0.5, *;q=0', [('gzip', 1.0),
+                                                         ('identity', 0.5),
+                                                         ('*', 0.0)]),
 
                  # Accept-Language
-                 ('da, en-gb;q=0.8, en;q=0.7', [('da', 1.0), ('en-gb', 0.8), ('en', 0.7)]),
+                 ('da, en-gb;q=0.8, en;q=0.7', [('da', 1.0), ('en-gb', 0.8),
+                                                ('en', 0.7)]),
 
                  # Accept-Ranges
                  ('bytes', [('bytes', 1.0)]),
@@ -53,7 +58,8 @@ _ITEMS_TESTS = [('', []),
                 ('Basic realm="myRealm"', [('Basic realm', 'myRealm')]),
 
                 # Cache control
-                ('private, community="UCI"', [('private', None), ('community', 'UCI')])]
+                ('private, community="UCI"', [('private', None), ('community',
+                                                                  'UCI')])]
 
 
 def test_items_from_bytes():
