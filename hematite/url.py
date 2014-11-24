@@ -7,9 +7,12 @@ import string
 from compat import (unicode, OrderedMultiDict, BytestringHelper)
 
 """
- - url.params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
+- url.path_params (semicolon separated) http://www.w3.org/TR/REC-html40/appendix/notes.html#h-B.2.2
  - support python compiled without IPv6
  - support empty port (e.g., http://gweb.com:/)
+
+The URL class isn't really for validation at the moment, though it is highly standards compliant and will emit only the most valid URLs.
+
 """
 
 DEFAULT_ENCODING = 'utf-8'
@@ -145,12 +148,11 @@ def parse_userinfo(au_str):
 
 
 def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
-    if not isinstance(url_str, unicode):
-        try:
-            url_str = url_str.decode(encoding)
-        except AttributeError:
-            raise TypeError('parse_url expected str, unicode, or bytes, not %r'
-                            % url_str)
+    if isinstance(url_str, str):
+        url_str = url_str.decode(encoding)
+    else:
+        url_str = unicode(url_str)
+    #raise TypeError('parse_url expected unicode or bytes, not %r' % url_str)
     um = (_URL_RE_STRICT if strict else _URL_RE).match(url_str)
     try:
         gs = um.groupdict()
@@ -215,10 +217,12 @@ class URL(BytestringHelper):
         self.encoding = encoding
         url_dict = {}
         if url_str:
+            if isinstance(url_str, URL):
+                url_str = url_str.to_text()  # better way to copy URLs?
             url_dict = parse_url(url_str, encoding=encoding, strict=strict)
 
         _d = unicode()
-        self.params = _d  # TODO: support path params?
+        self.path_params = _d  # TODO: support parsing path params?
         for attr in self._attrs:
             val = url_dict.get(attr, _d) or _d
             if attr in self._quotable_attrs and '%' in val:
@@ -253,7 +257,8 @@ class URL(BytestringHelper):
     def __iter__(self):
         s = self
         return iter((s.scheme, s.get_authority(idna=True), s.path,
-                     s.params, s.get_query_string(to_bytes=True), s.fragment))
+                     s.path_params, s.get_query_string(to_bytes=True),
+                     s.fragment))
 
     # TODO: normalize?
 
@@ -291,7 +296,7 @@ class URL(BytestringHelper):
         It's a tricky business.
         """
         full_encode = (not display)
-        scheme, path, params = self.scheme, self.path, self.params
+        scheme, path, params = self.scheme, self.path, self.path_params
         authority = self.get_authority(idna=full_encode)
         query_string = self.get_query_string(to_bytes=full_encode)
         fragment = self.fragment
