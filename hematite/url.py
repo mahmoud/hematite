@@ -174,7 +174,7 @@ def parse_url(url_str, encoding=DEFAULT_ENCODING, strict=False):
     return gs
 
 
-class QueryArgDict(OrderedMultiDict):
+class QueryParamDict(OrderedMultiDict):
     # TODO: caching
     # TODO: self.update_extend_from_string()?
 
@@ -228,7 +228,7 @@ class URL(BytestringHelper):
             if attr in self._quotable_attrs and '%' in val:
                 val = unquote(val)
             setattr(self, attr, val)
-        self.args = QueryArgDict.from_string(self.query)
+        self.query_params = QueryParamDict.from_string(self.query)
 
     @property
     def is_absolute(self):
@@ -264,8 +264,8 @@ class URL(BytestringHelper):
 
     def get_query_string(self, to_bytes=True):
         if to_bytes:
-            return self.args.to_bytes()
-        return self.args.to_text()
+            return self.query_params.to_bytes()
+        return self.query_params.to_text()
 
     def get_authority(self, idna=True):
         parts = []

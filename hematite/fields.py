@@ -25,7 +25,7 @@ from hematite.serdes import (quote_header_value,
                              content_header_from_bytes,
                              content_range_spec_from_bytes,
                              content_range_spec_to_bytes)
-from hematite.url import URL, parse_hostinfo, QueryArgDict
+from hematite.url import URL, parse_hostinfo, QueryParamDict
 
 ALL_FIELDS = None
 RESPONSE_FIELDS = None
@@ -482,7 +482,7 @@ request.host - host *header* (should be equal to url.host + url.port)
 request.hostname/request.domain - host attr of URL
 request.path - url path (unicode)
 request.port - int
-request.args/.params/.query_params/.GET - QueryArgDict
+request.args/.params/.query_params/.GET - QueryParamDict
 request.query_string - bytes or unicode?
 request.scheme - http/https
 
@@ -581,8 +581,8 @@ class URLArgsField(BaseURLField):
     def __set__(self, obj, value):
         if value is None:
             obj._url.args.clear()
-        elif not isinstance(value, QueryArgDict):
-            raise TypeError('expected QueryArgDict, not %r' % type(value))
+        elif not isinstance(value, QueryParamDict):
+            raise TypeError('expected QueryParamDict, not %r' % type(value))
         else:
             obj._url.args = value
         return
@@ -603,7 +603,7 @@ class URLQueryStringField(BaseURLField):
         elif not isinstance(value, unicode):  # allow bytestrings?
             raise TypeError('expected unicode, not %r' % type(value))
         else:
-            obj._url.args = QueryArgDict.from_string(value)
+            obj._url.args = QueryParamDict.from_string(value)
 
 
 class URLSchemeField(BaseURLField):
