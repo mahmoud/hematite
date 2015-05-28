@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 if __name__ == '__main__':
     setup(name='hematite',
-          version='0.0.2',
+          version='0.0.3dev',
           author='Mahmoud Hashemi and Mark Williams',
           url='https://github.com/mahmoud/hematite',
           install_requires=[],
