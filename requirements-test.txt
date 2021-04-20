@@ -2,7 +2,7 @@ argparse==1.2.1
 cov-core==1.7
 coverage==3.7.1
 pep8==1.4.6
-py==1.4.20
+py==1.10.0
 pyflakes==0.7.3
 pytest==2.5.2
 pytest-cov==1.6
